@@ -7,13 +7,6 @@ packages:
 allowBuilds:
   esbuild: true
   lightningcss: true
-permissions:
-  '@tanstack/devtools-vite':
-    skills: true
-  '@tanstack/react-router':
-    skills: [router-query, react-router]
-  '@tanstack/router-plugin':
-    skills: true
 skills:
   dirs:
     - .agents/skills

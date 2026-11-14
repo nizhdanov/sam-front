@@ -6,7 +6,6 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "paths": {
-      "#/*": ["./src/*"],
       "@/*": ["./src/*"]
     },
     "types": ["vite/client"],
@@ -22,5 +21,5 @@
     "noUncheckedSideEffectImports": true
   },
 
-  "include": ["**/*.ts", "**/*.tsx", "eslint.config.js", "prettier.config.js", "vite.config.js"]
+  "include": ["**/*.ts", "**/*.tsx", "eslint.config.js", "prettier.config.js", "vite.config.js", "generated/**/*"],
 }
