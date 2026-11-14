@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"errors"
 	"io"
 	"log/slog"
@@ -18,6 +19,7 @@ import (
 	"sam/pkg/health"
 	"sam/pkg/httpx"
 	"sam/services/processor/internal/domain"
+	"sam/services/processor/internal/parser"
 	"sam/services/processor/internal/service"
 )
 
@@ -52,13 +54,15 @@ func NewRouter(d Deps) http.Handler {
 		r.Use(auth.Middleware(d.Verifier))
 
 		r.With(middleware.Timeout(d.UploadTimeout)).Post("/imports", h.upload)
-		r.With(middleware.Timeout(d.UploadTimeout)).Post("/agent/inventory", h.agentInventory)
 
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.Timeout(d.RequestTimeout))
 			r.Get("/imports", h.list)
 			r.Get("/imports/{id}", h.get)
 			r.Get("/imports/{id}/errors", h.errors)
+			r.Get("/imports/{id}/preview", h.preview)
+			r.Post("/imports/{id}/confirm", h.importAction(h.svc.Confirm))
+			r.Post("/imports/{id}/cancel", h.importAction(h.svc.Cancel))
 			r.Post("/imports/{id}/retry", h.retry)
 		})
 	})
@@ -118,10 +122,16 @@ type acceptedResponse struct {
 	ImportID uuid.UUID           `json:"import_id"`
 	Status   domain.ImportStatus `json:"status"`
 	Filename string              `json:"filename"`
+	Preview  parser.Preview      `json:"preview"`
 }
 
 func (h *handler) upload(w http.ResponseWriter, r *http.Request) {
 	collectedAt, err := parseTime(r.URL.Query().Get("collected_at"))
+	if err != nil {
+		httpx.Error(w, r, h.log, err)
+		return
+	}
+	confirm, err := httpx.QueryBool(r, "confirm")
 	if err != nil {
 		httpx.Error(w, r, h.log, err)
 		return
@@ -152,19 +162,51 @@ func (h *handler) upload(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		case "file":
-			h.saveUpload(w, r, part, collectedAt)
+			h.saveUpload(w, r, part, collectedAt, confirm != nil && *confirm)
 			return
 		}
 	}
 }
 
-func (h *handler) saveUpload(w http.ResponseWriter, r *http.Request, part *multipart.Part, collectedAt time.Time) {
-	imp, err := h.svc.Upload(r.Context(), part.FileName(), part, collectedAt)
+func (h *handler) saveUpload(w http.ResponseWriter, r *http.Request, part *multipart.Part, collectedAt time.Time, confirm bool) {
+	res, err := h.svc.Upload(r.Context(), part.FileName(), part, collectedAt, confirm)
 	if err != nil {
 		httpx.Error(w, r, h.log, uploadError(err))
 		return
 	}
-	httpx.JSON(w, http.StatusAccepted, acceptedResponse{ImportID: imp.ID, Status: imp.Status, Filename: imp.Filename})
+	httpx.JSON(w, http.StatusAccepted, acceptedResponse{
+		ImportID: res.Import.ID, Status: res.Import.Status, Filename: res.Import.Filename, Preview: res.Preview,
+	})
+}
+
+func (h *handler) importAction(action func(context.Context, uuid.UUID) (service.ImportView, error)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.Error(w, r, h.log, apperr.Invalid("id must be a UUID"))
+			return
+		}
+		v, err := action(r.Context(), id)
+		if err != nil {
+			httpx.Error(w, r, h.log, err)
+			return
+		}
+		httpx.JSON(w, http.StatusOK, toResponse(v))
+	}
+}
+
+func (h *handler) preview(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		httpx.Error(w, r, h.log, apperr.Invalid("id must be a UUID"))
+		return
+	}
+	p, err := h.svc.Preview(r.Context(), id)
+	if err != nil {
+		httpx.Error(w, r, h.log, err)
+		return
+	}
+	httpx.JSON(w, http.StatusOK, p)
 }
 
 func uploadError(err error) error {
@@ -173,45 +215,6 @@ func uploadError(err error) error {
 		return apperr.TooLarge("file is too large")
 	}
 	return err
-}
-
-type agentRequest struct {
-	SerialNumber string `json:"serial_number"`
-	CollectedAt  string `json:"collected_at"`
-	SnapshotType string `json:"snapshot_type"`
-	Software     []struct {
-		DisplayName string `json:"display_name"`
-		Publisher   string `json:"publisher"`
-		Version     string `json:"version"`
-	} `json:"software"`
-}
-
-func (h *handler) agentInventory(w http.ResponseWriter, r *http.Request) {
-	var req agentRequest
-	if err := httpx.Decode(w, r, &req); err != nil {
-		httpx.Error(w, r, h.log, err)
-		return
-	}
-	collectedAt, err := parseTime(req.CollectedAt)
-	if err != nil {
-		httpx.Error(w, r, h.log, err)
-		return
-	}
-	report := service.AgentReport{
-		SerialNumber: req.SerialNumber,
-		CollectedAt:  collectedAt,
-		Partial:      strings.EqualFold(req.SnapshotType, string(domain.SnapshotPartial)),
-		Software:     make([]domain.RawSoftware, 0, len(req.Software)),
-	}
-	for _, sw := range req.Software {
-		report.Software = append(report.Software, domain.RawSoftware(sw))
-	}
-	imp, err := h.svc.IngestAgent(r.Context(), report)
-	if err != nil {
-		httpx.Error(w, r, h.log, err)
-		return
-	}
-	httpx.JSON(w, http.StatusAccepted, acceptedResponse{ImportID: imp.ID, Status: imp.Status, Filename: imp.Filename})
 }
 
 func (h *handler) list(w http.ResponseWriter, r *http.Request) {

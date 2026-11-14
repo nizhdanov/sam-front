@@ -18,7 +18,10 @@ import (
 	"sam/services/processor/internal/parser"
 )
 
-const maxStoredRowErrors = 1000
+const (
+	maxStoredRowErrors = 1000
+	previewRows        = 20
+)
 
 type TxRunner interface {
 	InTx(ctx context.Context, fn func(ctx context.Context) error) error
@@ -113,16 +116,21 @@ type ImportView struct {
 	Progress domain.Progress
 }
 
-func (s *Service) Upload(ctx context.Context, filename string, body io.Reader, collectedAt time.Time) (domain.Import, error) {
+type UploadResult struct {
+	Import  domain.Import
+	Preview parser.Preview
+}
+
+func (s *Service) Upload(ctx context.Context, filename string, body io.Reader, collectedAt time.Time, confirm bool) (UploadResult, error) {
 	claims, err := auth.Require(ctx, auth.RoleAdmin)
 	if err != nil {
-		return domain.Import{}, err
+		return UploadResult{}, err
 	}
 	select {
 	case s.uploads <- struct{}{}:
 		defer func() { <-s.uploads }()
 	default:
-		return domain.Import{}, apperr.RateLimited("too many uploads in progress, try again later")
+		return UploadResult{}, apperr.RateLimited("too many uploads in progress, try again later")
 	}
 
 	if collectedAt.IsZero() {
@@ -132,20 +140,93 @@ func (s *Service) Upload(ctx context.Context, filename string, body io.Reader, c
 		ID:          uuid.New(),
 		Filename:    sanitizeFilename(filename),
 		Source:      domain.SourceCSV,
-		Status:      domain.ImportPending,
+		Status:      domain.ImportAwaiting,
 		CreatedBy:   claims.Actor(),
 		CollectedAt: collectedAt,
 	}
+	if confirm {
+		imp.Status = domain.ImportPending
+	}
 	imp.StoragePath, imp.FileSize, err = s.files.Save(imp.ID, body, s.cfg.MaxFileBytes)
 	if err != nil {
-		return domain.Import{}, err
+		return UploadResult{}, err
+	}
+	preview, err := s.preview(imp.ID)
+	if err != nil {
+		_ = s.files.Remove(imp.ID)
+		return UploadResult{}, apperr.Invalid(err.Error())
 	}
 	if err := s.imports.Create(ctx, imp); err != nil {
 		_ = s.files.Remove(imp.ID)
-		return domain.Import{}, err
+		return UploadResult{}, err
 	}
-	s.enqueue(imp.ID)
-	return imp, nil
+	if confirm {
+		s.enqueue(imp.ID)
+	}
+	return UploadResult{Import: imp, Preview: preview}, nil
+}
+
+func (s *Service) preview(id uuid.UUID) (parser.Preview, error) {
+	file, err := s.files.Open(id)
+	if err != nil {
+		return parser.Preview{}, err
+	}
+	defer func() { _ = file.Close() }()
+	return parser.ReadPreview(file, previewRows, s.cfg.MaxFieldBytes)
+}
+
+func (s *Service) Preview(ctx context.Context, id uuid.UUID) (parser.Preview, error) {
+	if _, err := auth.Require(ctx, auth.RoleAdmin); err != nil {
+		return parser.Preview{}, err
+	}
+	imp, err := s.imports.Get(ctx, id)
+	if err != nil {
+		return parser.Preview{}, err
+	}
+	if imp.StoragePath == "" {
+		return parser.Preview{}, apperr.Conflict("import file is no longer stored")
+	}
+	return s.preview(id)
+}
+
+func (s *Service) Confirm(ctx context.Context, id uuid.UUID) (ImportView, error) {
+	if _, err := auth.Require(ctx, auth.RoleAdmin); err != nil {
+		return ImportView{}, err
+	}
+	imp, err := s.imports.Get(ctx, id)
+	if err != nil {
+		return ImportView{}, err
+	}
+	if imp.Status != domain.ImportAwaiting {
+		return ImportView{}, apperr.Conflict("import is not awaiting confirmation")
+	}
+	if err := s.imports.SetStatus(ctx, id, domain.ImportPending, nil); err != nil {
+		return ImportView{}, err
+	}
+	s.enqueue(id)
+	return s.Get(ctx, id)
+}
+
+func (s *Service) Cancel(ctx context.Context, id uuid.UUID) (ImportView, error) {
+	if _, err := auth.Require(ctx, auth.RoleAdmin); err != nil {
+		return ImportView{}, err
+	}
+	imp, err := s.imports.Get(ctx, id)
+	if err != nil {
+		return ImportView{}, err
+	}
+	if imp.Status != domain.ImportAwaiting {
+		return ImportView{}, apperr.Conflict("only an import awaiting confirmation can be cancelled")
+	}
+	if err := s.imports.SetStatus(ctx, id, domain.ImportCancelled, nil); err != nil {
+		return ImportView{}, err
+	}
+	if err := s.files.Remove(id); err != nil {
+		s.log.ErrorContext(ctx, "remove cancelled import file", "import_id", id, "err", err)
+	} else if err := s.imports.ClearStorage(ctx, id); err != nil {
+		s.log.ErrorContext(ctx, "clear cancelled import storage", "import_id", id, "err", err)
+	}
+	return s.Get(ctx, id)
 }
 
 func (s *Service) enqueue(id uuid.UUID) {
@@ -291,6 +372,9 @@ func (s *Service) Retry(ctx context.Context, id uuid.UUID) (ImportView, error) {
 	if err != nil {
 		return ImportView{}, err
 	}
+	if imp.Status == domain.ImportAwaiting || imp.Status == domain.ImportCancelled {
+		return ImportView{}, apperr.Conflict("import is not confirmed")
+	}
 	progress, err := s.snapshots.Progress(ctx, id)
 	if err != nil {
 		return ImportView{}, err
@@ -322,7 +406,7 @@ func (s *Service) Retry(ctx context.Context, id uuid.UUID) (ImportView, error) {
 }
 
 func (s *Service) Get(ctx context.Context, id uuid.UUID) (ImportView, error) {
-	if _, err := auth.Require(ctx, auth.RoleAdmin, auth.RoleInventoryAgent); err != nil {
+	if _, err := auth.Require(ctx, auth.RoleAdmin); err != nil {
 		return ImportView{}, err
 	}
 	imp, err := s.imports.Get(ctx, id)
