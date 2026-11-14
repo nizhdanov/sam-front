@@ -1,8 +1,12 @@
+minimumReleaseAgeExcludePrune: true
+
+shellEmulator: true
+
+packages:
+  - .
 allowBuilds:
   esbuild: true
   lightningcss: true
-packages:
-  - .
 permissions:
   '@tanstack/devtools-vite':
     skills: true

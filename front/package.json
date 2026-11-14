@@ -10,9 +10,9 @@
     "generate-routes": "tsr generate",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint --fix",
+    "lint": "eslint . --fix",
     "fmt": "prettier --write .",
-    "pretty": "prettier --write . && eslint --fix"
+    "pretty": "prettier --write . && eslint . --fix"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
@@ -49,11 +49,5 @@
     "prettier": "^3.8.1",
     "typescript": "^6.0.2",
     "vite": "^8.0.0"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "lightningcss"
-    ]
   }
 }
