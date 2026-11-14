@@ -19,3 +19,5 @@ permissions:
     skills: true
   '@tanstack/router-plugin':
     skills: true
+  lefthook:
+    build: true
