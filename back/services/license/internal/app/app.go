@@ -69,6 +69,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger) (_ *App, err 
 	}
 	a.closers = append(a.closers, func() { _ = llmConn.Close() })
 
+	llmClient := llm.New(llmConn)
 	a.svc, err = service.New(service.Deps{
 		Tx:                 postgres.NewTxRunner(pool),
 		Locks:              pgrepo.NewLocks(pool),
@@ -85,7 +86,9 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger) (_ *App, err 
 		Explorer:           pgrepo.NewExplorer(pool),
 		Settings:           pgrepo.NewSettings(pool),
 		Audit:              pgrepo.NewAudit(pool),
-		Analyzer:           llm.New(llmConn),
+		Suggestions:        pgrepo.NewSuggestions(pool),
+		Analyzer:           llmClient,
+		Normalizer:         llmClient,
 		Log:                log,
 		MatchingConfig:     domain.MatchingConfig(cfg.Matching),
 		ExpiringWithinDays: cfg.Compliance.ExpiringWithinDays,

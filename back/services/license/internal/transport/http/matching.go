@@ -142,3 +142,66 @@ func (h *handler) auditLog(w http.ResponseWriter, r *http.Request) {
 	}
 	respondPage(w, items, page, total)
 }
+
+func (h *handler) rematch(w http.ResponseWriter, r *http.Request) {
+	res, err := h.svc.StartRematch(r.Context())
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	httpx.JSON(w, http.StatusAccepted, res)
+}
+
+func (h *handler) generateSuggestions(w http.ResponseWriter, r *http.Request) {
+	res, err := h.svc.StartCatalogSuggestions(r.Context())
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	httpx.JSON(w, http.StatusAccepted, res)
+}
+
+func (h *handler) listSuggestions(w http.ResponseWriter, r *http.Request) {
+	page, err := httpx.ParsePage(r)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	items, total, err := h.svc.CatalogSuggestions(r.Context(), domain.ReviewStatus(r.URL.Query().Get("status")), page)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	respondPage(w, items, page, total)
+}
+
+func (h *handler) approveSuggestions(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		IDs []uuid.UUID `json:"ids"`
+		All bool        `json:"all"`
+	}
+	if err := httpx.Decode(w, r, &req); err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	res, err := h.svc.StartApproveSuggestions(r.Context(), req.IDs, req.All)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	httpx.JSON(w, http.StatusAccepted, res)
+}
+
+func (h *handler) rejectSuggestion(w http.ResponseWriter, r *http.Request) {
+	id, err := pathID(r, "id")
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	s, err := h.svc.RejectSuggestion(r.Context(), id)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	httpx.JSON(w, http.StatusOK, s)
+}
