@@ -17,7 +17,7 @@ import (
 type Role string
 
 const (
-	RoleEmployee        Role = "EMPLOYEE"
+	RoleUser            Role = "USER"
 	RoleAdmin           Role = "ADMIN"
 	RoleInventoryAgent  Role = "INVENTORY_AGENT"
 	RoleInventoryWorker Role = "INVENTORY_WORKER"
@@ -27,7 +27,7 @@ const (
 )
 
 var (
-	UserRoles    = []Role{RoleEmployee, RoleAdmin}
+	UserRoles    = []Role{RoleUser, RoleAdmin}
 	ServiceRoles = []Role{RoleInventoryAgent, RoleInventoryWorker, RoleLicenseService, RoleLLMService, RoleChatService}
 )
 
@@ -43,9 +43,9 @@ const (
 
 type Claims struct {
 	jwt.RegisteredClaims
-	Role       Role   `json:"role"`
-	Username   string `json:"username,omitempty"`
-	EmployeeID string `json:"employee_id,omitempty"`
+	Role         Role   `json:"role"`
+	Username     string `json:"username,omitempty"`
+	DeviceSerial string `json:"device_serial,omitempty"`
 }
 
 func (c *Claims) HasRole(roles ...Role) bool {
@@ -120,10 +120,10 @@ func (v *Verifier) key(t *jwt.Token) (any, error) {
 }
 
 type User struct {
-	ID         string
-	Username   string
-	Role       Role
-	EmployeeID string
+	ID           string
+	Username     string
+	Role         Role
+	DeviceSerial string
 }
 
 type Signer struct {
@@ -158,9 +158,9 @@ func (s *Signer) Sign(u User) (string, time.Time, error) {
 			NotBefore: jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(expiresAt),
 		},
-		Role:       u.Role,
-		Username:   u.Username,
-		EmployeeID: u.EmployeeID,
+		Role:         u.Role,
+		Username:     u.Username,
+		DeviceSerial: u.DeviceSerial,
 	}
 	token, err := jwt.NewWithClaims(jwt.SigningMethodRS256, claims).SignedString(s.key)
 	if err != nil {

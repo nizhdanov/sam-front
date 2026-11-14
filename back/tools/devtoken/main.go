@@ -16,8 +16,8 @@ import (
 )
 
 var users = []auth.User{
-	{ID: "00000000-0000-4000-8000-000000000001", Username: "employee", Role: auth.RoleEmployee, EmployeeID: "10000000-0000-4000-8000-000000000001"},
-	{ID: "00000000-0000-4000-8000-000000000002", Username: "admin", Role: auth.RoleAdmin, EmployeeID: "10000000-0000-4000-8000-000000000002"},
+	{ID: "00000000-0000-4000-8000-000000000001", Username: "user", Role: auth.RoleUser, DeviceSerial: "PC-001"},
+	{ID: "00000000-0000-4000-8000-000000000002", Username: "admin", Role: auth.RoleAdmin},
 }
 
 func main() {
