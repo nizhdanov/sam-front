@@ -19,6 +19,11 @@
 Подробности — в [docs/architecture.md](docs/architecture.md), принятые решения и ограничения — в
 [docs/decisions.md](docs/decisions.md), контракт REST API — в [api/openapi.yaml](api/openapi.yaml).
 
+Swagger UI: `/api/v1/docs` (на сервере — https://sam.v1sdev.ru/api/v1/docs).
+В `Authorize` вставьте JWT без префикса `Bearer`, затем используйте `Try it out`.
+Запросы отправляются на текущий домен. Документация открыта без авторизации;
+API сохраняет проверку JWT и ролей. Swagger UI 5.35.0 размещён локально в `api/docs/vendor`.
+
 ## Быстрый старт
 
 Требуется Docker с Compose v2 и Go 1.26 (для генерации ключей и демо-токенов).
@@ -31,6 +36,37 @@ make tokens    # JWT для демо-пользователей employee, admin,
 ```
 
 Если Docker не может выделить подсеть, измените `DOCKER_SUBNET` в `.env`.
+
+## Деплой за серверным nginx
+
+Для `sam.v1sdev.ru` используется `compose.server.yaml` вместе с основным compose:
+
+```bash
+docker compose -f compose.yaml -f compose.server.yaml up -d --build
+```
+
+В `.env` нужны `DOMAIN=sam.v1sdev.ru`, уникальные пароли БД и `JWT_SERVICE_SECRET`.
+JWT-ключи находятся в `secrets/`. Существующие сертификаты сервера монтируются из
+`/etc/letsencrypt`; отдельный certbot в этом варианте не запускается.
+
+Шлюз бэкенда слушает только `127.0.0.1:8443` (HTTPS). В существующий HTTPS server
+основного nginx добавляется содержимое `deploy/nginx/snippets/host-backend.conf`:
+все `/api/` идут в шлюз, где сохраняется маршрутизация processor/chat/license.
+Существующий `location /` остаётся направленным на фронтенд `127.0.0.1:5173`.
+Порты 80, 443 и занятый Apache порт 8080 контейнеры не занимают.
+
+После обновления сертификата нужно перечитать его и в контейнере:
+
+```bash
+docker compose -f compose.yaml -f compose.server.yaml exec -T nginx nginx -s reload
+```
+
+На сервере это выполняет deploy-hook certbot
+`/etc/letsencrypt/renewal-hooks/deploy/50-sam-backend.sh`
+(исходник: `deploy/reload-backend-certificate.sh`).
+
+На сервере проект размещается в `/opt/sam-backend`. Демо-данные автоматически
+не загружаются. По умолчанию AI использует `mock`.
 
 ## Аутентификация
 

@@ -6,29 +6,54 @@ info:
     Публичный REST API за nginx. Все ручки, кроме health, требуют `Authorization: Bearer <JWT>`.
     Роли: EMPLOYEE, ADMIN, IT_DIRECTOR. Доступ проверяется в сервисах; для EMPLOYEE данные
     ограничены собственными устройствами, цены и лицензии скрыты.
+
+    В Swagger нажмите Authorize и вставьте JWT без префикса Bearer. Затем откройте операцию,
+    выберите Try it out, заполните параметры и нажмите Execute. Токены выдаёт внешний IdP;
+    отдельного endpoint для входа в этом API нет. 401 означает отсутствие или невалидность JWT,
+    403 — недостаточную роль; некоторые чужие объекты скрываются ответом 404.
+
+    Основной сценарий: загрузить CSV → проверить статус импорта → разобрать задачи matching →
+    зарегистрировать лицензии → посмотреть баланс и нарушения. Для сотрудника начните с
+    GET /api/v1/me/devices. Пустой items означает отсутствие доступных записей.
+
+    Списки с пагинацией возвращают items и pagination; page начинается с 1, limit по умолчанию 50,
+    максимум 200. Идентификаторы в путях — UUID соответствующих записей.
 servers:
-  - url: http://localhost:8080
+  - url: /
 security:
   - bearer: []
 
 tags:
   - name: imports
+    description: Приём CSV и отчётов агентов, контроль прогресса и повторная обработка инвентаризации.
   - name: devices
+    description: Реестр компьютеров, назначение сотрудникам, установленные программы и нарушения на устройстве.
   - name: employees
+    description: Карточки сотрудников и просмотр связанных устройств и установок ПО.
   - name: software
+    description: Нормализованный каталог ПО, версии, политики и правила распознавания исходных названий.
   - name: licenses
+    description: Учёт приобретённых лицензионных прав и сравнение их количества с потреблением.
   - name: agreements
+    description: Тексты лицензионных соглашений, условия использования и AI-анализ с проверкой администратором.
   - name: compliance
+    description: Находки о нарушениях, их рассмотрение, сводки и детерминированный пересчёт.
   - name: analytics
+    description: Агрегированные показатели для дашбордов по ПО, лицензиям, нарушениям и подразделениям.
   - name: matching
+    description: Ручная проверка неоднозначного ПО и привязка исходных записей к каталогу.
   - name: chat
+    description: Личные диалоги с AI-ассистентом, история сообщений и получение ответа через SSE.
 
 paths:
   /api/v1/imports:
     post:
+      summary: "Загрузить CSV с установленным ПО"
+      description: |
+        Загружает инвентаризацию нескольких компьютеров и запускает фоновый разбор, сопоставление ПО и пересчёт нарушений. Ответ 202 означает приём файла, а не завершение обработки; опрашивайте GET /api/v1/imports/{id}. Лимит файла — 50 МБ. Обязательные колонки: COMPUTERS.SERIAL_NUMBER, SOFTWARE.DISPLAYNAME; поддерживаются SOFTWARE.PUBLISHER и SOFTWARE.VERSION, разделители запятая и точка с запятой.
+
+        Доступ: ADMIN.
       tags: [imports]
-      summary: Загрузить CSV инвентаризации
-      description: "Роль: ADMIN, INVENTORY_AGENT. Колонки: COMPUTERS.SERIAL_NUMBER, SOFTWARE.DISPLAYNAME, SOFTWARE.PUBLISHER, SOFTWARE.VERSION; разделитель `,` или `;`."
       parameters:
         - name: collected_at
           in: query
@@ -48,8 +73,12 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "413": { $ref: "#/components/responses/Error" }
     get:
+      summary: "Посмотреть историю импортов"
+      description: |
+        Возвращает страницу импортов CSV и отчётов агентов с прогрессом обработки. Используется для журнала загрузок и поиска неуспешных импортов.
+
+        Доступ: ADMIN.
       tags: [imports]
-      summary: Список импортов
       parameters:
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/Limit"
@@ -61,8 +90,12 @@ paths:
               schema: { $ref: "#/components/schemas/ImportPage" }
   /api/v1/imports/{id}:
     get:
+      summary: "Проверить прогресс конкретного импорта"
+      description: |
+        Возвращает состояние импорта, число обработанных, ожидающих и неуспешных снимков устройств. Используйте после загрузки, пока статус не станет COMPLETED, COMPLETED_WITH_ERRORS или FAILED.
+
+        Доступ: ADMIN, INVENTORY_AGENT.
       tags: [imports]
-      summary: Статус и прогресс импорта
       parameters: [{ $ref: "#/components/parameters/ID" }]
       responses:
         "200":
@@ -73,8 +106,12 @@ paths:
         "404": { $ref: "#/components/responses/Error" }
   /api/v1/imports/{id}/errors:
     get:
+      summary: "Разобрать ошибки CSV"
+      description: |
+        Возвращает страницу сохранённых ошибок с номерами строк и причинами. Помогает исправить исходный файл; сохраняется не более 1000 ошибок строк.
+
+        Доступ: ADMIN.
       tags: [imports]
-      summary: Ошибки строк импорта
       parameters:
         - $ref: "#/components/parameters/ID"
         - $ref: "#/components/parameters/Page"
@@ -83,8 +120,12 @@ paths:
         "200": { $ref: "#/components/responses/Page" }
   /api/v1/imports/{id}/retry:
     post:
+      summary: "Повторить неуспешную обработку импорта"
+      description: |
+        Повторно ставит в очередь неуспешные и неопубликованные снимки. Если снимков ещё нет, повторно разбирает сохранённый CSV; без исходного файла возвращает 409. Статус проверяйте отдельным GET-запросом.
+
+        Доступ: ADMIN.
       tags: [imports]
-      summary: Повторно опубликовать незавершённые снимки
       parameters: [{ $ref: "#/components/parameters/ID" }]
       responses:
         "202":
@@ -94,8 +135,12 @@ paths:
               schema: { $ref: "#/components/schemas/Import" }
   /api/v1/agent/inventory:
     post:
+      summary: "Принять инвентаризацию одного компьютера"
+      description: |
+        Альтернатива CSV для автоматического агента. Принимает серийный номер и список ПО, создаёт импорт и асинхронно обрабатывает снимок. FULL означает полный список: отсутствующее ПО деактивируется; PARTIAL только добавляет или обновляет переданные установки. При отсутствии collected_at используется текущее время; время более чем на 5 минут в будущем отклоняется.
+
+        Доступ: ADMIN, INVENTORY_AGENT.
       tags: [imports]
-      summary: Отчёт агента об одном устройстве
       requestBody:
         required: true
         content:
@@ -121,8 +166,12 @@ paths:
 
   /api/v1/me/devices:
     get:
+      summary: "Получить свои устройства"
+      description: |
+        Возвращает устройства, связанные с employee_id текущего JWT. Используйте в личном кабинете сотрудника. Если в токене нет корректного employee_id или устройств нет, список пуст. Для общего реестра нужен GET /api/v1/devices с ролью ADMIN или IT_DIRECTOR.
+
+        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
       tags: [devices]
-      summary: Устройства текущего сотрудника
       parameters:
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/Limit"
@@ -130,8 +179,12 @@ paths:
         "200": { $ref: "#/components/responses/Page" }
   /api/v1/devices:
     get:
+      summary: "Найти устройства в общем реестре"
+      description: |
+        Возвращает страницу устройств организации. Поддерживает поиск и фильтры по серийному номеру, отделу, сотруднику и наличию нарушений. EMPLOYEE получает 403; для него предусмотрен GET /api/v1/me/devices.
+
+        Доступ: ADMIN, IT_DIRECTOR.
       tags: [devices]
-      summary: Устройства (EMPLOYEE видит только свои)
       parameters:
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/Limit"
@@ -145,13 +198,22 @@ paths:
   /api/v1/devices/{id}:
     parameters: [{ $ref: "#/components/parameters/ID" }]
     get:
+      summary: "Открыть карточку устройства"
+      description: |
+        Возвращает сведения об устройстве и его назначении сотруднику. Сотрудник может открыть только своё устройство; чужое скрывается ответом 404.
+
+        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
       tags: [devices]
       responses:
         "200": { $ref: "#/components/responses/Object" }
         "404": { $ref: "#/components/responses/Error" }
     patch:
+      summary: "Изменить сведения и владельца устройства"
+      description: |
+        Обновляет hostname, operating_system и привязку к сотруднику. employee_id: null снимает назначение. Смена сотрудника пересчитывает комплаенс затронутых продуктов, в том числе потребление лицензий PER_USER. Установки ПО этим запросом не изменяются.
+
+        Доступ: ADMIN.
       tags: [devices]
-      description: "Роль: ADMIN"
       requestBody:
         content:
           application/json:
@@ -165,6 +227,11 @@ paths:
         "200": { $ref: "#/components/responses/Object" }
   /api/v1/devices/{id}/software:
     get:
+      summary: "Посмотреть ПО на устройстве"
+      description: |
+        Возвращает страницу установок и результатов сопоставления с каталогом. include_removed=true включает удалённые установки. Сотруднику доступно только собственное устройство.
+
+        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
       tags: [devices]
       parameters:
         - $ref: "#/components/parameters/ID"
@@ -175,6 +242,11 @@ paths:
         "200": { $ref: "#/components/responses/Page" }
   /api/v1/devices/{id}/compliance:
     get:
+      summary: "Посмотреть нарушения на устройстве"
+      description: |
+        Возвращает страницу находок комплаенса для выбранного устройства. Сотрудник видит только своё устройство и разрешённые ему сведения об установках.
+
+        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
       tags: [devices]
       parameters:
         - $ref: "#/components/parameters/ID"
@@ -185,8 +257,12 @@ paths:
 
   /api/v1/employees:
     get:
+      summary: "Найти сотрудников"
+      description: |
+        Возвращает страницу сотрудников с поиском и фильтром по отделу. Используется для выбора владельца компьютера и просмотра распределения ПО по людям.
+
+        Доступ: ADMIN, IT_DIRECTOR.
       tags: [employees]
-      description: "Роль: ADMIN, IT_DIRECTOR"
       parameters:
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/Limit"
@@ -197,12 +273,21 @@ paths:
   /api/v1/employees/{id}:
     parameters: [{ $ref: "#/components/parameters/ID" }]
     get:
+      summary: "Открыть карточку сотрудника"
+      description: |
+        Возвращает имя, отдел, должность, контакты и состояние учётной записи сотрудника.
+
+        Доступ: ADMIN, IT_DIRECTOR.
       tags: [employees]
       responses:
         "200": { $ref: "#/components/responses/Object" }
     patch:
+      summary: "Обновить карточку сотрудника"
+      description: |
+        Изменяет имя, отдел, должность, email или признак активности. Не создаёт сотрудника и не назначает ему устройство: назначение выполняется через PATCH /api/v1/devices/{id}.
+
+        Доступ: ADMIN.
       tags: [employees]
-      description: "Роль: ADMIN"
       requestBody:
         content:
           application/json:
@@ -218,6 +303,11 @@ paths:
         "200": { $ref: "#/components/responses/Object" }
   /api/v1/employees/{id}/devices:
     get:
+      summary: "Посмотреть устройства сотрудника"
+      description: |
+        Возвращает страницу компьютеров, назначенных указанному сотруднику. Используется для учёта оборудования и проверки привязок.
+
+        Доступ: ADMIN, IT_DIRECTOR.
       tags: [employees]
       parameters:
         - $ref: "#/components/parameters/ID"
@@ -227,6 +317,11 @@ paths:
         "200": { $ref: "#/components/responses/Page" }
   /api/v1/employees/{id}/software:
     get:
+      summary: "Посмотреть установки ПО сотрудника"
+      description: |
+        Возвращает страницу установок на устройствах указанного сотрудника. Это список установок, поэтому один продукт может встречаться на нескольких компьютерах.
+
+        Доступ: ADMIN, IT_DIRECTOR.
       tags: [employees]
       parameters:
         - $ref: "#/components/parameters/ID"
@@ -237,8 +332,12 @@ paths:
 
   /api/v1/software:
     get:
+      summary: "Найти продукт в каталоге ПО"
+      description: |
+        Возвращает страницу нормализованных продуктов. Поддерживает поиск, фильтр политики использования и include_archived для архивных записей. Сотруднику возвращается публичное представление без сведений о соглашении.
+
+        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
       tags: [software]
-      summary: Каталог ПО
       parameters:
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/Limit"
@@ -248,8 +347,12 @@ paths:
       responses:
         "200": { $ref: "#/components/responses/Page" }
     post:
+      summary: "Добавить продукт в каталог"
+      description: |
+        Создаёт нормализованную карточку ПО для последующего сопоставления установок и учёта лицензий. canonical_name обязателен; можно указать издателя, редакцию, соглашение и политику. Без policy_status используется UNKNOWN. Само добавление продукта не регистрирует установку или покупку лицензии.
+
+        Доступ: ADMIN.
       tags: [software]
-      description: "Роль: ADMIN"
       requestBody:
         required: true
         content:
@@ -270,12 +373,21 @@ paths:
   /api/v1/software/{id}:
     parameters: [{ $ref: "#/components/parameters/ID" }]
     get:
+      summary: "Открыть карточку продукта"
+      description: |
+        Возвращает нормализованное название, издателя, редакцию и политику использования продукта. Для сотрудника сведения о соглашении скрыты.
+
+        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
       tags: [software]
       responses:
         "200": { $ref: "#/components/responses/Object" }
     patch:
+      summary: "Изменить карточку или архивировать продукт"
+      description: |
+        Частично обновляет поля продукта и пересчитывает связанные нарушения. archived=true архивирует запись, agreement_id: null снимает связь с соглашением. История установок не удаляется.
+
+        Доступ: ADMIN.
       tags: [software]
-      description: "Роль: ADMIN. `archived: true` архивирует продукт."
       requestBody:
         content:
           application/json:
@@ -293,8 +405,12 @@ paths:
         "200": { $ref: "#/components/responses/Object" }
   /api/v1/software/{id}/policy:
     patch:
+      summary: "Изменить политику использования ПО"
+      description: |
+        Устанавливает ALLOWED, RESTRICTED, FORBIDDEN или UNKNOWN и пересчитывает комплаенс продукта. Используйте, например, чтобы отметить запрещённое ПО и получить находки FORBIDDEN_SOFTWARE на установках.
+
+        Доступ: ADMIN.
       tags: [software]
-      description: "Роль: ADMIN"
       parameters: [{ $ref: "#/components/parameters/ID" }]
       requestBody:
         required: true
@@ -310,12 +426,21 @@ paths:
   /api/v1/software/{id}/versions:
     parameters: [{ $ref: "#/components/parameters/ID" }]
     get:
+      summary: "Посмотреть версии продукта"
+      description: |
+        Возвращает версии из каталога с состоянием поддержки и датами выпуска или окончания поддержки. Это справочник версий, а не перечень установок.
+
+        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
       tags: [software]
       responses:
         "200": { $ref: "#/components/responses/List" }
     post:
+      summary: "Добавить версию продукта"
+      description: |
+        Регистрирует версию и её lifecycle_status, даты выпуска и окончания поддержки. Без статуса используется UNKNOWN. Для уже существующей версии статус меняется отдельным PATCH-запросом.
+
+        Доступ: ADMIN.
       tags: [software]
-      description: "Роль: ADMIN"
       requestBody:
         required: true
         content:
@@ -332,8 +457,12 @@ paths:
         "201": { $ref: "#/components/responses/Object" }
   /api/v1/software/{id}/versions/{versionID}:
     patch:
+      summary: "Изменить состояние поддержки версии"
+      description: |
+        Меняет lifecycle_status на CURRENT, OUTDATED, UNSUPPORTED или UNKNOWN и пересчитывает нарушения продукта. Используйте для отметки устаревших или неподдерживаемых версий.
+
+        Доступ: ADMIN.
       tags: [software]
-      description: "Роль: ADMIN"
       parameters:
         - $ref: "#/components/parameters/ID"
         - { name: versionID, in: path, required: true, schema: { type: string, format: uuid } }
@@ -351,13 +480,21 @@ paths:
   /api/v1/software/{id}/aliases:
     parameters: [{ $ref: "#/components/parameters/ID" }]
     get:
+      summary: "Посмотреть правила сопоставления названий"
+      description: |
+        Возвращает aliases: соответствия исходных названий, издателей и версий конкретному продукту. Помогает понять, почему строка инвентаризации была распознана именно так.
+
+        Доступ: ADMIN, IT_DIRECTOR.
       tags: [software]
-      description: "Роль: ADMIN, IT_DIRECTOR"
       responses:
         "200": { $ref: "#/components/responses/List" }
     post:
+      summary: "Связать исходное название с продуктом"
+      description: |
+        Создаёт или обновляет alias по комбинации raw_name, raw_publisher и raw_version. Переназначает соответствующие установки, подтверждает связанные задачи matching и пересчитывает комплаенс. Можно явно указать version_id этого продукта.
+
+        Доступ: ADMIN.
       tags: [software]
-      description: "Роль: ADMIN. Привязывает сырое название к продукту и переназначает установки."
       requestBody:
         required: true
         content:
@@ -374,8 +511,12 @@ paths:
         "201": { $ref: "#/components/responses/Object" }
   /api/v1/software/{id}/aliases/{aliasID}:
     delete:
+      summary: "Удалить ошибочное правило сопоставления"
+      description: |
+        Удаляет alias и снимает сопоставление с соответствующих установок, переводя их в REQUIRES_REVIEW. Пересчитывает нарушения; сами установки сохраняются. Успешный ответ 204 не содержит тела.
+
+        Доступ: ADMIN.
       tags: [software]
-      description: "Роль: ADMIN"
       parameters:
         - $ref: "#/components/parameters/ID"
         - { name: aliasID, in: path, required: true, schema: { type: string, format: uuid } }
@@ -383,6 +524,11 @@ paths:
         "204": { description: Deleted }
   /api/v1/software/{id}/installations:
     get:
+      summary: "Найти установки конкретного продукта"
+      description: |
+        Возвращает страницу активных установок продукта по устройствам. Используется, чтобы найти компьютеры с конкретной программой и проверить её распространение.
+
+        Доступ: ADMIN, IT_DIRECTOR.
       tags: [software]
       parameters:
         - $ref: "#/components/parameters/ID"
@@ -392,16 +538,24 @@ paths:
         "200": { $ref: "#/components/responses/Page" }
   /api/v1/software/{id}/license-balance:
     get:
+      summary: "Проверить баланс лицензий продукта"
+      description: |
+        Сравнивает действующие лицензионные права с потреблением выбранного продукта. Возвращает купленное количество, потребление, доступный остаток, дефицит и статус достоверности расчёта. CONCURRENT нельзя проверить по установкам; разные метрики не суммируются.
+
+        Доступ: ADMIN, IT_DIRECTOR.
       tags: [software]
-      description: "Роль: ADMIN, IT_DIRECTOR"
       parameters: [{ $ref: "#/components/parameters/ID" }]
       responses:
         "200": { $ref: "#/components/responses/List" }
 
   /api/v1/licenses:
     get:
+      summary: "Посмотреть зарегистрированные лицензии"
+      description: |
+        Возвращает страницу лицензионных прав с количеством, метрикой, сроками и стоимостью. Можно отфильтровать по product_id; active=true ограничивает выборку активными записями.
+
+        Доступ: ADMIN, IT_DIRECTOR.
       tags: [licenses]
-      description: "Роль: ADMIN, IT_DIRECTOR"
       parameters:
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/Limit"
@@ -411,8 +565,12 @@ paths:
         "200": { $ref: "#/components/responses/Page" }
         "403": { $ref: "#/components/responses/Error" }
     post:
+      summary: "Зарегистрировать покупку лицензий"
+      description: |
+        Создаёт лицензионное право на продукт с метрикой и количеством, при необходимости со сроками, ценой и ссылкой на покупку. Пересчитывает нарушения продукта. Не устанавливает ПО и не выдаёт JWT.
+
+        Доступ: ADMIN.
       tags: [licenses]
-      description: "Роль: ADMIN"
       requestBody:
         required: true
         content:
@@ -422,9 +580,12 @@ paths:
         "201": { $ref: "#/components/responses/Object" }
   /api/v1/licenses/balance:
     get:
+      summary: "Проверить общий баланс лицензий"
+      description: |
+        Сравнивает лицензионные права с активными установками по продуктам; product_id ограничивает расчёт одним продуктом. PER_DEVICE считает устройства, PER_USER — сотрудников; CONCURRENT и UNKNOWN требуют иной информации и помечаются как непроверенные.
+
+        Доступ: ADMIN, IT_DIRECTOR.
       tags: [licenses]
-      summary: Баланс лицензий по продуктам
-      description: "Роль: ADMIN, IT_DIRECTOR"
       parameters:
         - { name: product_id, in: query, schema: { type: string, format: uuid } }
       responses:
@@ -432,12 +593,21 @@ paths:
   /api/v1/licenses/{id}:
     parameters: [{ $ref: "#/components/parameters/ID" }]
     get:
+      summary: "Открыть запись о лицензии"
+      description: |
+        Возвращает одну запись о лицензионных правах: продукт, соглашение, метрику, количество, сроки и финансовые поля. id — UUID записи лицензии, а не продукта.
+
+        Доступ: ADMIN, IT_DIRECTOR.
       tags: [licenses]
       responses:
         "200": { $ref: "#/components/responses/Object" }
     patch:
+      summary: "Исправить параметры лицензии"
+      description: |
+        Частично изменяет количество, метрику, сроки, стоимость и другие поддерживаемые поля записи. Nullable-поля можно очистить через null. После изменения пересчитывается комплаенс затронутых продуктов.
+
+        Доступ: ADMIN.
       tags: [licenses]
-      description: "Роль: ADMIN. Поля с `null` очищаются."
       requestBody:
         content:
           application/json:
@@ -446,24 +616,36 @@ paths:
         "200": { $ref: "#/components/responses/Object" }
   /api/v1/licenses/{id}/deactivate:
     post:
+      summary: "Исключить лицензию из расчёта"
+      description: |
+        Деактивирует лицензионное право без удаления истории и пересчитывает комплаенс продукта. Используется для отменённой или ошибочно зарегистрированной покупки; может привести к появлению дефицита.
+
+        Доступ: ADMIN.
       tags: [licenses]
-      description: "Роль: ADMIN"
       parameters: [{ $ref: "#/components/parameters/ID" }]
       responses:
         "200": { $ref: "#/components/responses/Object" }
 
   /api/v1/agreements:
     get:
+      summary: "Посмотреть реестр лицензионных соглашений"
+      description: |
+        Возвращает страницу соглашений с типом лицензии и условиями использования. Полный agreement_text в списке не возвращается; для него откройте карточку соглашения.
+
+        Доступ: ADMIN, IT_DIRECTOR.
       tags: [agreements]
-      description: "Роль: ADMIN, IT_DIRECTOR"
       parameters:
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/Limit"
       responses:
         "200": { $ref: "#/components/responses/Page" }
     post:
+      summary: "Добавить лицензионное соглашение"
+      description: |
+        Создаёт соглашение с названием, типом лицензии, текстом, ссылкой на источник и разрешением коммерческого использования. Для AI-анализа нужен непустой agreement_text. Привязка к продукту выполняется через карточку продукта.
+
+        Доступ: ADMIN.
       tags: [agreements]
-      description: "Роль: ADMIN"
       requestBody:
         required: true
         content:
@@ -474,12 +656,21 @@ paths:
   /api/v1/agreements/{id}:
     parameters: [{ $ref: "#/components/parameters/ID" }]
     get:
+      summary: "Прочитать соглашение и условия"
+      description: |
+        Возвращает карточку соглашения, включая сохранённый текст и условия коммерческого использования. Используется для ручной проверки перед привязкой к ПО или подтверждением анализа.
+
+        Доступ: ADMIN, IT_DIRECTOR.
       tags: [agreements]
       responses:
         "200": { $ref: "#/components/responses/Object" }
     patch:
+      summary: "Изменить условия соглашения"
+      description: |
+        Обновляет текст, тип лицензии, commercial_allowed, ссылку и статус проверки. Пересчитывает комплаенс связанных продуктов. Для применения выводов AI к фактическим условиям используйте этот запрос после проверки анализа.
+
+        Доступ: ADMIN.
       tags: [agreements]
-      description: "Роль: ADMIN"
       requestBody:
         content:
           application/json:
@@ -493,9 +684,12 @@ paths:
         "200": { $ref: "#/components/responses/Object" }
   /api/v1/agreements/{id}/analyze:
     post:
+      summary: "Проанализировать текст соглашения с AI"
+      description: |
+        Получает сохранённый текст соглашения и запрашивает структурированный анализ условий у LLM. Без force переиспользует последний анализ с тем же хэшем текста; force=true запускает анализ повторно. Сохраняет предложение для проверки человеком, но не меняет условия соглашения. Без текста — 400, при недоступном провайдере возможен 503; в mock-режиме результат демонстрационный.
+
+        Доступ: ADMIN.
       tags: [agreements]
-      summary: AI-анализ текста соглашения
-      description: "Роль: ADMIN. Результат кэшируется по хэшу текста и версии промпта; `force=true` — повторный анализ."
       parameters:
         - $ref: "#/components/parameters/ID"
         - { name: force, in: query, schema: { type: boolean } }
@@ -504,6 +698,11 @@ paths:
         "503": { $ref: "#/components/responses/Error" }
   /api/v1/agreements/{id}/analysis:
     get:
+      summary: "Посмотреть последний AI-анализ"
+      description: |
+        Возвращает последний сохранённый анализ с моделью, версией промпта и статусом проверки. Новый анализ не запускается; если результатов ещё нет, возвращает 404.
+
+        Доступ: ADMIN, IT_DIRECTOR.
       tags: [agreements]
       parameters: [{ $ref: "#/components/parameters/ID" }]
       responses:
@@ -511,15 +710,23 @@ paths:
         "404": { $ref: "#/components/responses/Error" }
   /api/v1/agreements/{id}/analysis/approve:
     post:
+      summary: "Подтвердить проверку AI-анализа"
+      description: |
+        Отмечает последний анализ как APPROVED, записывает проверившего пользователя и переводит review_status соглашения в ANALYSIS_APPROVED. Самостоятельно не переносит выводы AI в license_type или commercial_allowed: эти поля администратор меняет через PATCH соглашения.
+
+        Доступ: ADMIN.
       tags: [agreements]
-      summary: Подтвердить анализ и применить к соглашению
-      description: "Роль: ADMIN"
       parameters: [{ $ref: "#/components/parameters/ID" }]
       responses:
         "200": { $ref: "#/components/responses/Object" }
 
   /api/v1/compliance/findings:
     get:
+      summary: "Найти нарушения и риски"
+      description: |
+        Возвращает страницу находок с фильтрами по типам через запятую, критичности, статусу, устройству и продукту. Сотрудник видит только разрешённые находки по своим устройствам, без общих лицензионных и финансовых сведений.
+
+        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
       tags: [compliance]
       parameters:
         - $ref: "#/components/parameters/Page"
@@ -536,37 +743,64 @@ paths:
         "200": { $ref: "#/components/responses/Page" }
   /api/v1/compliance/findings/{id}:
     get:
+      summary: "Посмотреть детали нарушения"
+      description: |
+        Возвращает причину, тип, критичность и состояние конкретной находки. Для сотрудника недоступные находки скрываются ответом 404, а details ограничен публичными полями.
+
+        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
       tags: [compliance]
       parameters: [{ $ref: "#/components/parameters/ID" }]
       responses:
         "200": { $ref: "#/components/responses/Object" }
   /api/v1/compliance/findings/{id}/acknowledge:
     post:
+      summary: "Отметить нарушение как рассмотренное"
+      description: |
+        Фиксирует, что администратор ознакомился с находкой, и переводит её в ACKNOWLEDGED. Это не устраняет причину нарушения; RESOLVED выставляется при пересчёте, когда причина исчезла.
+
+        Доступ: ADMIN.
       tags: [compliance]
-      description: "Роль: ADMIN"
       parameters: [{ $ref: "#/components/parameters/ID" }]
       responses:
         "200": { $ref: "#/components/responses/Object" }
   /api/v1/compliance/summary:
     get:
+      summary: "Получить сводку нарушений"
+      description: |
+        Возвращает счётчики открытых и рассмотренных находок, разбивку по критичности и типам. Сотруднику сводка ограничивается его устройствами и доступными типами нарушений.
+
+        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
       tags: [compliance]
       responses:
         "200": { $ref: "#/components/responses/Object" }
   /api/v1/compliance/recalculate:
     post:
+      summary: "Пересчитать все нарушения"
+      description: |
+        Синхронно запускает детерминированные проверки по текущим установкам, политикам, версиям и лицензиям. Обновляет существующие находки, создаёт новые и закрывает исчезнувшие. LLM в расчёте не участвует; ответ status=recalculated означает завершение расчёта.
+
+        Доступ: ADMIN.
       tags: [compliance]
-      description: "Роль: ADMIN"
       responses:
         "200": { $ref: "#/components/responses/Object" }
 
   /api/v1/analytics/dashboard:
     get:
+      summary: "Получить показатели главного дашборда"
+      description: |
+        Возвращает сводные показатели инвентаря и комплаенса. Для ADMIN и IT_DIRECTOR добавляет лицензионные показатели; для EMPLOYEE ограничивает данные собственными устройствами, без лицензий и стоимости. Сотрудник без employee_id получает 403.
+
+        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
       tags: [analytics]
-      description: Для EMPLOYEE — только собственные устройства, без лицензий и стоимости.
       responses:
         "200": { $ref: "#/components/responses/Object" }
   /api/v1/analytics/software:
     get:
+      summary: "Посмотреть распространённость ПО"
+      description: |
+        Возвращает агрегированную статистику использования продуктов для диаграмм и рейтингов. limit задаёт размер выборки: по умолчанию 20, максимум 200.
+
+        Доступ: ADMIN, IT_DIRECTOR.
       tags: [analytics]
       parameters:
         - { name: limit, in: query, schema: { type: integer, default: 20, minimum: 1, maximum: 200 } }
@@ -574,27 +808,43 @@ paths:
         "200": { $ref: "#/components/responses/List" }
   /api/v1/analytics/licenses:
     get:
+      summary: "Получить лицензионную аналитику"
+      description: |
+        Возвращает тот же расчёт балансов, что GET /api/v1/licenses/balance, для лицензионного раздела дашборда. Показывает потребление, остаток, дефицит и достоверность расчёта; поддерживает product_id.
+
+        Доступ: ADMIN, IT_DIRECTOR.
       tags: [analytics]
-      description: "Роль: ADMIN, IT_DIRECTOR"
       responses:
         "200": { $ref: "#/components/responses/List" }
   /api/v1/analytics/compliance:
     get:
+      summary: "Получить показатели комплаенса для аналитики"
+      description: |
+        Возвращает ту же ролевую сводку, что GET /api/v1/compliance/summary. Используется для счётчиков и диаграмм; новых проверок не запускает.
+
+        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
       tags: [analytics]
       responses:
         "200": { $ref: "#/components/responses/Object" }
   /api/v1/analytics/departments:
     get:
+      summary: "Сравнить отделы по инвентарю"
+      description: |
+        Возвращает агрегированную статистику по подразделениям для сравнения распределения устройств и установок. Индивидуальный сотрудник не имеет доступа к этой сводке.
+
+        Доступ: ADMIN, IT_DIRECTOR.
       tags: [analytics]
-      description: "Роль: ADMIN, IT_DIRECTOR"
       responses:
         "200": { $ref: "#/components/responses/List" }
 
   /api/v1/matching/pending:
     get:
+      summary: "Посмотреть очередь ручного сопоставления ПО"
+      description: |
+        Возвращает страницу задач, где исходное название ПО требует решения человека. По умолчанию status=PENDING; можно посмотреть APPROVED и REJECTED. В ответ добавляются карточки предложенных продуктов. IT_DIRECTOR может читать задачи, но не подтверждать их.
+
+        Доступ: ADMIN, IT_DIRECTOR.
       tags: [matching]
-      summary: Задачи ручного сопоставления
-      description: "Роль: ADMIN"
       parameters:
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/Limit"
@@ -603,14 +853,23 @@ paths:
         "200": { $ref: "#/components/responses/Page" }
   /api/v1/matching/{id}:
     get:
+      summary: "Разобрать задачу сопоставления"
+      description: |
+        Возвращает исходное название, издателя, версию, кандидатов и состояние проверки. Используется для выбора правильного продукта перед approve либо для изучения причины неоднозначности.
+
+        Доступ: ADMIN, IT_DIRECTOR.
       tags: [matching]
       parameters: [{ $ref: "#/components/parameters/ID" }]
       responses:
         "200": { $ref: "#/components/responses/Object" }
   /api/v1/matching/{id}/approve:
     post:
+      summary: "Подтвердить соответствие продукту"
+      description: |
+        Принимает product_id и необязательный version_id, создаёт alias, переназначает связанные установки и пересчитывает комплаенс. Задача должна быть PENDING, иначе 409. version_id должен относиться к выбранному продукту.
+
+        Доступ: ADMIN.
       tags: [matching]
-      description: "Роль: ADMIN. Создаёт alias, переназначает установки, пересчитывает комплаенс."
       parameters: [{ $ref: "#/components/parameters/ID" }]
       requestBody:
         required: true
@@ -626,8 +885,12 @@ paths:
         "200": { $ref: "#/components/responses/Object" }
   /api/v1/matching/{id}/reject:
     post:
+      summary: "Отклонить предложенное сопоставление"
+      description: |
+        Закрывает PENDING-задачу как REJECTED с необязательной причиной. При отсутствии подтверждённого alias снимает сопоставление установок, оставляя ПО неизвестным, и пересчитывает находки. Повторное решение по уже проверенной задаче возвращает 409.
+
+        Доступ: ADMIN.
       tags: [matching]
-      description: "Роль: ADMIN"
       parameters: [{ $ref: "#/components/parameters/ID" }]
       requestBody:
         content:
@@ -641,6 +904,11 @@ paths:
 
   /api/v1/chat/conversations:
     get:
+      summary: "Посмотреть свои диалоги с ассистентом"
+      description: |
+        Возвращает страницу диалогов текущего пользователя. Чужие диалоги не показываются. Открытие диалога также требует совпадения текущей роли с ролью при его создании.
+
+        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
       tags: [chat]
       parameters:
         - $ref: "#/components/parameters/Page"
@@ -648,6 +916,11 @@ paths:
       responses:
         "200": { $ref: "#/components/responses/Page" }
     post:
+      summary: "Создать диалог с AI-ассистентом"
+      description: |
+        Создаёт пустой диалог, закреплённый за пользователем и его текущей ролью. title необязателен. Для получения ответа отправьте сообщение отдельным POST-запросом на /messages.
+
+        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
       tags: [chat]
       requestBody:
         content:
@@ -661,16 +934,31 @@ paths:
   /api/v1/chat/conversations/{id}:
     parameters: [{ $ref: "#/components/parameters/ID" }]
     get:
+      summary: "Открыть свой диалог"
+      description: |
+        Возвращает сведения о диалоге текущего пользователя. Чужой диалог даёт 404, смена роли относительно момента создания — 403. История сообщений загружается отдельным запросом.
+
+        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
       tags: [chat]
       responses:
         "200": { $ref: "#/components/responses/Object" }
     delete:
+      summary: "Удалить свой диалог"
+      description: |
+        Удаляет принадлежащий пользователю диалог вместе с сообщениями. Требуется та же роль, с которой он был создан. Успешный ответ 204 не содержит тела.
+
+        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
       tags: [chat]
       responses:
         "204": { description: Deleted }
   /api/v1/chat/conversations/{id}/messages:
     parameters: [{ $ref: "#/components/parameters/ID" }]
     get:
+      summary: "Загрузить историю сообщений"
+      description: |
+        Возвращает страницу сохранённых сообщений собственного диалога. Показывает ответы ассистента и их статусы, в том числе incomplete при прерванном ответе. Не запускает генерацию.
+
+        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
       tags: [chat]
       parameters:
         - $ref: "#/components/parameters/Page"
@@ -678,11 +966,12 @@ paths:
       responses:
         "200": { $ref: "#/components/responses/Page" }
     post:
-      tags: [chat]
-      summary: Отправить сообщение, ответ стримится через SSE
+      summary: "Отправить сообщение и получить SSE-ответ"
       description: |
-        События: `message_start` `{message_id}`, `delta` `{content}`, `message_end` `{message_id, status}`,
-        `error` `{code, message}`. Один активный запрос на пользователя, иначе 429.
+        Сохраняет сообщение пользователя, вызывает ассистента с доступными роли инструментами и передаёт ответ как text/event-stream. События: message_start с message_id, delta с content, message_end с message_id и status, error с code и message. Разрешён один активный запрос на пользователя, иначе 429. content обязателен, до 4000 символов; в mock-режиме ответы демонстрационные. Для потокового клиента используйте SSE или curl -N.
+
+        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
+      tags: [chat]
       requestBody:
         required: true
         content:

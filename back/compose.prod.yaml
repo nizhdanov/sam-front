@@ -11,6 +11,7 @@ services:
       - ${FRONT_DIST:-../front/dist}:/usr/share/nginx/html:ro
       - letsencrypt:/etc/letsencrypt:ro
       - certbot_webroot:/var/www/certbot:ro
+      - ./api:/srv/api:ro
 
   certbot:
     image: certbot/certbot:v3.1.0
