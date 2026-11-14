@@ -1,4 +1,3 @@
-// release builds and deploys SAM without a registry or a toolchain on the host.
 package main
 
 import (
@@ -36,12 +35,13 @@ type buildConfig struct {
 }
 
 type manifest struct {
-	Release    string            `json:"release"`
-	Root       string            `json:"root"`
-	Images     []string          `json:"images"`
-	ImageIDs   map[string]string `json:"image_ids"`
-	ImageBytes uint64            `json:"image_bytes"`
-	Bootstrap  bool              `json:"bootstrap,omitempty"`
+	Release           string            `json:"release"`
+	Root              string            `json:"root"`
+	Images            []string          `json:"images"`
+	ImageIDs          map[string]string `json:"image_ids"`
+	ImageFingerprints map[string]string `json:"image_fingerprints,omitempty"`
+	ImageBytes        uint64            `json:"image_bytes"`
+	Bootstrap         bool              `json:"bootstrap,omitempty"`
 }
 
 type state struct {
@@ -429,21 +429,21 @@ func pack(o options) error {
 	if _, err := command(false, "docker", append([]string{"image", "save", "-o", filepath.Join(payload, "images.tar")}, m.Images...)...); err != nil {
 		return err
 	}
-	data, err := command(true, "docker", append([]string{"image", "inspect"}, m.Images...)...)
-	if err != nil {
-		return err
-	}
-	var images []struct {
-		ID   string `json:"Id"`
-		Size uint64
-	}
-	if json.Unmarshal([]byte(data), &images) != nil || len(images) != len(m.Images) {
-		return errors.New("cannot inspect built images")
-	}
 	m.ImageIDs = map[string]string{}
-	for index, image := range images {
+	m.ImageFingerprints = map[string]string{}
+	m.ImageBytes = 0
+	for _, ref := range m.Images {
+		image, err := inspectImage(ref)
+		if err != nil {
+			return err
+		}
+		fingerprint, err := imageFingerprint(image)
+		if err != nil {
+			return fmt.Errorf("fingerprint built image %s: %w", ref, err)
+		}
 		m.ImageBytes += image.Size
-		m.ImageIDs[m.Images[index]] = image.ID
+		m.ImageIDs[ref] = image.ID
+		m.ImageFingerprints[ref] = fingerprint
 	}
 	if err := writeJSON(filepath.Join(payload, "manifest.json"), m); err != nil {
 		return err
@@ -900,11 +900,13 @@ func deploy(o options) error {
 		if err := os.Remove(filepath.Join(path, "images.tar")); err != nil {
 			return err
 		}
-		for ref, expected := range m.ImageIDs {
-			actual, err := command(true, "docker", "image", "inspect", "--format", "{{.Id}}", ref)
-			if err != nil || strings.TrimSpace(actual) != expected {
-				return errors.New("loaded image ID mismatch")
-			}
+		if err := verifyLoadedImages(&m); err != nil {
+			return err
+		}
+		// Garbage collection needs IDs from this host's image store. These can
+		// differ from the runner IDs even when the verified contents are equal.
+		if err := writeJSON(filepath.Join(path, "manifest.json"), m); err != nil {
+			return err
 		}
 		images, err := compose(o.root, path, true, "config", "--images")
 		if err != nil {
