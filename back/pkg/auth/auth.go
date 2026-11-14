@@ -38,7 +38,7 @@ func (r Role) IsUser() bool { return slices.Contains(UserRoles, r) }
 func (r Role) IsService() bool { return slices.Contains(ServiceRoles, r) }
 
 const (
-	UserIssuer    = "sam-gateway"
+	UserIssuer    = "sam-auth"
 	ServiceIssuer = "sam-internal"
 	Audience      = "sam-backend"
 )

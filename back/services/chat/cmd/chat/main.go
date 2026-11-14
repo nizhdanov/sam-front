@@ -9,8 +9,8 @@ import (
 
 	"sam/pkg/healthcheck"
 	"sam/pkg/logger"
-	"sam/services/api-gateway/internal/app"
-	"sam/services/api-gateway/internal/config"
+	"sam/services/chat/internal/app"
+	"sam/services/chat/internal/config"
 )
 
 func main() {
@@ -22,21 +22,22 @@ func main() {
 
 func run() error {
 	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
-		return healthcheck.Probe(":8080")
+		return healthcheck.Probe(":8084")
 	}
 
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
 	}
-	log := logger.New(cfg.LogLevel, cfg.LogFormat).With("service", "api-gateway")
+	log := logger.New(cfg.LogLevel, cfg.LogFormat).With("service", "chat")
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	a, err := app.New(cfg, log)
+	a, err := app.New(ctx, cfg, log)
 	if err != nil {
 		return err
 	}
+	defer a.Close()
 	return a.Run(ctx)
 }
