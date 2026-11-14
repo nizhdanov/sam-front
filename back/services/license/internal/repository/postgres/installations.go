@@ -9,7 +9,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"sam/pkg/httpx"
 	pg "sam/pkg/postgres"
 	"sam/services/license/internal/domain"
 )
@@ -17,54 +16,6 @@ import (
 type Installations struct{ pool *pgxpool.Pool }
 
 func NewInstallations(pool *pgxpool.Pool) *Installations { return &Installations{pool: pool} }
-
-const installationSelect = `
-	SELECT i.id, i.device_id, d.serial_number, i.product_id, p.canonical_name, p.policy_status, i.version_id, v.version,
-	       v.lifecycle_status, i.raw_name, i.raw_publisher, i.raw_version, i.match_status, i.is_active,
-	       i.first_seen_at, i.last_seen_at, i.removed_at
-	FROM installations i
-	JOIN devices d ON d.id = i.device_id
-	LEFT JOIN software_products p ON p.id = i.product_id
-	LEFT JOIN software_versions v ON v.id = i.version_id`
-
-func scanInstallation(row scanner) (domain.Installation, error) {
-	var i domain.Installation
-	err := row.Scan(&i.ID, &i.DeviceID, &i.SerialNumber, &i.ProductID, &i.ProductName, &i.PolicyStatus, &i.VersionID,
-		&i.Version, &i.LifecycleStatus, &i.RawName, &i.RawPublisher, &i.RawVersion, &i.MatchStatus, &i.IsActive,
-		&i.FirstSeenAt, &i.LastSeenAt, &i.RemovedAt)
-	return i, err
-}
-
-func (r *Installations) List(ctx context.Context, f domain.InstallationFilter, page httpx.PageRequest) ([]domain.Installation, int, error) {
-	var w where
-	if !f.IncludeRemoved {
-		w.raw("i.is_active")
-	}
-	if f.DeviceID != nil {
-		w.add("i.device_id = ?", *f.DeviceID)
-	}
-	if f.ProductID != nil {
-		w.add("i.product_id = ?", *f.ProductID)
-	}
-	if f.EmployeeID != nil {
-		w.add("d.employee_id = ?", *f.EmployeeID)
-	}
-	if f.MatchStatus != "" {
-		w.add("i.match_status = ?", f.MatchStatus)
-	}
-	db := pg.DB(ctx, r.pool)
-	var total int
-	if err := db.QueryRow(ctx, `SELECT COUNT(*) FROM installations i JOIN devices d ON d.id = i.device_id`+w.String(), w.args...).Scan(&total); err != nil {
-		return nil, 0, fmt.Errorf("count installations: %w", err)
-	}
-	query := installationSelect + w.String() + ` ORDER BY d.serial_number, i.raw_name LIMIT ` + w.arg(page.Limit) + ` OFFSET ` + w.arg(page.Offset())
-	rows, err := db.Query(ctx, query, w.args...)
-	if err != nil {
-		return nil, 0, fmt.Errorf("list installations: %w", err)
-	}
-	items, err := collect(rows, scanInstallation)
-	return items, total, err
-}
 
 func (r *Installations) ActiveProductIDs(ctx context.Context, deviceID uuid.UUID) ([]uuid.UUID, error) {
 	rows, err := pg.DB(ctx, r.pool).Query(ctx, `
@@ -139,7 +90,7 @@ func (r *Installations) Unassign(ctx context.Context, key string, status domain.
 
 func (r *Installations) Facts(ctx context.Context, s domain.Scope) ([]domain.InstallationFacts, error) {
 	query := `
-		SELECT i.id, i.device_id, i.product_id, p.canonical_name, p.policy_status, v.lifecycle_status, v.version,
+		SELECT i.id, i.device_id, i.product_id, p.canonical_name, p.status, p.current_version, v.lifecycle_status, v.version,
 		       a.commercial_allowed, i.raw_name, i.raw_version, i.match_status
 		FROM installations i
 		LEFT JOIN software_products p ON p.id = i.product_id
@@ -157,7 +108,7 @@ func (r *Installations) Facts(ctx context.Context, s domain.Scope) ([]domain.Ins
 	}
 	return collect(rows, func(row scanner) (domain.InstallationFacts, error) {
 		var f domain.InstallationFacts
-		err := row.Scan(&f.ID, &f.DeviceID, &f.ProductID, &f.ProductName, &f.PolicyStatus, &f.Lifecycle, &f.Version,
+		err := row.Scan(&f.ID, &f.DeviceID, &f.ProductID, &f.ProductName, &f.Status, &f.CurrentVersion, &f.Lifecycle, &f.Version,
 			&f.CommercialAllowed, &f.RawName, &f.RawVersion, &f.MatchStatus)
 		return f, err
 	})
@@ -165,27 +116,23 @@ func (r *Installations) Facts(ctx context.Context, s domain.Scope) ([]domain.Ins
 
 func (r *Installations) ProductFacts(ctx context.Context, s domain.Scope) ([]domain.ProductFacts, error) {
 	query := `
-		SELECT p.id, p.canonical_name, a.license_type,
-		       COUNT(DISTINCT i.device_id),
-		       COUNT(DISTINCT d.employee_id),
-		       COUNT(DISTINCT i.device_id) FILTER (WHERE d.employee_id IS NULL)
+		SELECT p.id, p.canonical_name, a.cost_model, COUNT(DISTINCT i.device_id)
 		FROM software_products p
 		LEFT JOIN license_agreements a ON a.id = p.agreement_id
-		LEFT JOIN installations i ON i.product_id = p.id AND i.is_active
-		LEFT JOIN devices d ON d.id = i.device_id`
+		LEFT JOIN installations i ON i.product_id = p.id AND i.is_active`
 	var args []any
 	if !s.All {
 		query += ` WHERE p.id = ANY($1)`
 		args = append(args, uuids(s.ProductIDs))
 	}
-	query += ` GROUP BY p.id, p.canonical_name, a.license_type ORDER BY p.canonical_name`
+	query += ` GROUP BY p.id, p.canonical_name, a.cost_model ORDER BY p.canonical_name`
 	rows, err := pg.DB(ctx, r.pool).Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("product usage: %w", err)
 	}
 	return collect(rows, func(row scanner) (domain.ProductFacts, error) {
 		var p domain.ProductFacts
-		err := row.Scan(&p.ID, &p.Name, &p.LicenseType, &p.Usage.Devices, &p.Usage.Users, &p.Usage.UnassignedDevices)
+		err := row.Scan(&p.ID, &p.Name, &p.CostModel, &p.Devices)
 		return p, err
 	})
 }

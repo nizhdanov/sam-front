@@ -1,54 +1,37 @@
 package domain
 
-import "github.com/google/uuid"
-
 type Dashboard struct {
-	Devices    DeviceStats     `json:"devices"`
-	Software   SoftwareStats   `json:"software"`
-	Licenses   *LicenseStats   `json:"licenses,omitempty"`
-	Compliance ComplianceStats `json:"compliance"`
+	Devices            int          `json:"devices"`
+	NewDevices         int          `json:"new_devices"`
+	Installations      int          `json:"installations"`
+	Recognized         int          `json:"recognized_installations"`
+	RecognizedPercent  float64      `json:"recognized_percent"`
+	PendingReview      int          `json:"pending_review"`
+	Deficit            SeatStats    `json:"license_deficit"`
+	Idle               SeatStats    `json:"idle_licenses"`
+	Forbidden          FindingStats `json:"forbidden_software"`
+	Outdated           FindingStats `json:"outdated_software"`
+	ExpiringContracts  int          `json:"expiring_contracts"`
+	ExpiringWithinDays int          `json:"expiring_within_days"`
 }
 
-type DeviceStats struct {
-	Total      int `json:"total"`
-	Assigned   int `json:"assigned"`
-	Unassigned int `json:"unassigned"`
+type SeatStats struct {
+	Products int `json:"products"`
+	Seats    int `json:"seats"`
 }
 
-type SoftwareStats struct {
-	ProductsTotal        int `json:"products_total"`
-	InstallationsTotal   int `json:"installations_total"`
-	UnknownInstallations int `json:"unknown_installations"`
-	PendingReview        int `json:"pending_review"`
+type FindingStats struct {
+	Installations int `json:"installations"`
+	Devices       int `json:"devices"`
 }
 
-type LicenseStats struct {
-	ProductsWithDeficit int `json:"products_with_deficit"`
-	ProductsUnverified  int `json:"products_unverified"`
-	TotalDeficit        int `json:"total_deficit"`
-}
-
-type ComplianceStats struct {
-	OpenFindings int `json:"open_findings"`
-	Critical     int `json:"critical"`
-	High         int `json:"high"`
-	Medium       int `json:"medium"`
-	Low          int `json:"low"`
-}
-
-type SoftwareUsage struct {
-	ProductID     uuid.UUID    `json:"product_id"`
-	Name          string       `json:"name"`
-	Publisher     *string      `json:"publisher"`
-	PolicyStatus  PolicyStatus `json:"policy_status"`
-	Devices       int          `json:"devices"`
-	Installations int          `json:"installations"`
-}
-
-type DepartmentStats struct {
-	Department    string `json:"department"`
-	Employees     int    `json:"employees"`
-	Devices       int    `json:"devices"`
-	Installations int    `json:"installations"`
-	OpenFindings  int    `json:"open_findings"`
+type FreeSoftware struct {
+	ProductID       string        `json:"product_id"`
+	ProductName     string        `json:"product_name"`
+	Publisher       *string       `json:"publisher"`
+	InBPO           bool          `json:"in_bpo"`
+	Status          ProductStatus `json:"status"`
+	CurrentVersion  *string       `json:"current_version"`
+	Devices         int           `json:"devices"`
+	OutdatedDevices int           `json:"outdated_devices"`
 }

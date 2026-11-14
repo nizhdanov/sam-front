@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -8,82 +9,63 @@ import (
 	"sam/pkg/opt"
 )
 
-type Employee struct {
-	ID         uuid.UUID `json:"id"`
-	ExternalID *string   `json:"external_id"`
-	FullName   string    `json:"full_name"`
-	Department *string   `json:"department"`
-	Position   *string   `json:"position"`
-	Email      *string   `json:"email"`
-	IsActive   bool      `json:"is_active"`
-	Devices    int       `json:"devices_count"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+type DeviceType string
+
+const (
+	DevicePhysical DeviceType = "PHYSICAL"
+	DeviceVirtual  DeviceType = "VIRTUAL"
+)
+
+func (t DeviceType) Valid() bool { return t == DevicePhysical || t == DeviceVirtual }
+
+func DetectDeviceType(serial string) DeviceType {
+	s := strings.ToLower(serial)
+	for _, prefix := range []string{"vmware", "virtualbox", "parallels"} {
+		if strings.HasPrefix(s, prefix) {
+			return DeviceVirtual
+		}
+	}
+	return DevicePhysical
 }
 
-type EmployeePatch struct {
-	FullName   *string
-	Department *string
-	Position   *string
-	Email      *string
-	IsActive   *bool
-}
+type DeviceStatus string
+
+const (
+	DeviceNew    DeviceStatus = "NEW"
+	DeviceActive DeviceStatus = "ACTIVE"
+)
+
+func (s DeviceStatus) Valid() bool { return s == DeviceNew || s == DeviceActive }
 
 type Device struct {
-	ID              uuid.UUID  `json:"id"`
-	SerialNumber    string     `json:"serial_number"`
-	Hostname        *string    `json:"hostname"`
-	EmployeeID      *uuid.UUID `json:"employee_id"`
-	EmployeeName    *string    `json:"employee_name"`
-	Department      *string    `json:"department"`
-	OperatingSystem *string    `json:"operating_system"`
-	LastInventoryAt *time.Time `json:"last_inventory_at"`
-	Installations   int        `json:"installations_count"`
-	OpenFindings    int        `json:"open_findings_count"`
-	CreatedAt       time.Time  `json:"created_at"`
-	UpdatedAt       time.Time  `json:"updated_at"`
-}
-
-type DeviceFilter struct {
-	Search        string
-	SerialNumber  string
-	EmployeeID    *uuid.UUID
-	Department    string
-	HasViolations *bool
+	ID              uuid.UUID    `json:"id"`
+	SerialNumber    string       `json:"serial_number"`
+	Type            DeviceType   `json:"device_type"`
+	Status          DeviceStatus `json:"status"`
+	Hostname        *string      `json:"hostname"`
+	OperatingSystem *string      `json:"operating_system"`
+	Responsible     *string      `json:"responsible"`
+	Location        *string      `json:"location"`
+	LastInventoryAt *time.Time   `json:"last_inventory_at"`
+	Installations   int          `json:"installations_count"`
+	OpenFindings    int          `json:"open_findings_count"`
+	CreatedAt       time.Time    `json:"created_at"`
+	UpdatedAt       time.Time    `json:"updated_at"`
 }
 
 type DevicePatch struct {
-	Hostname        *string
-	OperatingSystem *string
-	EmployeeID      opt.Field[uuid.UUID]
+	Type        *DeviceType
+	Status      *DeviceStatus
+	Hostname    opt.Field[string]
+	Responsible opt.Field[string]
+	Location    opt.Field[string]
 }
 
-type Installation struct {
-	ID              uuid.UUID   `json:"id"`
-	DeviceID        uuid.UUID   `json:"device_id"`
-	SerialNumber    string      `json:"serial_number"`
-	ProductID       *uuid.UUID  `json:"product_id"`
-	ProductName     *string     `json:"product_name"`
-	PolicyStatus    *string     `json:"policy_status"`
-	VersionID       *uuid.UUID  `json:"version_id"`
-	Version         *string     `json:"version"`
-	LifecycleStatus *string     `json:"lifecycle_status"`
-	RawName         string      `json:"raw_name"`
-	RawPublisher    *string     `json:"raw_publisher"`
-	RawVersion      *string     `json:"raw_version"`
-	MatchStatus     MatchStatus `json:"match_status"`
-	IsActive        bool        `json:"is_active"`
-	FirstSeenAt     time.Time   `json:"first_seen_at"`
-	LastSeenAt      time.Time   `json:"last_seen_at"`
-	RemovedAt       *time.Time  `json:"removed_at"`
-}
-
-type InstallationFilter struct {
-	DeviceID       *uuid.UUID
-	ProductID      *uuid.UUID
-	EmployeeID     *uuid.UUID
-	MatchStatus    MatchStatus
-	IncludeRemoved bool
+type DeviceImport struct {
+	InventoryID uuid.UUID  `json:"inventory_id"`
+	CollectedAt time.Time  `json:"collected_at"`
+	Result      SyncResult `json:"result"`
+	ProcessedAt time.Time  `json:"processed_at"`
 }
 
 type SyncResult string

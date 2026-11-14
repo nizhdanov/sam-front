@@ -53,7 +53,8 @@ type Matching struct {
 }
 
 type Compliance struct {
-	CheckInterval time.Duration `env:"CHECK_INTERVAL" envDefault:"1h"`
+	CheckInterval      time.Duration `env:"CHECK_INTERVAL" envDefault:"1h"`
+	ExpiringWithinDays int           `env:"EXPIRING_WITHIN_DAYS" envDefault:"30"`
 }
 
 func Load() (Config, error) {

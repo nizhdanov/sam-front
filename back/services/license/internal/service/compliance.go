@@ -114,11 +114,10 @@ func (s *Service) scopeFindings(ctx context.Context, f domain.FindingFilter) (do
 	if c.IsAdmin() {
 		return f, false, nil
 	}
-	employee := employeeOf(c)
-	if employee == nil {
+	if c.DeviceSerial == "" {
 		return f, true, nil
 	}
-	f.EmployeeID = employee
+	f.SerialNumber = c.DeviceSerial
 	if len(f.Types) == 0 {
 		f.Types = domain.InstallationFindingTypes
 	} else {
@@ -174,7 +173,7 @@ func (s *Service) GetFinding(ctx context.Context, id uuid.UUID) (domain.Finding,
 	if f.DeviceID == nil || !slices.Contains(domain.InstallationFindingTypes, f.Type) {
 		return domain.Finding{}, apperr.NotFound("finding not found")
 	}
-	if _, err := s.GetDevice(ctx, *f.DeviceID); err != nil {
+	if f.SerialNumber == nil || *f.SerialNumber != c.DeviceSerial {
 		return domain.Finding{}, apperr.NotFound("finding not found")
 	}
 	f.Details = publicDetails(f.Details)
@@ -190,7 +189,14 @@ func (s *Service) AcknowledgeFinding(ctx context.Context, id uuid.UUID, comment 
 	if comment == "" {
 		return domain.Finding{}, apperr.Invalid("comment is required")
 	}
-	if err := s.findings.Acknowledge(ctx, id, c.Actor(), comment); err != nil {
+	err = s.tx.InTx(ctx, func(ctx context.Context) error {
+		if err := s.findings.Acknowledge(ctx, id, c.Actor(), comment); err != nil {
+			return err
+		}
+		return s.record(ctx, "finding", id.String(), "ACKNOWLEDGE", "Нарушение отмечено как обработанное",
+			map[string]any{"comment": comment})
+	})
+	if err != nil {
 		return domain.Finding{}, err
 	}
 	return s.findings.Get(ctx, id)
