@@ -8,15 +8,13 @@ on:
 permissions:
   contents: read
 
-# The caller's workflow name keeps CD checks separate from automatic CI.
-# A newer automatic CI run supersedes the previous one across all branches.
 concurrency:
   group: ci-${{ github.workflow }}
   cancel-in-progress: true
 
 jobs:
   backend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     defaults:
       run:
@@ -36,7 +34,7 @@ jobs:
       - run: go test -race ./...
 
   deployment:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -54,7 +52,9 @@ jobs:
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o /tmp/sam-release-tool ./release
       - name: Validate the actual Compose build plan
         run: |
+          release_dir="$RUNNER_TEMP/sam-release"
           /tmp/sam-release-tool prepare \
             --release "${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
-            --root /opt/sam-backend --output /tmp/sam-release
-          docker buildx bake -f /tmp/sam-release/bake.json --print > /dev/null
+            --root /opt/sam-backend --output "$release_dir"
+          test -s "$release_dir/bake.json"
+          docker buildx bake --allow "fs.read=$GITHUB_WORKSPACE" --file "$release_dir/bake.json" --load --print > /dev/null
