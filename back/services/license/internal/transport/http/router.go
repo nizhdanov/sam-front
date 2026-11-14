@@ -42,6 +42,7 @@ func NewRouter(d Deps) http.Handler {
 		r.Use(auth.Middleware(d.Verifier))
 
 		r.Get("/me/devices", h.myDevices)
+		r.Get("/data/{dataset}", h.queryData)
 
 		r.Route("/devices", func(r chi.Router) {
 			r.Get("/", h.listDevices)

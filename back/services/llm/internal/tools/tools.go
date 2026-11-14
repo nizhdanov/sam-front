@@ -12,7 +12,7 @@ import (
 	"sam/services/llm/internal/provider"
 )
 
-const maxResultBytes = 6000
+const maxResultBytes = 12000
 
 type Definition struct {
 	provider.Tool
@@ -20,53 +20,49 @@ type Definition struct {
 }
 
 var (
-	everyone   = auth.UserRoles
-	privileged = auth.Privileged
-	noParams   = json.RawMessage(`{"type":"object","properties":{}}`)
+	everyone = auth.UserRoles
+	admins   = []auth.Role{auth.RoleAdmin}
 )
 
 var registry = []Definition{
 	{
 		Tool: provider.Tool{
-			Name:        "get_allowed_software",
-			Description: "Каталог программ компании с корпоративным статусом (ALLOWED, FORBIDDEN, RESTRICTED, UNKNOWN). Можно отфильтровать по названию и статусу.",
+			Name: "query_data",
+			Description: `Универсальный запрос к данным инвентаризации. Возвращает таблицу {columns, rows, total, shown}.
+Наборы данных (dataset):
+- installations: установленное ПО по устройствам (serial_number, hostname, product, publisher, version, match_status, policy_status, lifecycle_status, license_type, last_seen_at, license_status). Фильтры: product, publisher, version, serial_number, match_status, policy_status, lifecycle_status, license_type. group_by: product, publisher, version, serial_number, match_status, policy_status, lifecycle_status, license_type (считает число устройств).
+- devices: устройства (serial_number, hostname, operating_system, last_inventory_at, installations, open_findings). Фильтры: serial_number, hostname, operating_system. group_by: operating_system.
+- products: каталог ПО (product, publisher, edition, policy_status, license_type, devices, license_status). Фильтры: product, publisher, policy_status, license_type. group_by: publisher, policy_status, license_type.
+- licenses: зарегистрированные лицензии (product, metric, quantity, valid_from, expires_at, status, purchase_reference). Фильтры: product, metric, status (ACTIVE, EXPIRED, INACTIVE, NOT_STARTED). group_by: product, metric, status (суммирует quantity).
+- findings: нарушения (finding_type, severity, status, serial_number, product, last_detected_at). Фильтры: finding_type, severity, status, serial_number, product. group_by: finding_type, severity, status, serial_number, product.
+Текстовые фильтры ищут по подстроке, остальные — точное значение. total — сколько строк всего, shown — сколько показано.`,
 			Parameters: json.RawMessage(`{"type":"object","properties":{
-				"query":{"type":"string","description":"часть названия программы"},
-				"policy_status":{"type":"string","enum":["ALLOWED","FORBIDDEN","RESTRICTED","UNKNOWN"]}}}`),
+				"dataset":{"type":"string","enum":["installations","devices","products","licenses","findings"]},
+				"filters":{"type":"object","description":"фильтры, допустимые для выбранного набора данных","properties":{"product":{"type":"string"},"publisher":{"type":"string"},"version":{"type":"string"},"serial_number":{"type":"string"},"hostname":{"type":"string"},"operating_system":{"type":"string"},"match_status":{"type":"string"},"policy_status":{"type":"string"},"lifecycle_status":{"type":"string"},"license_type":{"type":"string"},"metric":{"type":"string"},"status":{"type":"string"},"finding_type":{"type":"string"},"severity":{"type":"string"}}},
+				"group_by":{"type":"string","description":"поле для группировки и подсчёта"},
+				"limit":{"type":"integer","minimum":1,"maximum":100}},
+				"required":["dataset"]}`),
 		},
 		Roles: everyone,
 	},
-	{Tool: provider.Tool{Name: "get_my_devices", Description: "Устройства текущего пользователя.", Parameters: noParams}, Roles: everyone},
-	{Tool: provider.Tool{Name: "get_my_software", Description: "Программы, установленные на устройствах текущего пользователя.", Parameters: noParams}, Roles: everyone},
-	{Tool: provider.Tool{Name: "get_my_compliance", Description: "Нарушения на устройствах текущего пользователя.", Parameters: noParams}, Roles: everyone},
-	{
-		Tool: provider.Tool{
-			Name:        "get_device_inventory",
-			Description: "Устройство и установленное на нём ПО по серийному номеру.",
-			Parameters:  json.RawMessage(`{"type":"object","properties":{"serial_number":{"type":"string"}},"required":["serial_number"]}`),
-		},
-		Roles: privileged,
-	},
-	{
-		Tool: provider.Tool{
-			Name:        "get_employee_inventory",
-			Description: "ПО на устройствах сотрудника. Сотрудника можно найти по имени или email.",
-			Parameters:  json.RawMessage(`{"type":"object","properties":{"query":{"type":"string","description":"имя или email сотрудника"}},"required":["query"]}`),
-		},
-		Roles: privileged,
-	},
-	{Tool: provider.Tool{Name: "get_paid_licenses", Description: "Действующие приобретённые лицензии: продукт, метрика, количество, срок действия.", Parameters: noParams}, Roles: privileged},
-	{Tool: provider.Tool{Name: "get_license_costs", Description: "Стоимость действующих лицензий.", Parameters: noParams}, Roles: privileged},
 	{
 		Tool: provider.Tool{
 			Name:        "get_license_balance",
-			Description: "Лицензионный баланс: куплено, используется, свободно, дефицит. Можно указать продукт.",
-			Parameters:  json.RawMessage(`{"type":"object","properties":{"product":{"type":"string","description":"часть названия продукта"}}}`),
+			Description: "Лицензионный баланс по продуктам: куплено, используется, свободно, дефицит и итоговый дефицит. Можно указать продукт и только дефицитные позиции.",
+			Parameters: json.RawMessage(`{"type":"object","properties":{
+				"product":{"type":"string","description":"часть названия продукта"},
+				"only_deficit":{"type":"boolean"}}}`),
 		},
-		Roles: privileged,
+		Roles: admins,
 	},
-	{Tool: provider.Tool{Name: "get_company_compliance", Description: "Сводка нарушений по компании и наиболее серьёзные нарушения.", Parameters: noParams}, Roles: privileged},
-	{Tool: provider.Tool{Name: "get_dashboard_summary", Description: "Общая статистика: устройства, ПО, лицензии, нарушения.", Parameters: noParams}, Roles: privileged},
+	{
+		Tool: provider.Tool{
+			Name:        "get_summary",
+			Description: "Общая сводка: устройства, ПО, лицензионный дефицит, нарушения по критичности.",
+			Parameters:  json.RawMessage(`{"type":"object","properties":{}}`),
+		},
+		Roles: everyone,
+	},
 }
 
 func ForRole(role auth.Role) []provider.Tool {

@@ -11,7 +11,7 @@ import (
 )
 
 func (s *Service) ListDevices(ctx context.Context, f domain.DeviceFilter, page httpx.PageRequest) ([]domain.Device, int, error) {
-	if _, err := requirePrivileged(ctx); err != nil {
+	if _, err := requireAdmin(ctx); err != nil {
 		return nil, 0, err
 	}
 	return s.devices.List(ctx, f, page)
@@ -38,7 +38,7 @@ func (s *Service) GetDevice(ctx context.Context, id uuid.UUID) (domain.Device, e
 	if err != nil {
 		return domain.Device{}, err
 	}
-	if c.IsPrivileged() {
+	if c.IsAdmin() {
 		return d, nil
 	}
 	if employee := employeeOf(c); employee != nil && d.EmployeeID != nil && *d.EmployeeID == *employee {
@@ -88,7 +88,7 @@ func (s *Service) DeviceFindings(ctx context.Context, id uuid.UUID, page httpx.P
 }
 
 func (s *Service) ProductInstallations(ctx context.Context, productID uuid.UUID, page httpx.PageRequest) ([]domain.Installation, int, error) {
-	if _, err := requirePrivileged(ctx); err != nil {
+	if _, err := requireAdmin(ctx); err != nil {
 		return nil, 0, err
 	}
 	if _, err := s.products.Get(ctx, productID); err != nil {
@@ -98,14 +98,14 @@ func (s *Service) ProductInstallations(ctx context.Context, productID uuid.UUID,
 }
 
 func (s *Service) ListEmployees(ctx context.Context, search, department string, page httpx.PageRequest) ([]domain.Employee, int, error) {
-	if _, err := requirePrivileged(ctx); err != nil {
+	if _, err := requireAdmin(ctx); err != nil {
 		return nil, 0, err
 	}
 	return s.employees.List(ctx, search, department, page)
 }
 
 func (s *Service) GetEmployee(ctx context.Context, id uuid.UUID) (domain.Employee, error) {
-	if _, err := requirePrivileged(ctx); err != nil {
+	if _, err := requireAdmin(ctx); err != nil {
 		return domain.Employee{}, err
 	}
 	return s.employees.Get(ctx, id)

@@ -71,6 +71,7 @@ type Product struct {
 	AgreementName *string      `json:"agreement_name"`
 	LicenseType   *LicenseType `json:"license_type"`
 	PolicyStatus  PolicyStatus `json:"policy_status"`
+	PolicyComment *string      `json:"policy_comment"`
 	Description   *string      `json:"description"`
 	Installations int          `json:"active_installations"`
 	ArchivedAt    *time.Time   `json:"archived_at"`
@@ -110,6 +111,7 @@ type ProductPatch struct {
 	Edition       *string
 	AgreementID   opt.Field[uuid.UUID]
 	PolicyStatus  *PolicyStatus
+	PolicyComment *string
 	Description   *string
 	Archived      *bool
 }

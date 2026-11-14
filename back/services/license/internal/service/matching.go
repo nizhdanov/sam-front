@@ -146,7 +146,7 @@ func (s *Service) SaveSuggestion(ctx context.Context, sg domain.Suggestion) (*do
 }
 
 func (s *Service) MatchingTasks(ctx context.Context, status domain.ReviewStatus, page httpx.PageRequest) ([]domain.MatchingTask, int, error) {
-	if _, err := requirePrivileged(ctx); err != nil {
+	if _, err := requireAdmin(ctx); err != nil {
 		return nil, 0, err
 	}
 	if status == "" {
@@ -160,7 +160,7 @@ func (s *Service) MatchingTasks(ctx context.Context, status domain.ReviewStatus,
 }
 
 func (s *Service) MatchingTask(ctx context.Context, id uuid.UUID) (domain.MatchingTask, error) {
-	if _, err := requirePrivileged(ctx); err != nil {
+	if _, err := requireAdmin(ctx); err != nil {
 		return domain.MatchingTask{}, err
 	}
 	task, err := s.matching.Get(ctx, id, false)

@@ -32,7 +32,7 @@ API сохраняет проверку JWT и ролей. Swagger UI 5.35.0 р�
 make up        # создаёт .env, RSA-ключи в ./secrets, собирает и запускает стек
 make seed      # демо-данные: сотрудники, устройства, каталог, лицензии
 make smoke     # загрузка testdata/inventory.csv и проверка основного сценария
-make tokens    # JWT для демо-пользователей employee, admin, director
+make tokens    # JWT для демо-пользователей employee и admin
 ```
 
 Если Docker не может выделить подсеть, измените `DOCKER_SUBNET` в `.env`.
@@ -78,7 +78,6 @@ docker compose -f compose.yaml -f compose.server.yaml exec -T nginx nginx -s rel
 | --- | --- | --- |
 | employee | EMPLOYEE | Иванов Иван (PC-001) |
 | admin | ADMIN | Петрова Анна |
-| director | IT_DIRECTOR | Сидоров Олег |
 
 Межсервисные вызовы подписываются HS256-токенами с сервисными ролями (`JWT_SERVICE_SECRET`).
 

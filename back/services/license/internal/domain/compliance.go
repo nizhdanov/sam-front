@@ -75,6 +75,8 @@ type Finding struct {
 	InstallationID *uuid.UUID     `json:"installation_id"`
 	Details        map[string]any `json:"details"`
 	AcknowledgedBy *string        `json:"acknowledged_by,omitempty"`
+	AckComment     *string        `json:"acknowledge_comment,omitempty"`
+	AcknowledgedAt *time.Time     `json:"acknowledged_at,omitempty"`
 	CreatedAt      time.Time      `json:"created_at"`
 	LastDetectedAt time.Time      `json:"last_detected_at"`
 	ResolvedAt     *time.Time     `json:"resolved_at"`
@@ -212,9 +214,11 @@ func EvaluateLicensing(p ProductFacts, entitlements []Entitlement, now time.Time
 	installed := p.Usage.Devices > 0
 
 	if len(valid) == 0 {
+		zero := 0
 		balance := Balance{
 			ProductID: p.ID, ProductName: p.Name, Metric: MetricUnknown,
-			Consumed: p.Usage.Devices, CalculationStatus: CalcUnverified, LastCalculatedAt: now,
+			Purchased: &zero, Available: &zero, Consumed: p.Usage.Devices, Deficit: p.Usage.Devices,
+			CalculationStatus: CalcVerified, LastCalculatedAt: now,
 		}
 		switch {
 		case installed && len(expired) > 0:
@@ -222,7 +226,9 @@ func EvaluateLicensing(p ProductFacts, entitlements []Entitlement, now time.Time
 			addFinding(FindingLicenseExpired, "", map[string]any{"expired_at": latestExpiry(expired), "devices": p.Usage.Devices})
 		case installed && requiresLicense:
 			balance.Note = "no entitlements registered for a product that requires a license"
-			addFinding(FindingLicenseUnverified, "", map[string]any{"reason": "NO_ENTITLEMENTS", "devices": p.Usage.Devices})
+			addFinding(FindingLicenseDeficit, "", map[string]any{
+				"reason": "NO_ENTITLEMENTS", "purchased": 0, "consumed": p.Usage.Devices, "deficit": p.Usage.Devices,
+			})
 		}
 		return []Balance{balance}, findings
 	}

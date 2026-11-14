@@ -22,7 +22,7 @@ func NewFindings(pool *pgxpool.Pool) *Findings { return &Findings{pool: pool} }
 
 const findingSelect = `
 	SELECT f.id, f.finding_type, f.severity, f.status, f.device_id, d.serial_number, f.product_id, p.canonical_name,
-	       f.installation_id, f.details, f.acknowledged_by, f.created_at, f.last_detected_at, f.resolved_at
+	       f.installation_id, f.details, f.acknowledged_by, f.acknowledge_comment, f.acknowledged_at, f.created_at, f.last_detected_at, f.resolved_at
 	FROM compliance_findings f
 	LEFT JOIN devices d ON d.id = f.device_id
 	LEFT JOIN software_products p ON p.id = f.product_id`
@@ -31,7 +31,7 @@ func scanFinding(row scanner) (domain.Finding, error) {
 	var f domain.Finding
 	var details []byte
 	err := row.Scan(&f.ID, &f.Type, &f.Severity, &f.Status, &f.DeviceID, &f.SerialNumber, &f.ProductID, &f.ProductName,
-		&f.InstallationID, &details, &f.AcknowledgedBy, &f.CreatedAt, &f.LastDetectedAt, &f.ResolvedAt)
+		&f.InstallationID, &details, &f.AcknowledgedBy, &f.AckComment, &f.AcknowledgedAt, &f.CreatedAt, &f.LastDetectedAt, &f.ResolvedAt)
 	if err != nil {
 		return f, err
 	}
@@ -86,9 +86,11 @@ func (r *Findings) Get(ctx context.Context, id uuid.UUID) (domain.Finding, error
 	return one(rows, err, scanFinding, "finding")
 }
 
-func (r *Findings) Acknowledge(ctx context.Context, id uuid.UUID, by string) error {
+func (r *Findings) Acknowledge(ctx context.Context, id uuid.UUID, by, comment string) error {
 	tag, err := pg.DB(ctx, r.pool).Exec(ctx, `
-		UPDATE compliance_findings SET status = 'ACKNOWLEDGED', acknowledged_by = $2 WHERE id = $1 AND status = 'OPEN'`, id, by)
+		UPDATE compliance_findings
+		SET status = 'ACKNOWLEDGED', acknowledged_by = $2, acknowledge_comment = $3, acknowledged_at = NOW()
+		WHERE id = $1 AND status = 'OPEN'`, id, by, comment)
 	if err != nil {
 		return fmt.Errorf("acknowledge finding: %w", err)
 	}
@@ -152,6 +154,8 @@ func (r *Findings) Apply(ctx context.Context, desired []domain.Finding, types []
 					last_detected_at = EXCLUDED.last_detected_at,
 					status = CASE WHEN compliance_findings.status = 'RESOLVED' THEN 'OPEN' ELSE compliance_findings.status END,
 					acknowledged_by = CASE WHEN compliance_findings.status = 'RESOLVED' THEN NULL ELSE compliance_findings.acknowledged_by END,
+					acknowledge_comment = CASE WHEN compliance_findings.status = 'RESOLVED' THEN NULL ELSE compliance_findings.acknowledge_comment END,
+					acknowledged_at = CASE WHEN compliance_findings.status = 'RESOLVED' THEN NULL ELSE compliance_findings.acknowledged_at END,
 					resolved_at = NULL`,
 				uuid.New(), f.Key, f.Type, f.Severity, f.DeviceID, f.ProductID, f.InstallationID, details, now)
 		}

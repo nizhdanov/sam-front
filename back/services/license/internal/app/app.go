@@ -83,6 +83,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger) (_ *App, err 
 		Agreements:    pgrepo.NewAgreements(pool),
 		Findings:      pgrepo.NewFindings(pool),
 		Analytics:     pgrepo.NewAnalytics(pool),
+		Explorer:      pgrepo.NewExplorer(pool),
 		Analyzer:      llm.New(llmConn),
 		Log:           log,
 	}, domain.MatchingConfig(cfg.Matching))

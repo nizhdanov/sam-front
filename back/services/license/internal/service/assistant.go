@@ -3,246 +3,152 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/google/uuid"
 
 	"sam/pkg/apperr"
-	"sam/pkg/httpx"
 	"sam/services/license/internal/domain"
 )
 
-const assistantLimit = 50
-
-type assistantParams struct {
-	Query        string `json:"query"`
-	SerialNumber string `json:"serial_number"`
-	EmployeeID   string `json:"employee_id"`
-	Product      string `json:"product"`
-	PolicyStatus string `json:"policy_status"`
-}
-
-type softwareItem struct {
-	Name     string `json:"name"`
-	Version  string `json:"version,omitempty"`
-	Status   string `json:"status,omitempty"`
-	Matched  bool   `json:"matched"`
-	Device   string `json:"device,omitempty"`
-	Category string `json:"policy,omitempty"`
-}
-
-type findingItem struct {
-	Type     domain.FindingType `json:"type"`
-	Severity domain.Severity    `json:"severity"`
-	Device   string             `json:"device,omitempty"`
-	Product  string             `json:"product,omitempty"`
-	Details  map[string]any     `json:"details,omitempty"`
+type balanceRow struct {
+	Product   string `json:"product"`
+	Metric    string `json:"metric"`
+	Purchased *int   `json:"purchased"`
+	Consumed  int    `json:"consumed"`
+	Available *int   `json:"available"`
+	Deficit   int    `json:"deficit"`
+	Status    string `json:"status"`
+	Note      string `json:"note,omitempty"`
 }
 
 func (s *Service) RunQuery(ctx context.Context, name string, raw []byte) (any, error) {
-	var p assistantParams
-	if len(raw) > 0 {
-		if err := json.Unmarshal(raw, &p); err != nil {
-			return nil, apperr.Invalid("malformed query parameters")
-		}
-	}
-	page := httpx.PageRequest{Page: 1, Limit: assistantLimit}
-
 	switch name {
-	case "get_allowed_software":
-		return s.assistantCatalog(ctx, p, page)
-	case "get_my_devices":
-		devices, _, err := s.MyDevices(ctx, page)
-		return devices, err
-	case "get_my_software":
-		return s.assistantMySoftware(ctx, page)
-	case "get_my_compliance":
-		items, _, err := s.ListFindings(ctx, domain.FindingFilter{}, page)
-		return findingItems(items), err
-	case "get_device_inventory":
-		return s.assistantDevice(ctx, p.SerialNumber, page)
-	case "get_employee_inventory":
-		return s.assistantEmployee(ctx, p, page)
-	case "get_paid_licenses", "get_license_costs":
-		return s.assistantLicenses(ctx, name == "get_license_costs", page)
+	case "query_data":
+		var q domain.DataQuery
+		if len(raw) > 0 {
+			if err := json.Unmarshal(raw, &q); err != nil {
+				return nil, apperr.Invalid("malformed query parameters")
+			}
+		}
+		return s.QueryData(ctx, q)
 	case "get_license_balance":
-		return s.assistantBalance(ctx, p.Product)
-	case "get_company_compliance":
-		if _, err := requirePrivileged(ctx); err != nil {
-			return nil, err
+		var p struct {
+			Product     string `json:"product"`
+			OnlyDeficit bool   `json:"only_deficit"`
 		}
-		summary, err := s.ComplianceSummary(ctx)
-		if err != nil {
-			return nil, err
+		if len(raw) > 0 {
+			if err := json.Unmarshal(raw, &p); err != nil {
+				return nil, apperr.Invalid("malformed query parameters")
+			}
 		}
-		items, total, err := s.ListFindings(ctx, domain.FindingFilter{}, page)
-		return map[string]any{"summary": summary, "top_findings": findingItems(items), "total_open": total}, err
-	case "get_dashboard_summary":
-		if _, err := requirePrivileged(ctx); err != nil {
-			return nil, err
-		}
+		return s.assistantBalance(ctx, p.Product, p.OnlyDeficit)
+	case "get_summary":
 		return s.Dashboard(ctx)
 	}
 	return nil, apperr.Invalid("unknown query " + name)
 }
 
-func (s *Service) assistantCatalog(ctx context.Context, p assistantParams, page httpx.PageRequest) (any, error) {
-	f := domain.ProductFilter{Search: p.Query, PolicyStatus: domain.PolicyStatus(strings.ToUpper(p.PolicyStatus))}
-	page.Limit = 100
-	products, total, err := s.ListProducts(ctx, f, page)
+func (s *Service) QueryData(ctx context.Context, q domain.DataQuery) (domain.DataTable, error) {
+	c, err := caller(ctx)
 	if err != nil {
-		return nil, err
+		return domain.DataTable{}, err
 	}
-	out := make([]domain.PublicProduct, 0, len(products))
-	for _, pr := range products {
-		out = append(out, pr.Public())
+	if !c.IsAdmin() {
+		if q.Dataset == domain.DatasetLicenses {
+			return domain.DataTable{}, apperr.Forbidden("license data is available to administrators only")
+		}
+		employee := employeeOf(c)
+		if employee == nil {
+			return domain.DataTable{}, apperr.Forbidden("user is not linked to an employee")
+		}
+		q.EmployeeID = employee
 	}
-	return map[string]any{"products": out, "total": total}, nil
+	table, err := s.explorer.Query(ctx, q)
+	if err != nil {
+		return table, err
+	}
+	idx := slices.Index(table.Columns, "product_id")
+	if idx < 0 {
+		return table, nil
+	}
+	var statuses map[uuid.UUID]string
+	if c.IsAdmin() {
+		if statuses, err = s.licenseStatuses(ctx); err != nil {
+			return table, err
+		}
+		table.Columns = append(table.Columns, "license_status")
+	}
+	table.Columns = slices.Delete(table.Columns, idx, idx+1)
+	for i, row := range table.Rows {
+		if statuses != nil {
+			row = append(row, licenseStatusOf(row[idx], statuses))
+		}
+		table.Rows[i] = slices.Delete(row, idx, idx+1)
+	}
+	return table, nil
 }
 
-func (s *Service) assistantMySoftware(ctx context.Context, page httpx.PageRequest) (any, error) {
-	devices, _, err := s.MyDevices(ctx, page)
-	if err != nil {
-		return nil, err
-	}
-	var out []softwareItem
-	for _, d := range devices {
-		items, _, err := s.DeviceSoftware(ctx, d.ID, false, httpx.PageRequest{Page: 1, Limit: httpx.MaxLimit})
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, softwareItems(items)...)
-	}
-	return out, nil
-}
-
-func (s *Service) assistantDevice(ctx context.Context, serial string, page httpx.PageRequest) (any, error) {
-	if _, err := requirePrivileged(ctx); err != nil {
-		return nil, err
-	}
-	if serial == "" {
-		return nil, apperr.Invalid("serial_number is required")
-	}
-	devices, _, err := s.devices.List(ctx, domain.DeviceFilter{SerialNumber: serial}, page)
-	if err != nil {
-		return nil, err
-	}
-	if len(devices) == 0 {
-		return nil, apperr.NotFound("device not found")
-	}
-	d := devices[0]
-	items, _, err := s.installations.List(ctx, domain.InstallationFilter{DeviceID: &d.ID}, httpx.PageRequest{Page: 1, Limit: httpx.MaxLimit})
-	if err != nil {
-		return nil, err
-	}
-	return map[string]any{"device": d, "software": softwareItems(items)}, nil
-}
-
-func (s *Service) assistantEmployee(ctx context.Context, p assistantParams, page httpx.PageRequest) (any, error) {
-	if _, err := requirePrivileged(ctx); err != nil {
-		return nil, err
-	}
-	var employee domain.Employee
-	if id, err := uuid.Parse(p.EmployeeID); err == nil {
-		if employee, err = s.employees.Get(ctx, id); err != nil {
-			return nil, err
-		}
-	} else {
-		found, _, err := s.employees.List(ctx, p.Query, "", httpx.PageRequest{Page: 1, Limit: 5})
-		if err != nil {
-			return nil, err
-		}
-		if len(found) == 0 {
-			return nil, apperr.NotFound("employee not found")
-		}
-		if len(found) > 1 {
-			return map[string]any{"ambiguous": true, "employees": found}, nil
-		}
-		employee = found[0]
-	}
-	items, _, err := s.installations.List(ctx, domain.InstallationFilter{EmployeeID: &employee.ID}, httpx.PageRequest{Page: 1, Limit: httpx.MaxLimit})
-	if err != nil {
-		return nil, err
-	}
-	return map[string]any{"employee": employee, "software": softwareItems(items)}, nil
-}
-
-func (s *Service) assistantLicenses(ctx context.Context, withCosts bool, page httpx.PageRequest) (any, error) {
-	items, _, err := s.ListEntitlements(ctx, nil, true, page)
-	if err != nil {
-		return nil, err
-	}
-	type license struct {
-		Product   string   `json:"product"`
-		Metric    string   `json:"metric"`
-		Quantity  int      `json:"quantity"`
-		ExpiresAt any      `json:"expires_at,omitempty"`
-		UnitPrice *float64 `json:"unit_price,omitempty"`
-		Currency  *string  `json:"currency,omitempty"`
-		Total     *float64 `json:"total_cost,omitempty"`
-	}
-	out := make([]license, 0, len(items))
-	for _, e := range items {
-		l := license{Product: e.ProductName, Metric: string(e.Metric), Quantity: e.Quantity}
-		if e.ExpiresAt != nil {
-			l.ExpiresAt = e.ExpiresAt.Format("2006-01-02")
-		}
-		if withCosts && e.UnitPrice != nil {
-			total := *e.UnitPrice * float64(e.Quantity)
-			l.UnitPrice, l.Currency, l.Total = e.UnitPrice, e.Currency, &total
-		}
-		out = append(out, l)
-	}
-	return out, nil
-}
-
-func (s *Service) assistantBalance(ctx context.Context, product string) (any, error) {
+func (s *Service) licenseStatuses(ctx context.Context) (map[uuid.UUID]string, error) {
 	balances, err := s.Balances(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
-	if product == "" {
-		return balances, nil
-	}
-	needle := strings.ToLower(product)
-	var out []domain.Balance
+	out := make(map[uuid.UUID]string, len(balances))
+	deficit := map[uuid.UUID]int{}
 	for _, b := range balances {
-		if strings.Contains(strings.ToLower(b.ProductName), needle) {
-			out = append(out, b)
+		deficit[b.ProductID] += b.Deficit
+		if _, ok := out[b.ProductID]; !ok || b.CalculationStatus != domain.CalcVerified {
+			out[b.ProductID] = string(b.CalculationStatus)
+		}
+	}
+	for id, d := range deficit {
+		if d > 0 {
+			out[id] = fmt.Sprintf("DEFICIT %d", d)
+		} else if out[id] == string(domain.CalcVerified) {
+			out[id] = "COVERED"
 		}
 	}
 	return out, nil
 }
 
-func softwareItems(items []domain.Installation) []softwareItem {
-	out := make([]softwareItem, 0, len(items))
-	for _, i := range items {
-		item := softwareItem{Name: i.RawName, Version: value(i.RawVersion), Matched: i.ProductID != nil, Device: i.SerialNumber}
-		if i.ProductName != nil {
-			item.Name = *i.ProductName
-		}
-		if i.PolicyStatus != nil {
-			item.Category = *i.PolicyStatus
-		}
-		if i.LifecycleStatus != nil {
-			item.Status = *i.LifecycleStatus
-		}
-		out = append(out, item)
+func licenseStatusOf(v any, statuses map[uuid.UUID]string) string {
+	raw, ok := v.(string)
+	if !ok {
+		return "UNMATCHED"
 	}
-	return out
+	id, err := uuid.Parse(raw)
+	if err != nil {
+		return "UNMATCHED"
+	}
+	if status, ok := statuses[id]; ok {
+		return status
+	}
+	return "NOT_REQUIRED"
 }
 
-func findingItems(items []domain.Finding) []findingItem {
-	out := make([]findingItem, 0, len(items))
-	for _, f := range items {
-		out = append(out, findingItem{Type: f.Type, Severity: f.Severity, Device: value(f.SerialNumber), Product: value(f.ProductName), Details: f.Details})
+func (s *Service) assistantBalance(ctx context.Context, product string, onlyDeficit bool) (any, error) {
+	balances, err := s.Balances(ctx, nil)
+	if err != nil {
+		return nil, err
 	}
-	return out
-}
-
-func value(s *string) string {
-	if s == nil {
-		return ""
+	needle := strings.ToLower(strings.TrimSpace(product))
+	out := []balanceRow{}
+	total := 0
+	for _, b := range balances {
+		if needle != "" && !strings.Contains(strings.ToLower(b.ProductName), needle) {
+			continue
+		}
+		if onlyDeficit && b.Deficit == 0 {
+			continue
+		}
+		total += b.Deficit
+		out = append(out, balanceRow{
+			Product: b.ProductName, Metric: string(b.Metric), Purchased: b.Purchased, Consumed: b.Consumed,
+			Available: b.Available, Deficit: b.Deficit, Status: string(b.CalculationStatus), Note: b.Note,
+		})
 	}
-	return *s
+	return map[string]any{"rows": out, "total_deficit": total}, nil
 }

@@ -58,16 +58,13 @@ var toolKeywords = []struct {
 	keywords []string
 	args     string
 }{
-	{"get_license_costs", []string{"стоимост", "сколько стоят", "cost", "price"}, `{}`},
-	{"get_license_balance", []string{"баланс", "дефицит", "хватает", "balance", "deficit"}, `{}`},
-	{"get_paid_licenses", []string{"платн", "куплен", "paid"}, `{}`},
-	{"get_company_compliance", []string{"нарушен", "комплаенс", "compliance", "violation"}, `{}`},
-	{"get_my_compliance", []string{"нарушен", "проблем", "compliance"}, `{}`},
-	{"get_dashboard_summary", []string{"сводк", "статистик", "dashboard", "summary"}, `{}`},
-	{"get_my_software", []string{"мои программ", "у меня установ", "my software"}, `{}`},
-	{"get_my_devices", []string{"мой компьютер", "мои устройств", "my device"}, `{}`},
-	{"get_allowed_software", []string{"запрещ", "forbidden"}, `{"policy_status":"FORBIDDEN"}`},
-	{"get_allowed_software", []string{"разреш", "можно установ", "allowed", "каталог"}, `{"policy_status":"ALLOWED"}`},
+	{"get_license_balance", []string{"баланс", "дефицит", "хватает", "balance", "deficit"}, `{"only_deficit":true}`},
+	{"query_data", []string{"нарушен", "комплаенс", "compliance", "violation"}, `{"dataset":"findings","filters":{"status":"OPEN"}}`},
+	{"query_data", []string{"лиценз", "license"}, `{"dataset":"licenses"}`},
+	{"query_data", []string{"запрещ", "forbidden"}, `{"dataset":"products","filters":{"policy_status":"FORBIDDEN"}}`},
+	{"query_data", []string{"устройств", "компьютер", "device"}, `{"dataset":"devices"}`},
+	{"query_data", []string{"установ", "программ", "software"}, `{"dataset":"installations"}`},
+	{"get_summary", []string{"сводк", "статистик", "dashboard", "summary"}, `{}`},
 }
 
 func mockChat(req Request) (string, []ToolCall) {

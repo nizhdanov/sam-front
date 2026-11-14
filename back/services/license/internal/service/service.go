@@ -106,7 +106,7 @@ type Agreements interface {
 type Findings interface {
 	List(ctx context.Context, f domain.FindingFilter, page httpx.PageRequest) ([]domain.Finding, int, error)
 	Get(ctx context.Context, id uuid.UUID) (domain.Finding, error)
-	Acknowledge(ctx context.Context, id uuid.UUID, by string) error
+	Acknowledge(ctx context.Context, id uuid.UUID, by, comment string) error
 	Summary(ctx context.Context, f domain.FindingFilter) (domain.ComplianceSummary, error)
 	Apply(ctx context.Context, desired []domain.Finding, types []domain.FindingType, s domain.Scope, now time.Time) (int64, error)
 }
@@ -115,6 +115,10 @@ type Analytics interface {
 	Dashboard(ctx context.Context, employeeID *uuid.UUID) (domain.Dashboard, error)
 	Software(ctx context.Context, limit int) ([]domain.SoftwareUsage, error)
 	Departments(ctx context.Context) ([]domain.DepartmentStats, error)
+}
+
+type Explorer interface {
+	Query(ctx context.Context, q domain.DataQuery) (domain.DataTable, error)
 }
 
 type AgreementAnalyzer interface {
@@ -135,6 +139,7 @@ type Deps struct {
 	Agreements    Agreements
 	Findings      Findings
 	Analytics     Analytics
+	Explorer      Explorer
 	Analyzer      AgreementAnalyzer
 	Log           *slog.Logger
 }
@@ -153,6 +158,7 @@ type Service struct {
 	agreements    Agreements
 	findings      Findings
 	analytics     Analytics
+	explorer      Explorer
 	analyzer      AgreementAnalyzer
 	log           *slog.Logger
 	matchCfg      domain.MatchingConfig
@@ -162,7 +168,7 @@ type Service struct {
 func New(d Deps, matching domain.MatchingConfig) (*Service, error) {
 	if d.Tx == nil || d.Locks == nil || d.Products == nil || d.Versions == nil || d.Aliases == nil || d.Matching == nil ||
 		d.Devices == nil || d.Employees == nil || d.Installations == nil || d.Entitlements == nil || d.Agreements == nil ||
-		d.Findings == nil || d.Analytics == nil || d.Analyzer == nil || d.Log == nil {
+		d.Findings == nil || d.Analytics == nil || d.Explorer == nil || d.Analyzer == nil || d.Log == nil {
 		return nil, errors.New("license service: missing dependency")
 	}
 	return &Service{
@@ -179,6 +185,7 @@ func New(d Deps, matching domain.MatchingConfig) (*Service, error) {
 		agreements:    d.Agreements,
 		findings:      d.Findings,
 		analytics:     d.Analytics,
+		explorer:      d.Explorer,
 		analyzer:      d.Analyzer,
 		log:           d.Log,
 		matchCfg:      matching,

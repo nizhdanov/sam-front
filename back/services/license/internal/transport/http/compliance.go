@@ -65,7 +65,14 @@ func (h *handler) acknowledgeFinding(w http.ResponseWriter, r *http.Request) {
 		h.fail(w, r, err)
 		return
 	}
-	f, err := h.svc.AcknowledgeFinding(r.Context(), id)
+	var req struct {
+		Comment string `json:"comment"`
+	}
+	if err := httpx.Decode(w, r, &req); err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	f, err := h.svc.AcknowledgeFinding(r.Context(), id, req.Comment)
 	if err != nil {
 		h.fail(w, r, err)
 		return

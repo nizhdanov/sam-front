@@ -20,7 +20,9 @@ func Connect(cfg Config) (*grpc.ClientConn, error) {
 	return grpcx.Dial(cfg.GRPCAddr, "license.v1.AssistantDataService", cfg.Timeout, nil)
 }
 
-type Client struct{ api licensev1.AssistantDataServiceClient }
+type Client struct {
+	api licensev1.AssistantDataServiceClient
+}
 
 func New(conn grpc.ClientConnInterface) *Client {
 	return &Client{api: licensev1.NewAssistantDataServiceClient(conn)}

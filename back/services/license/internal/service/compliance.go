@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -110,7 +111,7 @@ func (s *Service) scopeFindings(ctx context.Context, f domain.FindingFilter) (do
 	if err != nil {
 		return f, false, err
 	}
-	if c.IsPrivileged() {
+	if c.IsAdmin() {
 		return f, false, nil
 	}
 	employee := employeeOf(c)
@@ -140,7 +141,7 @@ func (s *Service) ListFindings(ctx context.Context, f domain.FindingFilter, page
 	if err != nil {
 		return nil, 0, err
 	}
-	if !auth.ClaimsFrom(ctx).IsPrivileged() {
+	if !auth.ClaimsFrom(ctx).IsAdmin() {
 		for i := range items {
 			items[i].Details = publicDetails(items[i].Details)
 		}
@@ -167,7 +168,7 @@ func (s *Service) GetFinding(ctx context.Context, id uuid.UUID) (domain.Finding,
 	if err != nil {
 		return domain.Finding{}, err
 	}
-	if c.IsPrivileged() {
+	if c.IsAdmin() {
 		return f, nil
 	}
 	if f.DeviceID == nil || !slices.Contains(domain.InstallationFindingTypes, f.Type) {
@@ -180,12 +181,16 @@ func (s *Service) GetFinding(ctx context.Context, id uuid.UUID) (domain.Finding,
 	return f, nil
 }
 
-func (s *Service) AcknowledgeFinding(ctx context.Context, id uuid.UUID) (domain.Finding, error) {
+func (s *Service) AcknowledgeFinding(ctx context.Context, id uuid.UUID, comment string) (domain.Finding, error) {
 	c, err := requireAdmin(ctx)
 	if err != nil {
 		return domain.Finding{}, err
 	}
-	if err := s.findings.Acknowledge(ctx, id, c.Actor()); err != nil {
+	comment = strings.TrimSpace(comment)
+	if comment == "" {
+		return domain.Finding{}, apperr.Invalid("comment is required")
+	}
+	if err := s.findings.Acknowledge(ctx, id, c.Actor(), comment); err != nil {
 		return domain.Finding{}, err
 	}
 	return s.findings.Get(ctx, id)

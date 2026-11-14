@@ -4,8 +4,8 @@ info:
   version: 1.0.0
   description: |
     Публичный REST API за nginx. Все ручки, кроме health, требуют `Authorization: Bearer <JWT>`.
-    Роли: EMPLOYEE, ADMIN, IT_DIRECTOR. Доступ проверяется в сервисах; для EMPLOYEE данные
-    ограничены собственными устройствами, цены и лицензии скрыты.
+    Роли: EMPLOYEE, ADMIN. Доступ проверяется в сервисах; для EMPLOYEE данные
+    ограничены собственными устройствами, лицензии скрыты.
 
     В Swagger нажмите Authorize и вставьте JWT без префикса Bearer. Затем откройте операцию,
     выберите Try it out, заполните параметры и нажмите Execute. Токены выдаёт внешний IdP;
@@ -164,13 +164,60 @@ paths:
       responses:
         "202": { $ref: "#/components/responses/Accepted" }
 
+  /api/v1/data/{dataset}:
+    get:
+      summary: "Универсальная выборка данных"
+      description: |
+        Таблица по одному из наборов данных с фильтрами и группировкой. Тот же механизм использует AI-ассистент.
+        Любой query-параметр, кроме group_by и limit, считается фильтром. Текстовые фильтры ищут по подстроке, статусы — точное значение.
+
+        | dataset | фильтры | group_by |
+        | --- | --- | --- |
+        | installations | product, publisher, version, serial_number, match_status, policy_status, lifecycle_status, license_type | product, publisher, version, serial_number, match_status, policy_status, lifecycle_status, license_type |
+        | devices | serial_number, hostname, operating_system | operating_system |
+        | products | product, publisher, policy_status, license_type | publisher, policy_status, license_type |
+        | licenses | product, metric, status (ACTIVE, EXPIRED, INACTIVE, NOT_STARTED) | product, metric, status |
+        | findings | finding_type, severity, status, serial_number, product | finding_type, severity, status, serial_number, product |
+
+        С group_by возвращаются пары «значение — количество» (для installations — число устройств, для licenses — сумма quantity).
+        Для ADMIN в installations и products добавляется license_status: COVERED, DEFICIT n, UNVERIFIED, UNSUPPORTED_METRIC, NOT_REQUIRED, UNMATCHED.
+        EMPLOYEE видит только свои устройства; licenses ему недоступен.
+
+        Пример: «у кого установлен Office» — `/api/v1/data/installations?product=office`.
+
+        Доступ: EMPLOYEE, ADMIN.
+      tags: [analytics]
+      parameters:
+        - { name: dataset, in: path, required: true, schema: { type: string, enum: [installations, devices, products, licenses, findings] } }
+        - { name: group_by, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 100 } }
+        - { name: product, in: query, schema: { type: string } }
+        - { name: serial_number, in: query, schema: { type: string } }
+        - { name: match_status, in: query, schema: { type: string, enum: [MATCHED, UNKNOWN, REQUIRES_REVIEW, PENDING_MATCH] } }
+        - { name: policy_status, in: query, schema: { $ref: "#/components/schemas/PolicyStatus" } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dataset: { type: string }
+                  group_by: { type: string }
+                  columns: { type: array, items: { type: string } }
+                  rows: { type: array, items: { type: array, items: {} } }
+                  total: { type: integer }
+                  shown: { type: integer }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
   /api/v1/me/devices:
     get:
       summary: "Получить свои устройства"
       description: |
         Возвращает устройства, связанные с employee_id текущего JWT. Используйте в личном кабинете сотрудника. Если в токене нет корректного employee_id или устройств нет, список пуст. Для общего реестра нужен GET /api/v1/devices с ролью ADMIN или IT_DIRECTOR.
 
-        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
+        Доступ: EMPLOYEE, ADMIN.
       tags: [devices]
       parameters:
         - $ref: "#/components/parameters/Page"
@@ -183,7 +230,7 @@ paths:
       description: |
         Возвращает страницу устройств организации. Поддерживает поиск и фильтры по серийному номеру, отделу, сотруднику и наличию нарушений. EMPLOYEE получает 403; для него предусмотрен GET /api/v1/me/devices.
 
-        Доступ: ADMIN, IT_DIRECTOR.
+        Доступ: ADMIN.
       tags: [devices]
       parameters:
         - $ref: "#/components/parameters/Page"
@@ -202,7 +249,7 @@ paths:
       description: |
         Возвращает сведения об устройстве и его назначении сотруднику. Сотрудник может открыть только своё устройство; чужое скрывается ответом 404.
 
-        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
+        Доступ: EMPLOYEE, ADMIN.
       tags: [devices]
       responses:
         "200": { $ref: "#/components/responses/Object" }
@@ -231,7 +278,7 @@ paths:
       description: |
         Возвращает страницу установок и результатов сопоставления с каталогом. include_removed=true включает удалённые установки. Сотруднику доступно только собственное устройство.
 
-        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
+        Доступ: EMPLOYEE, ADMIN.
       tags: [devices]
       parameters:
         - $ref: "#/components/parameters/ID"
@@ -246,7 +293,7 @@ paths:
       description: |
         Возвращает страницу находок комплаенса для выбранного устройства. Сотрудник видит только своё устройство и разрешённые ему сведения об установках.
 
-        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
+        Доступ: EMPLOYEE, ADMIN.
       tags: [devices]
       parameters:
         - $ref: "#/components/parameters/ID"
@@ -261,7 +308,7 @@ paths:
       description: |
         Возвращает страницу сотрудников с поиском и фильтром по отделу. Используется для выбора владельца компьютера и просмотра распределения ПО по людям.
 
-        Доступ: ADMIN, IT_DIRECTOR.
+        Доступ: ADMIN.
       tags: [employees]
       parameters:
         - $ref: "#/components/parameters/Page"
@@ -277,7 +324,7 @@ paths:
       description: |
         Возвращает имя, отдел, должность, контакты и состояние учётной записи сотрудника.
 
-        Доступ: ADMIN, IT_DIRECTOR.
+        Доступ: ADMIN.
       tags: [employees]
       responses:
         "200": { $ref: "#/components/responses/Object" }
@@ -307,7 +354,7 @@ paths:
       description: |
         Возвращает страницу компьютеров, назначенных указанному сотруднику. Используется для учёта оборудования и проверки привязок.
 
-        Доступ: ADMIN, IT_DIRECTOR.
+        Доступ: ADMIN.
       tags: [employees]
       parameters:
         - $ref: "#/components/parameters/ID"
@@ -321,7 +368,7 @@ paths:
       description: |
         Возвращает страницу установок на устройствах указанного сотрудника. Это список установок, поэтому один продукт может встречаться на нескольких компьютерах.
 
-        Доступ: ADMIN, IT_DIRECTOR.
+        Доступ: ADMIN.
       tags: [employees]
       parameters:
         - $ref: "#/components/parameters/ID"
@@ -336,7 +383,7 @@ paths:
       description: |
         Возвращает страницу нормализованных продуктов. Поддерживает поиск, фильтр политики использования и include_archived для архивных записей. Сотруднику возвращается публичное представление без сведений о соглашении.
 
-        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
+        Доступ: EMPLOYEE, ADMIN.
       tags: [software]
       parameters:
         - $ref: "#/components/parameters/Page"
@@ -366,6 +413,7 @@ paths:
                 edition: { type: string }
                 agreement_id: { type: string, format: uuid }
                 policy_status: { $ref: "#/components/schemas/PolicyStatus" }
+                policy_comment: { type: string, description: "причина запрета; обязательна для FORBIDDEN" }
                 description: { type: string }
       responses:
         "201": { $ref: "#/components/responses/Object" }
@@ -377,7 +425,7 @@ paths:
       description: |
         Возвращает нормализованное название, издателя, редакцию и политику использования продукта. Для сотрудника сведения о соглашении скрыты.
 
-        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
+        Доступ: EMPLOYEE, ADMIN.
       tags: [software]
       responses:
         "200": { $ref: "#/components/responses/Object" }
@@ -399,6 +447,7 @@ paths:
                 edition: { type: string }
                 agreement_id: { type: [string, "null"], format: uuid }
                 policy_status: { $ref: "#/components/schemas/PolicyStatus" }
+                policy_comment: { type: string, description: "причина запрета; обязательна для FORBIDDEN" }
                 description: { type: string }
                 archived: { type: boolean }
       responses:
@@ -407,7 +456,7 @@ paths:
     patch:
       summary: "Изменить политику использования ПО"
       description: |
-        Устанавливает ALLOWED, RESTRICTED, FORBIDDEN или UNKNOWN и пересчитывает комплаенс продукта. Используйте, например, чтобы отметить запрещённое ПО и получить находки FORBIDDEN_SOFTWARE на установках.
+        Устанавливает ALLOWED, RESTRICTED, FORBIDDEN или UNKNOWN и пересчитывает комплаенс продукта. Используйте, например, чтобы отметить запрещённое ПО и получить находки FORBIDDEN_SOFTWARE на установках. Для FORBIDDEN комментарий обязателен (передаётся в comment или уже сохранён в policy_comment).
 
         Доступ: ADMIN.
       tags: [software]
@@ -421,6 +470,7 @@ paths:
               required: [policy_status]
               properties:
                 policy_status: { $ref: "#/components/schemas/PolicyStatus" }
+                comment: { type: string, description: "причина; обязательна для FORBIDDEN" }
       responses:
         "200": { $ref: "#/components/responses/Object" }
   /api/v1/software/{id}/versions:
@@ -430,7 +480,7 @@ paths:
       description: |
         Возвращает версии из каталога с состоянием поддержки и датами выпуска или окончания поддержки. Это справочник версий, а не перечень установок.
 
-        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
+        Доступ: EMPLOYEE, ADMIN.
       tags: [software]
       responses:
         "200": { $ref: "#/components/responses/List" }
@@ -484,7 +534,7 @@ paths:
       description: |
         Возвращает aliases: соответствия исходных названий, издателей и версий конкретному продукту. Помогает понять, почему строка инвентаризации была распознана именно так.
 
-        Доступ: ADMIN, IT_DIRECTOR.
+        Доступ: ADMIN.
       tags: [software]
       responses:
         "200": { $ref: "#/components/responses/List" }
@@ -528,7 +578,7 @@ paths:
       description: |
         Возвращает страницу активных установок продукта по устройствам. Используется, чтобы найти компьютеры с конкретной программой и проверить её распространение.
 
-        Доступ: ADMIN, IT_DIRECTOR.
+        Доступ: ADMIN.
       tags: [software]
       parameters:
         - $ref: "#/components/parameters/ID"
@@ -542,7 +592,7 @@ paths:
       description: |
         Сравнивает действующие лицензионные права с потреблением выбранного продукта. Возвращает купленное количество, потребление, доступный остаток, дефицит и статус достоверности расчёта. CONCURRENT нельзя проверить по установкам; разные метрики не суммируются.
 
-        Доступ: ADMIN, IT_DIRECTOR.
+        Доступ: ADMIN.
       tags: [software]
       parameters: [{ $ref: "#/components/parameters/ID" }]
       responses:
@@ -552,9 +602,9 @@ paths:
     get:
       summary: "Посмотреть зарегистрированные лицензии"
       description: |
-        Возвращает страницу лицензионных прав с количеством, метрикой, сроками и стоимостью. Можно отфильтровать по product_id; active=true ограничивает выборку активными записями.
+        Возвращает страницу лицензионных прав с количеством, метрикой, сроками. Можно отфильтровать по product_id; active=true ограничивает выборку активными записями.
 
-        Доступ: ADMIN, IT_DIRECTOR.
+        Доступ: ADMIN.
       tags: [licenses]
       parameters:
         - $ref: "#/components/parameters/Page"
@@ -584,7 +634,7 @@ paths:
       description: |
         Сравнивает лицензионные права с активными установками по продуктам; product_id ограничивает расчёт одним продуктом. PER_DEVICE считает устройства, PER_USER — сотрудников; CONCURRENT и UNKNOWN требуют иной информации и помечаются как непроверенные.
 
-        Доступ: ADMIN, IT_DIRECTOR.
+        Доступ: ADMIN.
       tags: [licenses]
       parameters:
         - { name: product_id, in: query, schema: { type: string, format: uuid } }
@@ -597,14 +647,14 @@ paths:
       description: |
         Возвращает одну запись о лицензионных правах: продукт, соглашение, метрику, количество, сроки и финансовые поля. id — UUID записи лицензии, а не продукта.
 
-        Доступ: ADMIN, IT_DIRECTOR.
+        Доступ: ADMIN.
       tags: [licenses]
       responses:
         "200": { $ref: "#/components/responses/Object" }
     patch:
       summary: "Исправить параметры лицензии"
       description: |
-        Частично изменяет количество, метрику, сроки, стоимость и другие поддерживаемые поля записи. Nullable-поля можно очистить через null. После изменения пересчитывается комплаенс затронутых продуктов.
+        Частично изменяет количество, метрику, сроки и другие поддерживаемые поля записи. Nullable-поля можно очистить через null. После изменения пересчитывается комплаенс затронутых продуктов.
 
         Доступ: ADMIN.
       tags: [licenses]
@@ -632,7 +682,7 @@ paths:
       description: |
         Возвращает страницу соглашений с типом лицензии и условиями использования. Полный agreement_text в списке не возвращается; для него откройте карточку соглашения.
 
-        Доступ: ADMIN, IT_DIRECTOR.
+        Доступ: ADMIN.
       tags: [agreements]
       parameters:
         - $ref: "#/components/parameters/Page"
@@ -660,7 +710,7 @@ paths:
       description: |
         Возвращает карточку соглашения, включая сохранённый текст и условия коммерческого использования. Используется для ручной проверки перед привязкой к ПО или подтверждением анализа.
 
-        Доступ: ADMIN, IT_DIRECTOR.
+        Доступ: ADMIN.
       tags: [agreements]
       responses:
         "200": { $ref: "#/components/responses/Object" }
@@ -702,7 +752,7 @@ paths:
       description: |
         Возвращает последний сохранённый анализ с моделью, версией промпта и статусом проверки. Новый анализ не запускается; если результатов ещё нет, возвращает 404.
 
-        Доступ: ADMIN, IT_DIRECTOR.
+        Доступ: ADMIN.
       tags: [agreements]
       parameters: [{ $ref: "#/components/parameters/ID" }]
       responses:
@@ -726,7 +776,7 @@ paths:
       description: |
         Возвращает страницу находок с фильтрами по типам через запятую, критичности, статусу, устройству и продукту. Сотрудник видит только разрешённые находки по своим устройствам, без общих лицензионных и финансовых сведений.
 
-        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
+        Доступ: EMPLOYEE, ADMIN.
       tags: [compliance]
       parameters:
         - $ref: "#/components/parameters/Page"
@@ -747,7 +797,7 @@ paths:
       description: |
         Возвращает причину, тип, критичность и состояние конкретной находки. Для сотрудника недоступные находки скрываются ответом 404, а details ограничен публичными полями.
 
-        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
+        Доступ: EMPLOYEE, ADMIN.
       tags: [compliance]
       parameters: [{ $ref: "#/components/parameters/ID" }]
       responses:
@@ -756,11 +806,20 @@ paths:
     post:
       summary: "Отметить нарушение как рассмотренное"
       description: |
-        Фиксирует, что администратор ознакомился с находкой, и переводит её в ACKNOWLEDGED. Это не устраняет причину нарушения; RESOLVED выставляется при пересчёте, когда причина исчезла.
+        Фиксирует, что администратор ознакомился с находкой, и переводит её в ACKNOWLEDGED. Комментарий обязателен. Это не устраняет причину нарушения; RESOLVED выставляется при пересчёте, когда причина исчезла.
 
         Доступ: ADMIN.
       tags: [compliance]
       parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [comment]
+              properties:
+                comment: { type: string }
       responses:
         "200": { $ref: "#/components/responses/Object" }
   /api/v1/compliance/summary:
@@ -769,7 +828,7 @@ paths:
       description: |
         Возвращает счётчики открытых и рассмотренных находок, разбивку по критичности и типам. Сотруднику сводка ограничивается его устройствами и доступными типами нарушений.
 
-        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
+        Доступ: EMPLOYEE, ADMIN.
       tags: [compliance]
       responses:
         "200": { $ref: "#/components/responses/Object" }
@@ -788,9 +847,9 @@ paths:
     get:
       summary: "Получить показатели главного дашборда"
       description: |
-        Возвращает сводные показатели инвентаря и комплаенса. Для ADMIN и IT_DIRECTOR добавляет лицензионные показатели; для EMPLOYEE ограничивает данные собственными устройствами, без лицензий и стоимости. Сотрудник без employee_id получает 403.
+        Возвращает сводные показатели инвентаря и комплаенса. Для ADMIN добавляет лицензионные показатели; для EMPLOYEE ограничивает данные собственными устройствами, без лицензий и стоимости. Сотрудник без employee_id получает 403.
 
-        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
+        Доступ: EMPLOYEE, ADMIN.
       tags: [analytics]
       responses:
         "200": { $ref: "#/components/responses/Object" }
@@ -800,7 +859,7 @@ paths:
       description: |
         Возвращает агрегированную статистику использования продуктов для диаграмм и рейтингов. limit задаёт размер выборки: по умолчанию 20, максимум 200.
 
-        Доступ: ADMIN, IT_DIRECTOR.
+        Доступ: ADMIN.
       tags: [analytics]
       parameters:
         - { name: limit, in: query, schema: { type: integer, default: 20, minimum: 1, maximum: 200 } }
@@ -812,7 +871,7 @@ paths:
       description: |
         Возвращает тот же расчёт балансов, что GET /api/v1/licenses/balance, для лицензионного раздела дашборда. Показывает потребление, остаток, дефицит и достоверность расчёта; поддерживает product_id.
 
-        Доступ: ADMIN, IT_DIRECTOR.
+        Доступ: ADMIN.
       tags: [analytics]
       responses:
         "200": { $ref: "#/components/responses/List" }
@@ -822,7 +881,7 @@ paths:
       description: |
         Возвращает ту же ролевую сводку, что GET /api/v1/compliance/summary. Используется для счётчиков и диаграмм; новых проверок не запускает.
 
-        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
+        Доступ: EMPLOYEE, ADMIN.
       tags: [analytics]
       responses:
         "200": { $ref: "#/components/responses/Object" }
@@ -832,7 +891,7 @@ paths:
       description: |
         Возвращает агрегированную статистику по подразделениям для сравнения распределения устройств и установок. Индивидуальный сотрудник не имеет доступа к этой сводке.
 
-        Доступ: ADMIN, IT_DIRECTOR.
+        Доступ: ADMIN.
       tags: [analytics]
       responses:
         "200": { $ref: "#/components/responses/List" }
@@ -843,7 +902,7 @@ paths:
       description: |
         Возвращает страницу задач, где исходное название ПО требует решения человека. По умолчанию status=PENDING; можно посмотреть APPROVED и REJECTED. В ответ добавляются карточки предложенных продуктов. IT_DIRECTOR может читать задачи, но не подтверждать их.
 
-        Доступ: ADMIN, IT_DIRECTOR.
+        Доступ: ADMIN.
       tags: [matching]
       parameters:
         - $ref: "#/components/parameters/Page"
@@ -857,7 +916,7 @@ paths:
       description: |
         Возвращает исходное название, издателя, версию, кандидатов и состояние проверки. Используется для выбора правильного продукта перед approve либо для изучения причины неоднозначности.
 
-        Доступ: ADMIN, IT_DIRECTOR.
+        Доступ: ADMIN.
       tags: [matching]
       parameters: [{ $ref: "#/components/parameters/ID" }]
       responses:
@@ -908,7 +967,7 @@ paths:
       description: |
         Возвращает страницу диалогов текущего пользователя. Чужие диалоги не показываются. Открытие диалога также требует совпадения текущей роли с ролью при его создании.
 
-        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
+        Доступ: EMPLOYEE, ADMIN.
       tags: [chat]
       parameters:
         - $ref: "#/components/parameters/Page"
@@ -920,7 +979,7 @@ paths:
       description: |
         Создаёт пустой диалог, закреплённый за пользователем и его текущей ролью. title необязателен. Для получения ответа отправьте сообщение отдельным POST-запросом на /messages.
 
-        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
+        Доступ: EMPLOYEE, ADMIN.
       tags: [chat]
       requestBody:
         content:
@@ -938,7 +997,7 @@ paths:
       description: |
         Возвращает сведения о диалоге текущего пользователя. Чужой диалог даёт 404, смена роли относительно момента создания — 403. История сообщений загружается отдельным запросом.
 
-        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
+        Доступ: EMPLOYEE, ADMIN.
       tags: [chat]
       responses:
         "200": { $ref: "#/components/responses/Object" }
@@ -947,7 +1006,7 @@ paths:
       description: |
         Удаляет принадлежащий пользователю диалог вместе с сообщениями. Требуется та же роль, с которой он был создан. Успешный ответ 204 не содержит тела.
 
-        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
+        Доступ: EMPLOYEE, ADMIN.
       tags: [chat]
       responses:
         "204": { description: Deleted }
@@ -958,7 +1017,7 @@ paths:
       description: |
         Возвращает страницу сохранённых сообщений собственного диалога. Показывает ответы ассистента и их статусы, в том числе incomplete при прерванном ответе. Не запускает генерацию.
 
-        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
+        Доступ: EMPLOYEE, ADMIN.
       tags: [chat]
       parameters:
         - $ref: "#/components/parameters/Page"
@@ -970,7 +1029,7 @@ paths:
       description: |
         Сохраняет сообщение пользователя, вызывает ассистента с доступными роли инструментами и передаёт ответ как text/event-stream. События: message_start с message_id, delta с content, message_end с message_id и status, error с code и message. Разрешён один активный запрос на пользователя, иначе 429. content обязателен, до 4000 символов; в mock-режиме ответы демонстрационные. Для потокового клиента используйте SSE или curl -N.
 
-        Доступ: EMPLOYEE, ADMIN, IT_DIRECTOR.
+        Доступ: EMPLOYEE, ADMIN.
       tags: [chat]
       requestBody:
         required: true
@@ -1087,6 +1146,10 @@ components:
           enum: [PENDING, PARSING, PROCESSING, COMPLETED, COMPLETED_WITH_ERRORS, FAILED]
         file_size: { type: integer }
         total_rows: { type: integer }
+        loaded_rows: { type: integer, description: "строк, принятых в обработку после исключений и дублей" }
+        duplicate_rows: { type: integer, description: "дубли по устройству, названию и версии" }
+        excluded_rows: { type: integer, description: "исключённые системные обновления (KB, Security Update for …)" }
+        error_rows: { type: integer }
         total_devices: { type: integer }
         processed_devices: { type: integer }
         failed_devices: { type: integer }
@@ -1110,8 +1173,6 @@ components:
         agreement_id: { type: [string, "null"], format: uuid }
         license_metric: { type: string, enum: [PER_DEVICE, PER_USER, UNLIMITED, CONCURRENT, UNKNOWN] }
         quantity: { type: integer, minimum: 0 }
-        unit_price: { type: [number, "null"] }
-        currency: { type: [string, "null"] }
         valid_from: { type: [string, "null"], format: date }
         expires_at: { type: [string, "null"], format: date }
         purchase_reference: { type: [string, "null"] }

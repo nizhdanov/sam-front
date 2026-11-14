@@ -1,0 +1,32 @@
+package domain
+
+import "github.com/google/uuid"
+
+type Dataset string
+
+const (
+	DatasetInstallations Dataset = "installations"
+	DatasetDevices       Dataset = "devices"
+	DatasetProducts      Dataset = "products"
+	DatasetLicenses      Dataset = "licenses"
+	DatasetFindings      Dataset = "findings"
+)
+
+const MaxQueryRows = 100
+
+type DataQuery struct {
+	Dataset    Dataset           `json:"dataset"`
+	Filters    map[string]string `json:"filters"`
+	GroupBy    string            `json:"group_by"`
+	Limit      int               `json:"limit"`
+	EmployeeID *uuid.UUID        `json:"-"`
+}
+
+type DataTable struct {
+	Dataset Dataset  `json:"dataset"`
+	GroupBy string   `json:"group_by,omitempty"`
+	Columns []string `json:"columns"`
+	Rows    [][]any  `json:"rows"`
+	Total   int      `json:"total"`
+	Shown   int      `json:"shown"`
+}

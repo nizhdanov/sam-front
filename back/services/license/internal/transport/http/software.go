@@ -31,7 +31,7 @@ func (h *handler) listProducts(w http.ResponseWriter, r *http.Request) {
 		h.fail(w, r, err)
 		return
 	}
-	if auth.ClaimsFrom(r.Context()).IsPrivileged() {
+	if auth.ClaimsFrom(r.Context()).IsAdmin() {
 		respondPage(w, items, page, total)
 		return
 	}
@@ -53,7 +53,7 @@ func (h *handler) getProduct(w http.ResponseWriter, r *http.Request) {
 		h.fail(w, r, err)
 		return
 	}
-	if auth.ClaimsFrom(r.Context()).IsPrivileged() {
+	if auth.ClaimsFrom(r.Context()).IsAdmin() {
 		httpx.JSON(w, http.StatusOK, p)
 		return
 	}
@@ -66,6 +66,7 @@ type productRequest struct {
 	Edition       *string    `json:"edition"`
 	AgreementID   *uuid.UUID `json:"agreement_id"`
 	PolicyStatus  string     `json:"policy_status"`
+	PolicyComment *string    `json:"policy_comment"`
 	Description   *string    `json:"description"`
 }
 
@@ -77,7 +78,7 @@ func (h *handler) createProduct(w http.ResponseWriter, r *http.Request) {
 	}
 	p, err := h.svc.CreateProduct(r.Context(), service.ProductInput{
 		CanonicalName: req.CanonicalName, Publisher: req.Publisher, Edition: req.Edition,
-		AgreementID: req.AgreementID, PolicyStatus: domain.PolicyStatus(req.PolicyStatus), Description: req.Description,
+		AgreementID: req.AgreementID, PolicyStatus: domain.PolicyStatus(req.PolicyStatus), PolicyComment: req.PolicyComment, Description: req.Description,
 	})
 	if err != nil {
 		h.fail(w, r, err)
@@ -92,6 +93,7 @@ type productPatchRequest struct {
 	Edition       *string              `json:"edition"`
 	AgreementID   opt.Field[uuid.UUID] `json:"agreement_id"`
 	PolicyStatus  *domain.PolicyStatus `json:"policy_status"`
+	PolicyComment *string              `json:"policy_comment"`
 	Description   *string              `json:"description"`
 	Archived      *bool                `json:"archived"`
 }
@@ -123,6 +125,7 @@ func (h *handler) updatePolicy(w http.ResponseWriter, r *http.Request) {
 	}
 	var req struct {
 		PolicyStatus domain.PolicyStatus `json:"policy_status"`
+		Comment      *string             `json:"comment"`
 	}
 	if err := httpx.Decode(w, r, &req); err != nil {
 		h.fail(w, r, err)
@@ -132,7 +135,7 @@ func (h *handler) updatePolicy(w http.ResponseWriter, r *http.Request) {
 		h.fail(w, r, apperr.Invalid("policy_status is required"))
 		return
 	}
-	p, err := h.svc.UpdateProduct(r.Context(), id, domain.ProductPatch{PolicyStatus: &req.PolicyStatus})
+	p, err := h.svc.UpdateProduct(r.Context(), id, domain.ProductPatch{PolicyStatus: &req.PolicyStatus, PolicyComment: req.Comment})
 	if err != nil {
 		h.fail(w, r, err)
 		return

@@ -36,6 +36,7 @@ type ProductInput struct {
 	Edition       *string
 	AgreementID   *uuid.UUID
 	PolicyStatus  domain.PolicyStatus
+	PolicyComment *string
 	Description   *string
 }
 
@@ -53,6 +54,10 @@ func (s *Service) CreateProduct(ctx context.Context, in ProductInput) (domain.Pr
 	if !in.PolicyStatus.Valid() {
 		return domain.Product{}, apperr.Invalid("unknown policy_status")
 	}
+	in.PolicyComment = trimmed(in.PolicyComment)
+	if in.PolicyStatus == domain.PolicyForbidden && in.PolicyComment == nil {
+		return domain.Product{}, apperr.Invalid("policy_comment is required for FORBIDDEN software")
+	}
 	p := domain.Product{
 		ID:            uuid.New(),
 		CanonicalName: name,
@@ -60,6 +65,7 @@ func (s *Service) CreateProduct(ctx context.Context, in ProductInput) (domain.Pr
 		Edition:       trimmed(in.Edition),
 		AgreementID:   in.AgreementID,
 		PolicyStatus:  in.PolicyStatus,
+		PolicyComment: in.PolicyComment,
 		Description:   trimmed(in.Description),
 	}
 	if err := s.products.Create(ctx, p); err != nil {
@@ -74,6 +80,19 @@ func (s *Service) UpdateProduct(ctx context.Context, id uuid.UUID, p domain.Prod
 	}
 	if err := p.Validate(); err != nil {
 		return domain.Product{}, err
+	}
+	if p.PolicyStatus != nil && *p.PolicyStatus == domain.PolicyForbidden {
+		comment := p.PolicyComment
+		if comment == nil {
+			current, err := s.products.Get(ctx, id)
+			if err != nil {
+				return domain.Product{}, err
+			}
+			comment = current.PolicyComment
+		}
+		if trimmed(comment) == nil {
+			return domain.Product{}, apperr.Invalid("policy_comment is required for FORBIDDEN software")
+		}
 	}
 	err := s.withProducts(ctx, []uuid.UUID{id}, func(ctx context.Context) error {
 		if err := s.products.Update(ctx, id, p); err != nil {
@@ -151,7 +170,7 @@ func (s *Service) SetVersionLifecycle(ctx context.Context, productID, versionID 
 }
 
 func (s *Service) Aliases(ctx context.Context, productID uuid.UUID) ([]domain.Alias, error) {
-	if _, err := requirePrivileged(ctx); err != nil {
+	if _, err := requireAdmin(ctx); err != nil {
 		return nil, err
 	}
 	return s.aliases.ByProduct(ctx, productID)

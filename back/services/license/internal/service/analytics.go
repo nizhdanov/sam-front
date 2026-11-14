@@ -12,7 +12,7 @@ func (s *Service) Dashboard(ctx context.Context) (domain.Dashboard, error) {
 	if err != nil {
 		return domain.Dashboard{}, err
 	}
-	if !c.IsPrivileged() {
+	if !c.IsAdmin() {
 		employee := employeeOf(c)
 		if employee == nil {
 			return domain.Dashboard{}, apperr.Forbidden("user is not linked to an employee")
@@ -46,14 +46,14 @@ func (s *Service) Dashboard(ctx context.Context) (domain.Dashboard, error) {
 }
 
 func (s *Service) SoftwareAnalytics(ctx context.Context, limit int) ([]domain.SoftwareUsage, error) {
-	if _, err := requirePrivileged(ctx); err != nil {
+	if _, err := requireAdmin(ctx); err != nil {
 		return nil, err
 	}
 	return s.analytics.Software(ctx, limit)
 }
 
 func (s *Service) DepartmentAnalytics(ctx context.Context) ([]domain.DepartmentStats, error) {
-	if _, err := requirePrivileged(ctx); err != nil {
+	if _, err := requireAdmin(ctx); err != nil {
 		return nil, err
 	}
 	return s.analytics.Departments(ctx)

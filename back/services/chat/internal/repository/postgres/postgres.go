@@ -125,4 +125,3 @@ func (r *Messages) Recent(ctx context.Context, conversationID uuid.UUID, limit i
 	}
 	return pgx.CollectRows(rows, scanMessage)
 }
-

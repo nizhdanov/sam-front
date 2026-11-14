@@ -21,7 +21,7 @@ func NewProducts(pool *pgxpool.Pool) *Products { return &Products{pool: pool} }
 
 const productSelect = `
 	SELECT p.id, p.canonical_name, p.publisher, p.edition, p.agreement_id, a.name, a.license_type, p.policy_status,
-	       p.description,
+	       p.policy_comment, p.description,
 	       (SELECT COUNT(*) FROM installations i WHERE i.product_id = p.id AND i.is_active),
 	       p.archived_at, p.created_at, p.updated_at
 	FROM software_products p
@@ -30,7 +30,7 @@ const productSelect = `
 func scanProduct(row scanner) (domain.Product, error) {
 	var p domain.Product
 	err := row.Scan(&p.ID, &p.CanonicalName, &p.Publisher, &p.Edition, &p.AgreementID, &p.AgreementName, &p.LicenseType,
-		&p.PolicyStatus, &p.Description, &p.Installations, &p.ArchivedAt, &p.CreatedAt, &p.UpdatedAt)
+		&p.PolicyStatus, &p.PolicyComment, &p.Description, &p.Installations, &p.ArchivedAt, &p.CreatedAt, &p.UpdatedAt)
 	return p, err
 }
 
@@ -75,12 +75,15 @@ func (r *Products) GetMany(ctx context.Context, ids []uuid.UUID) ([]domain.Produ
 func (r *Products) Create(ctx context.Context, p domain.Product) error {
 	_, err := pg.DB(ctx, r.pool).Exec(ctx, `
 		INSERT INTO software_products (id, canonical_name, normalized_name, publisher, normalized_publisher, edition,
-		                               agreement_id, policy_status, description)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+		                               agreement_id, policy_status, policy_comment, description)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
 		p.ID, p.CanonicalName, swkey.Normalize(p.CanonicalName), p.Publisher, swkey.NormalizePublisher(value(p.Publisher)),
-		p.Edition, p.AgreementID, p.PolicyStatus, p.Description)
+		p.Edition, p.AgreementID, p.PolicyStatus, p.PolicyComment, p.Description)
 	if pg.IsForeignKeyViolation(err) {
 		return apperr.Invalid("agreement does not exist")
+	}
+	if pg.IsUniqueViolation(err) {
+		return apperr.Conflict("product with the same name, publisher and edition already exists")
 	}
 	if err != nil {
 		return fmt.Errorf("create product: %w", err)
@@ -107,6 +110,9 @@ func (r *Products) Update(ctx context.Context, id uuid.UUID, p domain.ProductPat
 	}
 	if p.PolicyStatus != nil {
 		s.add("policy_status", *p.PolicyStatus)
+	}
+	if p.PolicyComment != nil {
+		s.add("policy_comment", nonEmpty(*p.PolicyComment))
 	}
 	if p.Description != nil {
 		s.add("description", nonEmpty(*p.Description))

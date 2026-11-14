@@ -16,7 +16,7 @@ import (
 const maxAgreementText = 200_000
 
 func (s *Service) ListAgreements(ctx context.Context, page httpx.PageRequest) ([]domain.Agreement, int, error) {
-	if _, err := requirePrivileged(ctx); err != nil {
+	if _, err := requireAdmin(ctx); err != nil {
 		return nil, 0, err
 	}
 	items, total, err := s.agreements.List(ctx, page)
@@ -27,7 +27,7 @@ func (s *Service) ListAgreements(ctx context.Context, page httpx.PageRequest) ([
 }
 
 func (s *Service) GetAgreement(ctx context.Context, id uuid.UUID) (domain.Agreement, error) {
-	if _, err := requirePrivileged(ctx); err != nil {
+	if _, err := requireAdmin(ctx); err != nil {
 		return domain.Agreement{}, err
 	}
 	return s.agreements.Get(ctx, id)
@@ -124,7 +124,7 @@ func (s *Service) AnalyzeAgreement(ctx context.Context, id uuid.UUID, force bool
 }
 
 func (s *Service) LatestAnalysis(ctx context.Context, id uuid.UUID) (domain.AgreementAnalysis, error) {
-	if _, err := requirePrivileged(ctx); err != nil {
+	if _, err := requireAdmin(ctx); err != nil {
 		return domain.AgreementAnalysis{}, err
 	}
 	return s.agreements.LatestAnalysis(ctx, id, "")
