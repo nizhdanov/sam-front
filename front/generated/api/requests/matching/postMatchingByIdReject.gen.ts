@@ -4,7 +4,7 @@ import type { AxiosRequestParams, ApicraftAxiosResponse } from "@siberiacancode/
 
 import type { PostApiV1MatchingByIdRejectData } from "..\\..\\types.gen";
 
-import { instance } from "..\\..\\instance.gen";
+import { instance } from "..\\..\\..\\..\\src\\utils\\lib\\instance";
 
 export type PostMatchingByIdRejectRequestParams = AxiosRequestParams<PostApiV1MatchingByIdRejectData>;
 

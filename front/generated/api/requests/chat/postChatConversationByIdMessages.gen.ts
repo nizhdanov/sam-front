@@ -4,7 +4,7 @@ import type { AxiosRequestParams, ApicraftAxiosResponse } from "@siberiacancode/
 
 import type { PostApiV1ChatConversationsByIdMessagesData, PostApiV1ChatConversationsByIdMessagesResponse, PostApiV1ChatConversationsByIdMessagesError } from "..\\..\\types.gen";
 
-import { instance } from "..\\..\\instance.gen";
+import { instance } from "..\\..\\..\\..\\src\\utils\\lib\\instance";
 
 export type PostChatConversationByIdMessagesRequestParams = AxiosRequestParams<PostApiV1ChatConversationsByIdMessagesData>;
 

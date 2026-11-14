@@ -4,7 +4,7 @@ import type { AxiosRequestParams, ApicraftAxiosResponse } from "@siberiacancode/
 
 import type { DeleteApiV1ChatConversationsByIdData, DeleteApiV1ChatConversationsByIdResponse } from "..\\..\\types.gen";
 
-import { instance } from "..\\..\\instance.gen";
+import { instance } from "..\\..\\..\\..\\src\\utils\\lib\\instance";
 
 export type DeleteChatConversationByIdRequestParams = AxiosRequestParams<DeleteApiV1ChatConversationsByIdData>;
 

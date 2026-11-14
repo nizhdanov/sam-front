@@ -4,7 +4,7 @@ import type { AxiosRequestParams, ApicraftAxiosResponse } from "@siberiacancode/
 
 import type { PostApiV1AgreementsByIdAnalyzeData, PostApiV1AgreementsByIdAnalyzeResponse, PostApiV1AgreementsByIdAnalyzeError } from "..\\..\\types.gen";
 
-import { instance } from "..\\..\\instance.gen";
+import { instance } from "..\\..\\..\\..\\src\\utils\\lib\\instance";
 
 export type PostAgreementByIdAnalyzeRequestParams = AxiosRequestParams<PostApiV1AgreementsByIdAnalyzeData>;
 

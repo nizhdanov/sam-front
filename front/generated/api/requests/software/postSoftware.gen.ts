@@ -4,7 +4,7 @@ import type { AxiosRequestParams, ApicraftAxiosResponse } from "@siberiacancode/
 
 import type { PostApiV1SoftwareData, PostApiV1SoftwareResponse, PostApiV1SoftwareError } from "..\\..\\types.gen";
 
-import { instance } from "..\\..\\instance.gen";
+import { instance } from "..\\..\\..\\..\\src\\utils\\lib\\instance";
 
 export type PostSoftwareRequestParams = AxiosRequestParams<PostApiV1SoftwareData>;
 

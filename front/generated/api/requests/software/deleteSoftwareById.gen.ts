@@ -4,7 +4,7 @@ import type { AxiosRequestParams, ApicraftAxiosResponse } from "@siberiacancode/
 
 import type { DeleteApiV1SoftwareByIdData, DeleteApiV1SoftwareByIdResponse, DeleteApiV1SoftwareByIdError } from "..\\..\\types.gen";
 
-import { instance } from "..\\..\\instance.gen";
+import { instance } from "..\\..\\..\\..\\src\\utils\\lib\\instance";
 
 export type DeleteSoftwareByIdRequestParams = AxiosRequestParams<DeleteApiV1SoftwareByIdData>;
 

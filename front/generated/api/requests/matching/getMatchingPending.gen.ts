@@ -4,7 +4,7 @@ import type { AxiosRequestParams, ApicraftAxiosResponse } from "@siberiacancode/
 
 import type { GetApiV1MatchingPendingData, GetApiV1MatchingPendingResponse } from "..\\..\\types.gen";
 
-import { instance } from "..\\..\\instance.gen";
+import { instance } from "..\\..\\..\\..\\src\\utils\\lib\\instance";
 
 export type GetMatchingPendingRequestParams = AxiosRequestParams<GetApiV1MatchingPendingData> | void;
 

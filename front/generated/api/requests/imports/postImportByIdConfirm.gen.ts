@@ -4,7 +4,7 @@ import type { AxiosRequestParams, ApicraftAxiosResponse } from "@siberiacancode/
 
 import type { PostApiV1ImportsByIdConfirmData, PostApiV1ImportsByIdConfirmResponse, PostApiV1ImportsByIdConfirmError } from "..\\..\\types.gen";
 
-import { instance } from "..\\..\\instance.gen";
+import { instance } from "..\\..\\..\\..\\src\\utils\\lib\\instance";
 
 export type PostImportByIdConfirmRequestParams = AxiosRequestParams<PostApiV1ImportsByIdConfirmData>;
 

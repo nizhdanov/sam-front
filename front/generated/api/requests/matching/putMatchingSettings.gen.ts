@@ -4,7 +4,7 @@ import type { AxiosRequestParams, ApicraftAxiosResponse } from "@siberiacancode/
 
 import type { PutApiV1MatchingSettingsData, PutApiV1MatchingSettingsResponse } from "..\\..\\types.gen";
 
-import { instance } from "..\\..\\instance.gen";
+import { instance } from "..\\..\\..\\..\\src\\utils\\lib\\instance";
 
 export type PutMatchingSettingsRequestParams = AxiosRequestParams<PutApiV1MatchingSettingsData>;
 

@@ -4,7 +4,7 @@ import type { AxiosRequestParams, ApicraftAxiosResponse } from "@siberiacancode/
 
 import type { PatchApiV1SoftwareByIdData, PatchApiV1SoftwareByIdResponse } from "..\\..\\types.gen";
 
-import { instance } from "..\\..\\instance.gen";
+import { instance } from "..\\..\\..\\..\\src\\utils\\lib\\instance";
 
 export type PatchSoftwareByIdRequestParams = AxiosRequestParams<PatchApiV1SoftwareByIdData>;
 
