@@ -2,13 +2,13 @@
 
 import type { AxiosRequestParams, ApicraftAxiosResponse } from "@siberiacancode/apicraft";
 
-import type { PostApiV1SoftwareData, PostApiV1SoftwareError } from "..\\..\\types.gen";
+import type { PostApiV1SoftwareData, PostApiV1SoftwareResponse, PostApiV1SoftwareError } from "..\\..\\types.gen";
 
 import { instance } from "..\\..\\instance.gen";
 
 export type PostSoftwareRequestParams = AxiosRequestParams<PostApiV1SoftwareData>;
 
-export const postSoftware = ({ config, body }: PostSoftwareRequestParams): Promise<ApicraftAxiosResponse<never, PostApiV1SoftwareError>> => instance.request({
+export const postSoftware = ({ config, body }: PostSoftwareRequestParams): Promise<ApicraftAxiosResponse<PostApiV1SoftwareResponse, PostApiV1SoftwareError>> => instance.request({
     method: "POST",
     url: "/software",
     data: body,

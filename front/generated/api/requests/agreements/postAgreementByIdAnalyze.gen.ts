@@ -2,13 +2,13 @@
 
 import type { AxiosRequestParams, ApicraftAxiosResponse } from "@siberiacancode/apicraft";
 
-import type { PostApiV1AgreementsByIdAnalyzeData, PostApiV1AgreementsByIdAnalyzeError } from "..\\..\\types.gen";
+import type { PostApiV1AgreementsByIdAnalyzeData, PostApiV1AgreementsByIdAnalyzeResponse, PostApiV1AgreementsByIdAnalyzeError } from "..\\..\\types.gen";
 
 import { instance } from "..\\..\\instance.gen";
 
 export type PostAgreementByIdAnalyzeRequestParams = AxiosRequestParams<PostApiV1AgreementsByIdAnalyzeData>;
 
-export const postAgreementByIdAnalyze = ({ config, query, path }: PostAgreementByIdAnalyzeRequestParams): Promise<ApicraftAxiosResponse<never, PostApiV1AgreementsByIdAnalyzeError>> => instance.request({
+export const postAgreementByIdAnalyze = ({ config, query, path }: PostAgreementByIdAnalyzeRequestParams): Promise<ApicraftAxiosResponse<PostApiV1AgreementsByIdAnalyzeResponse, PostApiV1AgreementsByIdAnalyzeError>> => instance.request({
     method: "POST",
     url: `/agreements/${path.id}/analyze`,
     params: query,

@@ -2,13 +2,13 @@
 
 import type { AxiosRequestParams, ApicraftAxiosResponse } from "@siberiacancode/apicraft";
 
-import type { PostApiV1AgreementsData } from "..\\..\\types.gen";
+import type { PostApiV1AgreementsData, PostApiV1AgreementsResponse } from "..\\..\\types.gen";
 
 import { instance } from "..\\..\\instance.gen";
 
 export type PostAgreementsRequestParams = AxiosRequestParams<PostApiV1AgreementsData>;
 
-export const postAgreements = ({ config, body }: PostAgreementsRequestParams): Promise<ApicraftAxiosResponse> => instance.request({
+export const postAgreements = ({ config, body }: PostAgreementsRequestParams): Promise<ApicraftAxiosResponse<PostApiV1AgreementsResponse>> => instance.request({
     method: "POST",
     url: "/agreements",
     data: body,

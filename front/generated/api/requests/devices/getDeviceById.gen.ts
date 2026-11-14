@@ -2,13 +2,13 @@
 
 import type { AxiosRequestParams, ApicraftAxiosResponse } from "@siberiacancode/apicraft";
 
-import type { GetApiV1DevicesByIdData, GetApiV1DevicesByIdError } from "..\\..\\types.gen";
+import type { GetApiV1DevicesByIdData, GetApiV1DevicesByIdResponse, GetApiV1DevicesByIdError } from "..\\..\\types.gen";
 
 import { instance } from "..\\..\\instance.gen";
 
 export type GetDeviceByIdRequestParams = AxiosRequestParams<GetApiV1DevicesByIdData>;
 
-export const getDeviceById = ({ config, path }: GetDeviceByIdRequestParams): Promise<ApicraftAxiosResponse<never, GetApiV1DevicesByIdError>> => instance.request({
+export const getDeviceById = ({ config, path }: GetDeviceByIdRequestParams): Promise<ApicraftAxiosResponse<GetApiV1DevicesByIdResponse, GetApiV1DevicesByIdError>> => instance.request({
     method: "GET",
     url: `/devices/${path.id}`,
     ...config

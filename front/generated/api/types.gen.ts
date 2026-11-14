@@ -22,18 +22,27 @@ export type Page = {
     pagination?: Pagination;
 };
 
-export type ImportPage = {
-    items?: Array<Import>;
-    pagination?: Pagination;
-};
+export type ProductStatus = 'ACTUAL' | 'OUTDATED' | 'FORBIDDEN';
+
+export type LicenseType = 'OPEN_SOURCE' | 'COMMERCIAL' | 'TRIAL';
+
+/**
+ * бесплатно / платно / условно-бесплатно
+ */
+export type CostModel = 'FREE' | 'PAID' | 'SHAREWARE';
+
+export type FindingType = 'FORBIDDEN_SOFTWARE' | 'OUTDATED_SOFTWARE' | 'UNSUPPORTED_SOFTWARE' | 'UNKNOWN_SOFTWARE' | 'LICENSE_DEFICIT' | 'LICENSE_EXPIRED' | 'LICENSE_UNVERIFIED' | 'COMMERCIAL_USE_RESTRICTED';
 
 export type Import = {
     id?: string;
     filename?: string;
-    source?: 'CSV' | 'AGENT';
-    status?: 'PENDING' | 'PARSING' | 'PROCESSING' | 'COMPLETED' | 'COMPLETED_WITH_ERRORS' | 'FAILED';
+    status?: 'AWAITING_CONFIRMATION' | 'PENDING' | 'PARSING' | 'PROCESSING' | 'COMPLETED' | 'COMPLETED_WITH_ERRORS' | 'FAILED' | 'CANCELLED';
     file_size?: number;
     total_rows?: number;
+    loaded_rows?: number;
+    duplicate_rows?: number;
+    excluded_rows?: number;
+    error_rows?: number;
     total_devices?: number;
     processed_devices?: number;
     failed_devices?: number;
@@ -46,28 +55,192 @@ export type Import = {
     completed_at?: string | null;
 };
 
-export type PolicyStatus = 'ALLOWED' | 'RESTRICTED' | 'FORBIDDEN' | 'UNKNOWN';
+export type ImportPreview = {
+    delimiter?: string;
+    columns?: Array<string>;
+    rows?: Array<{
+        row?: number;
+        serial_number?: string;
+        display_name?: string;
+        publisher?: string;
+        version?: string;
+        /**
+         * KB-обновление, не попадёт в учёт
+         */
+        excluded?: boolean;
+        error?: string;
+    }>;
+};
 
-export type Lifecycle = 'CURRENT' | 'OUTDATED' | 'UNSUPPORTED' | 'UNKNOWN';
+export type DataTable = {
+    dataset?: string;
+    group_by?: string;
+    columns?: Array<string>;
+    rows?: Array<Array<unknown>>;
+    total?: number;
+    shown?: number;
+};
 
-export type LicenseInput = {
-    product_id?: string;
+export type DeviceCard = {
+    id?: string;
+    serial_number?: string;
+    device_type?: 'PHYSICAL' | 'VIRTUAL';
+    /**
+     * NEW — новое из выгрузки
+     */
+    status?: 'NEW' | 'ACTIVE';
+    hostname?: string | null;
+    operating_system?: string | null;
+    responsible?: string | null;
+    location?: string | null;
+    last_inventory_at?: string | null;
+    installations_count?: number;
+    open_findings_count?: number;
+    imports?: Array<{
+        inventory_id?: string;
+        collected_at?: string;
+        result?: 'APPLIED' | 'ALREADY_PROCESSED' | 'SUPERSEDED';
+        processed_at?: string;
+    }>;
+};
+
+export type ProductInput = {
+    canonical_name?: string;
+    publisher?: string;
+    edition?: string;
+    purpose?: string;
+    /**
+     * раздел классификатора
+     */
+    section?: string;
+    /**
+     * класс классификатора
+     */
+    class?: string;
+    /**
+     * входит в перечень БПО
+     */
+    in_bpo?: boolean;
+    /**
+     * актуальная версия; установки ниже неё — устаревшие
+     */
+    current_version?: string | null;
     agreement_id?: string | null;
-    license_metric?: 'PER_DEVICE' | 'PER_USER' | 'UNLIMITED' | 'CONCURRENT' | 'UNKNOWN';
-    quantity?: number;
-    unit_price?: number | null;
-    currency?: string | null;
-    valid_from?: string | null;
-    expires_at?: string | null;
-    purchase_reference?: string | null;
+    status?: ProductStatus;
+    /**
+     * обязателен для FORBIDDEN
+     */
+    status_comment?: string;
+};
+
+export type Product = ProductInput & {
+    id?: string;
+    agreement_name?: string | null;
+    license_type?: LicenseType;
+    cost_model?: CostModel;
+    /**
+     * мест по действующим договорам
+     */
+    purchased_seats?: number;
+    active_installations?: number;
+    devices?: number;
+    archived_at?: string | null;
 };
 
 export type AgreementInput = {
     name?: string;
-    license_type?: 'COMMERCIAL' | 'FREEWARE' | 'OPEN_SOURCE' | 'TRIAL' | 'PROPRIETARY' | 'UNKNOWN';
+    license_type?: LicenseType;
+    cost_model?: CostModel;
     agreement_text?: string | null;
     source_url?: string | null;
     commercial_allowed?: boolean | null;
+};
+
+export type Agreement = AgreementInput & {
+    id?: string;
+    file_name?: string | null;
+    review_status?: string;
+    products_count?: number;
+};
+
+export type Analysis = {
+    id?: string;
+    agreement_id?: string;
+    model?: string;
+    prompt_version?: string;
+    status?: 'DRAFT' | 'APPROVED';
+    paragraphs?: Array<string>;
+    similar_agreements?: Array<{
+        id?: string;
+        name?: string;
+        license_type?: string;
+        cost_model?: string;
+        similarity?: number;
+    }>;
+    result?: {
+        license_type?: string | null;
+        cost_model?: string | null;
+        commercial_use?: {
+            value?: 'YES' | 'NO' | 'UNDEFINED';
+            paragraphs?: Array<number>;
+            quote?: string;
+        };
+        subscriptions?: Array<{
+            [key: string]: unknown;
+        }>;
+        restrictions?: Array<{
+            [key: string]: unknown;
+        }>;
+        risks?: Array<{
+            [key: string]: unknown;
+        }>;
+        summary?: string;
+    };
+};
+
+export type ContractInput = {
+    product_id?: string;
+    agreement_id?: string | null;
+    license_metric?: 'PER_DEVICE' | 'UNLIMITED' | 'CONCURRENT' | 'UNKNOWN';
+    quantity?: number;
+    valid_from?: string | null;
+    expires_at?: string | null;
+    /**
+     * номер договора
+     */
+    purchase_reference?: string | null;
+};
+
+export type Dashboard = {
+    devices?: number;
+    new_devices?: number;
+    installations?: number;
+    recognized_installations?: number;
+    recognized_percent?: number;
+    pending_review?: number;
+    license_deficit?: {
+        products?: number;
+        seats?: number;
+    };
+    idle_licenses?: {
+        products?: number;
+        seats?: number;
+    };
+    forbidden_software?: {
+        installations?: number;
+        devices?: number;
+    };
+    outdated_software?: {
+        installations?: number;
+        devices?: number;
+    };
+    expiring_contracts?: number;
+    expiring_within_days?: number;
+};
+
+export type MatchingSettings = {
+    auto_apply_confidence?: number;
+    fuzzy_auto_threshold?: number;
 };
 
 export type Id = string;
@@ -90,7 +263,10 @@ export type GetApiV1ImportsResponses = {
     /**
      * OK
      */
-    200: ImportPage;
+    200: {
+        items?: Array<Import>;
+        pagination?: Pagination;
+    };
 };
 
 export type GetApiV1ImportsResponse = GetApiV1ImportsResponses[keyof GetApiV1ImportsResponses];
@@ -98,10 +274,13 @@ export type GetApiV1ImportsResponse = GetApiV1ImportsResponses[keyof GetApiV1Imp
 export type PostApiV1ImportsData = {
     body: {
         file: Blob | File;
-        collected_at?: string;
     };
     path?: never;
     query?: {
+        confirm?: boolean;
+        /**
+         * Дата выгрузки; по умолчанию — момент загрузки
+         */
         collected_at?: string;
     };
     url: '/api/v1/imports';
@@ -109,11 +288,11 @@ export type PostApiV1ImportsData = {
 
 export type PostApiV1ImportsErrors = {
     /**
-     * Error
+     * Ошибка
      */
     400: _Error;
     /**
-     * Error
+     * Ошибка
      */
     413: _Error;
 };
@@ -122,12 +301,13 @@ export type PostApiV1ImportsError = PostApiV1ImportsErrors[keyof PostApiV1Import
 
 export type PostApiV1ImportsResponses = {
     /**
-     * Accepted
+     * Файл принят
      */
     202: {
         import_id?: string;
-        status?: string;
+        status?: 'AWAITING_CONFIRMATION' | 'PENDING';
         filename?: string;
+        preview?: ImportPreview;
     };
 };
 
@@ -144,7 +324,7 @@ export type GetApiV1ImportsByIdData = {
 
 export type GetApiV1ImportsByIdErrors = {
     /**
-     * Error
+     * Ошибка
      */
     404: _Error;
 };
@@ -159,6 +339,78 @@ export type GetApiV1ImportsByIdResponses = {
 };
 
 export type GetApiV1ImportsByIdResponse = GetApiV1ImportsByIdResponses[keyof GetApiV1ImportsByIdResponses];
+
+export type GetApiV1ImportsByIdPreviewData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/imports/{id}/preview';
+};
+
+export type GetApiV1ImportsByIdPreviewResponses = {
+    /**
+     * OK
+     */
+    200: ImportPreview;
+};
+
+export type GetApiV1ImportsByIdPreviewResponse = GetApiV1ImportsByIdPreviewResponses[keyof GetApiV1ImportsByIdPreviewResponses];
+
+export type PostApiV1ImportsByIdConfirmData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/imports/{id}/confirm';
+};
+
+export type PostApiV1ImportsByIdConfirmErrors = {
+    /**
+     * Ошибка
+     */
+    409: _Error;
+};
+
+export type PostApiV1ImportsByIdConfirmError = PostApiV1ImportsByIdConfirmErrors[keyof PostApiV1ImportsByIdConfirmErrors];
+
+export type PostApiV1ImportsByIdConfirmResponses = {
+    /**
+     * OK
+     */
+    200: Import;
+};
+
+export type PostApiV1ImportsByIdConfirmResponse = PostApiV1ImportsByIdConfirmResponses[keyof PostApiV1ImportsByIdConfirmResponses];
+
+export type PostApiV1ImportsByIdCancelData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/imports/{id}/cancel';
+};
+
+export type PostApiV1ImportsByIdCancelErrors = {
+    /**
+     * Ошибка
+     */
+    409: _Error;
+};
+
+export type PostApiV1ImportsByIdCancelError = PostApiV1ImportsByIdCancelErrors[keyof PostApiV1ImportsByIdCancelErrors];
+
+export type PostApiV1ImportsByIdCancelResponses = {
+    /**
+     * OK
+     */
+    200: Import;
+};
+
+export type PostApiV1ImportsByIdCancelResponse = PostApiV1ImportsByIdCancelResponses[keyof PostApiV1ImportsByIdCancelResponses];
 
 export type GetApiV1ImportsByIdErrorsData = {
     body?: never;
@@ -192,84 +444,99 @@ export type PostApiV1ImportsByIdRetryData = {
 
 export type PostApiV1ImportsByIdRetryResponses = {
     /**
-     * Accepted
+     * OK
      */
     202: Import;
 };
 
 export type PostApiV1ImportsByIdRetryResponse = PostApiV1ImportsByIdRetryResponses[keyof PostApiV1ImportsByIdRetryResponses];
 
-export type PostApiV1AgentInventoryData = {
+export type GetApiV1DataByDatasetData = {
+    body?: never;
+    path: {
+        dataset: 'installations' | 'devices' | 'products' | 'contracts' | 'findings';
+    };
+    query?: {
+        group_by?: string;
+        limit?: number;
+        format?: 'json' | 'csv' | 'xlsx';
+        product?: string;
+        product_id?: string;
+        serial_number?: string;
+        recognized?: boolean;
+        status?: string;
+        finding_type?: FindingType;
+    };
+    url: '/api/v1/data/{dataset}';
+};
+
+export type GetApiV1DataByDatasetErrors = {
+    /**
+     * Ошибка
+     */
+    400: _Error;
+    /**
+     * Ошибка
+     */
+    403: _Error;
+};
+
+export type GetApiV1DataByDatasetError = GetApiV1DataByDatasetErrors[keyof GetApiV1DataByDatasetErrors];
+
+export type GetApiV1DataByDatasetResponses = {
+    /**
+     * Таблица или файл
+     */
+    200: DataTable;
+};
+
+export type GetApiV1DataByDatasetResponse = GetApiV1DataByDatasetResponses[keyof GetApiV1DataByDatasetResponses];
+
+export type PostApiV1ExportData = {
     body: {
-        serial_number: string;
-        collected_at?: string;
-        snapshot_type?: 'FULL' | 'PARTIAL';
-        software: Array<{
-            display_name: string;
-            publisher?: string;
-            version?: string;
-        }>;
+        title?: string;
+        format?: 'xlsx' | 'csv';
+        columns: Array<string>;
+        rows: Array<Array<unknown>>;
     };
     path?: never;
     query?: never;
-    url: '/api/v1/agent/inventory';
+    url: '/api/v1/export';
 };
 
-export type PostApiV1AgentInventoryResponses = {
+export type PostApiV1ExportResponses = {
     /**
-     * Accepted
+     * Файл
      */
-    202: {
-        import_id?: string;
-        status?: string;
-        filename?: string;
-    };
+    200: Blob | File;
 };
 
-export type PostApiV1AgentInventoryResponse = PostApiV1AgentInventoryResponses[keyof PostApiV1AgentInventoryResponses];
+export type PostApiV1ExportResponse = PostApiV1ExportResponses[keyof PostApiV1ExportResponses];
 
-export type GetApiV1MeDevicesData = {
+export type GetApiV1MeDeviceData = {
     body?: never;
     path?: never;
-    query?: {
-        page?: number;
-        limit?: number;
-    };
-    url: '/api/v1/me/devices';
+    query?: never;
+    url: '/api/v1/me/device';
 };
 
-export type GetApiV1MeDevicesResponses = {
+export type GetApiV1MeDeviceErrors = {
+    /**
+     * Ошибка
+     */
+    403: _Error;
+};
+
+export type GetApiV1MeDeviceError = GetApiV1MeDeviceErrors[keyof GetApiV1MeDeviceErrors];
+
+export type GetApiV1MeDeviceResponses = {
     /**
      * OK
      */
-    200: Page;
+    200: DeviceCard;
 };
 
-export type GetApiV1MeDevicesResponse = GetApiV1MeDevicesResponses[keyof GetApiV1MeDevicesResponses];
-
-export type GetApiV1DevicesData = {
-    body?: never;
-    path?: never;
-    query?: {
-        page?: number;
-        limit?: number;
-        search?: string;
-        serial_number?: string;
-        department?: string;
-        employee_id?: string;
-        has_violations?: boolean;
-    };
-    url: '/api/v1/devices';
-};
-
-export type GetApiV1DevicesResponses = {
-    /**
-     * OK
-     */
-    200: Page;
-};
-
-export type GetApiV1DevicesResponse = GetApiV1DevicesResponses[keyof GetApiV1DevicesResponses];
+export type GetApiV1MeDeviceResponse = GetApiV1MeDeviceResponses[keyof GetApiV1MeDeviceResponses];
 
 export type GetApiV1DevicesByIdData = {
     body?: never;
@@ -282,7 +549,7 @@ export type GetApiV1DevicesByIdData = {
 
 export type GetApiV1DevicesByIdErrors = {
     /**
-     * Error
+     * Ошибка
      */
     404: _Error;
 };
@@ -293,18 +560,18 @@ export type GetApiV1DevicesByIdResponses = {
     /**
      * OK
      */
-    200: {
-        [key: string]: unknown;
-    };
+    200: DeviceCard;
 };
 
 export type GetApiV1DevicesByIdResponse = GetApiV1DevicesByIdResponses[keyof GetApiV1DevicesByIdResponses];
 
 export type PatchApiV1DevicesByIdData = {
     body?: {
-        hostname?: string;
-        operating_system?: string;
-        employee_id?: string | null;
+        device_type?: 'PHYSICAL' | 'VIRTUAL';
+        status?: 'NEW' | 'ACTIVE';
+        hostname?: string | null;
+        responsible?: string | null;
+        location?: string | null;
     };
     path: {
         id: string;
@@ -317,164 +584,10 @@ export type PatchApiV1DevicesByIdResponses = {
     /**
      * OK
      */
-    200: {
-        [key: string]: unknown;
-    };
+    200: DeviceCard;
 };
 
 export type PatchApiV1DevicesByIdResponse = PatchApiV1DevicesByIdResponses[keyof PatchApiV1DevicesByIdResponses];
-
-export type GetApiV1DevicesByIdSoftwareData = {
-    body?: never;
-    path: {
-        id: string;
-    };
-    query?: {
-        page?: number;
-        limit?: number;
-        include_removed?: boolean;
-    };
-    url: '/api/v1/devices/{id}/software';
-};
-
-export type GetApiV1DevicesByIdSoftwareResponses = {
-    /**
-     * OK
-     */
-    200: Page;
-};
-
-export type GetApiV1DevicesByIdSoftwareResponse = GetApiV1DevicesByIdSoftwareResponses[keyof GetApiV1DevicesByIdSoftwareResponses];
-
-export type GetApiV1DevicesByIdComplianceData = {
-    body?: never;
-    path: {
-        id: string;
-    };
-    query?: {
-        page?: number;
-        limit?: number;
-    };
-    url: '/api/v1/devices/{id}/compliance';
-};
-
-export type GetApiV1DevicesByIdComplianceResponses = {
-    /**
-     * OK
-     */
-    200: Page;
-};
-
-export type GetApiV1DevicesByIdComplianceResponse = GetApiV1DevicesByIdComplianceResponses[keyof GetApiV1DevicesByIdComplianceResponses];
-
-export type GetApiV1EmployeesData = {
-    body?: never;
-    path?: never;
-    query?: {
-        page?: number;
-        limit?: number;
-        search?: string;
-        department?: string;
-    };
-    url: '/api/v1/employees';
-};
-
-export type GetApiV1EmployeesResponses = {
-    /**
-     * OK
-     */
-    200: Page;
-};
-
-export type GetApiV1EmployeesResponse = GetApiV1EmployeesResponses[keyof GetApiV1EmployeesResponses];
-
-export type GetApiV1EmployeesByIdData = {
-    body?: never;
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/api/v1/employees/{id}';
-};
-
-export type GetApiV1EmployeesByIdResponses = {
-    /**
-     * OK
-     */
-    200: {
-        [key: string]: unknown;
-    };
-};
-
-export type GetApiV1EmployeesByIdResponse = GetApiV1EmployeesByIdResponses[keyof GetApiV1EmployeesByIdResponses];
-
-export type PatchApiV1EmployeesByIdData = {
-    body?: {
-        full_name?: string;
-        department?: string;
-        position?: string;
-        email?: string;
-        is_active?: boolean;
-    };
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/api/v1/employees/{id}';
-};
-
-export type PatchApiV1EmployeesByIdResponses = {
-    /**
-     * OK
-     */
-    200: {
-        [key: string]: unknown;
-    };
-};
-
-export type PatchApiV1EmployeesByIdResponse = PatchApiV1EmployeesByIdResponses[keyof PatchApiV1EmployeesByIdResponses];
-
-export type GetApiV1EmployeesByIdDevicesData = {
-    body?: never;
-    path: {
-        id: string;
-    };
-    query?: {
-        page?: number;
-        limit?: number;
-    };
-    url: '/api/v1/employees/{id}/devices';
-};
-
-export type GetApiV1EmployeesByIdDevicesResponses = {
-    /**
-     * OK
-     */
-    200: Page;
-};
-
-export type GetApiV1EmployeesByIdDevicesResponse = GetApiV1EmployeesByIdDevicesResponses[keyof GetApiV1EmployeesByIdDevicesResponses];
-
-export type GetApiV1EmployeesByIdSoftwareData = {
-    body?: never;
-    path: {
-        id: string;
-    };
-    query?: {
-        page?: number;
-        limit?: number;
-    };
-    url: '/api/v1/employees/{id}/software';
-};
-
-export type GetApiV1EmployeesByIdSoftwareResponses = {
-    /**
-     * OK
-     */
-    200: Page;
-};
-
-export type GetApiV1EmployeesByIdSoftwareResponse = GetApiV1EmployeesByIdSoftwareResponses[keyof GetApiV1EmployeesByIdSoftwareResponses];
 
 export type GetApiV1SoftwareData = {
     body?: never;
@@ -483,7 +596,12 @@ export type GetApiV1SoftwareData = {
         page?: number;
         limit?: number;
         search?: string;
-        policy_status?: PolicyStatus;
+        section?: string;
+        class?: string;
+        license_type?: LicenseType;
+        cost_model?: CostModel;
+        status?: ProductStatus;
+        in_bpo?: boolean;
         include_archived?: boolean;
     };
     url: '/api/v1/software';
@@ -493,20 +611,16 @@ export type GetApiV1SoftwareResponses = {
     /**
      * OK
      */
-    200: Page;
+    200: {
+        items?: Array<Product>;
+        pagination?: Pagination;
+    };
 };
 
 export type GetApiV1SoftwareResponse = GetApiV1SoftwareResponses[keyof GetApiV1SoftwareResponses];
 
 export type PostApiV1SoftwareData = {
-    body: {
-        canonical_name: string;
-        publisher?: string;
-        edition?: string;
-        agreement_id?: string;
-        policy_status?: PolicyStatus;
-        description?: string;
-    };
+    body: ProductInput;
     path?: never;
     query?: never;
     url: '/api/v1/software';
@@ -514,7 +628,11 @@ export type PostApiV1SoftwareData = {
 
 export type PostApiV1SoftwareErrors = {
     /**
-     * Error
+     * Ошибка
+     */
+    400: _Error;
+    /**
+     * Ошибка
      */
     409: _Error;
 };
@@ -525,12 +643,37 @@ export type PostApiV1SoftwareResponses = {
     /**
      * OK
      */
-    201: {
-        [key: string]: unknown;
-    };
+    201: Product;
 };
 
 export type PostApiV1SoftwareResponse = PostApiV1SoftwareResponses[keyof PostApiV1SoftwareResponses];
+
+export type DeleteApiV1SoftwareByIdData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/software/{id}';
+};
+
+export type DeleteApiV1SoftwareByIdErrors = {
+    /**
+     * Ошибка
+     */
+    409: _Error;
+};
+
+export type DeleteApiV1SoftwareByIdError = DeleteApiV1SoftwareByIdErrors[keyof DeleteApiV1SoftwareByIdErrors];
+
+export type DeleteApiV1SoftwareByIdResponses = {
+    /**
+     * Удалено
+     */
+    204: void;
+};
+
+export type DeleteApiV1SoftwareByIdResponse = DeleteApiV1SoftwareByIdResponses[keyof DeleteApiV1SoftwareByIdResponses];
 
 export type GetApiV1SoftwareByIdData = {
     body?: never;
@@ -545,21 +688,13 @@ export type GetApiV1SoftwareByIdResponses = {
     /**
      * OK
      */
-    200: {
-        [key: string]: unknown;
-    };
+    200: Product;
 };
 
 export type GetApiV1SoftwareByIdResponse = GetApiV1SoftwareByIdResponses[keyof GetApiV1SoftwareByIdResponses];
 
 export type PatchApiV1SoftwareByIdData = {
-    body?: {
-        canonical_name?: string;
-        publisher?: string;
-        edition?: string;
-        agreement_id?: string | null;
-        policy_status?: PolicyStatus;
-        description?: string;
+    body?: ProductInput & {
         archived?: boolean;
     };
     path: {
@@ -573,34 +708,10 @@ export type PatchApiV1SoftwareByIdResponses = {
     /**
      * OK
      */
-    200: {
-        [key: string]: unknown;
-    };
+    200: Product;
 };
 
 export type PatchApiV1SoftwareByIdResponse = PatchApiV1SoftwareByIdResponses[keyof PatchApiV1SoftwareByIdResponses];
-
-export type PatchApiV1SoftwareByIdPolicyData = {
-    body: {
-        policy_status: PolicyStatus;
-    };
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/api/v1/software/{id}/policy';
-};
-
-export type PatchApiV1SoftwareByIdPolicyResponses = {
-    /**
-     * OK
-     */
-    200: {
-        [key: string]: unknown;
-    };
-};
-
-export type PatchApiV1SoftwareByIdPolicyResponse = PatchApiV1SoftwareByIdPolicyResponses[keyof PatchApiV1SoftwareByIdPolicyResponses];
 
 export type GetApiV1SoftwareByIdVersionsData = {
     body?: never;
@@ -615,9 +726,11 @@ export type GetApiV1SoftwareByIdVersionsResponses = {
     /**
      * OK
      */
-    200: Array<{
-        [key: string]: unknown;
-    }>;
+    200: {
+        items?: Array<{
+            [key: string]: unknown;
+        }>;
+    };
 };
 
 export type GetApiV1SoftwareByIdVersionsResponse = GetApiV1SoftwareByIdVersionsResponses[keyof GetApiV1SoftwareByIdVersionsResponses];
@@ -625,7 +738,7 @@ export type GetApiV1SoftwareByIdVersionsResponse = GetApiV1SoftwareByIdVersionsR
 export type PostApiV1SoftwareByIdVersionsData = {
     body: {
         version: string;
-        lifecycle_status?: Lifecycle;
+        lifecycle_status?: 'CURRENT' | 'OUTDATED' | 'UNSUPPORTED' | 'UNKNOWN';
         release_date?: string;
         end_of_support?: string;
     };
@@ -649,7 +762,7 @@ export type PostApiV1SoftwareByIdVersionsResponse = PostApiV1SoftwareByIdVersion
 
 export type PatchApiV1SoftwareByIdVersionsByVersionIdData = {
     body: {
-        lifecycle_status: Lifecycle;
+        lifecycle_status?: 'CURRENT' | 'OUTDATED' | 'UNSUPPORTED' | 'UNKNOWN';
     };
     path: {
         id: string;
@@ -669,239 +782,6 @@ export type PatchApiV1SoftwareByIdVersionsByVersionIdResponses = {
 };
 
 export type PatchApiV1SoftwareByIdVersionsByVersionIdResponse = PatchApiV1SoftwareByIdVersionsByVersionIdResponses[keyof PatchApiV1SoftwareByIdVersionsByVersionIdResponses];
-
-export type GetApiV1SoftwareByIdAliasesData = {
-    body?: never;
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/api/v1/software/{id}/aliases';
-};
-
-export type GetApiV1SoftwareByIdAliasesResponses = {
-    /**
-     * OK
-     */
-    200: Array<{
-        [key: string]: unknown;
-    }>;
-};
-
-export type GetApiV1SoftwareByIdAliasesResponse = GetApiV1SoftwareByIdAliasesResponses[keyof GetApiV1SoftwareByIdAliasesResponses];
-
-export type PostApiV1SoftwareByIdAliasesData = {
-    body: {
-        raw_name: string;
-        raw_publisher?: string;
-        raw_version?: string;
-        version_id?: string;
-    };
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/api/v1/software/{id}/aliases';
-};
-
-export type PostApiV1SoftwareByIdAliasesResponses = {
-    /**
-     * OK
-     */
-    201: {
-        [key: string]: unknown;
-    };
-};
-
-export type PostApiV1SoftwareByIdAliasesResponse = PostApiV1SoftwareByIdAliasesResponses[keyof PostApiV1SoftwareByIdAliasesResponses];
-
-export type DeleteApiV1SoftwareByIdAliasesByAliasIdData = {
-    body?: never;
-    path: {
-        id: string;
-        aliasID: string;
-    };
-    query?: never;
-    url: '/api/v1/software/{id}/aliases/{aliasID}';
-};
-
-export type DeleteApiV1SoftwareByIdAliasesByAliasIdResponses = {
-    /**
-     * Deleted
-     */
-    204: void;
-};
-
-export type DeleteApiV1SoftwareByIdAliasesByAliasIdResponse = DeleteApiV1SoftwareByIdAliasesByAliasIdResponses[keyof DeleteApiV1SoftwareByIdAliasesByAliasIdResponses];
-
-export type GetApiV1SoftwareByIdInstallationsData = {
-    body?: never;
-    path: {
-        id: string;
-    };
-    query?: {
-        page?: number;
-        limit?: number;
-    };
-    url: '/api/v1/software/{id}/installations';
-};
-
-export type GetApiV1SoftwareByIdInstallationsResponses = {
-    /**
-     * OK
-     */
-    200: Page;
-};
-
-export type GetApiV1SoftwareByIdInstallationsResponse = GetApiV1SoftwareByIdInstallationsResponses[keyof GetApiV1SoftwareByIdInstallationsResponses];
-
-export type GetApiV1SoftwareByIdLicenseBalanceData = {
-    body?: never;
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/api/v1/software/{id}/license-balance';
-};
-
-export type GetApiV1SoftwareByIdLicenseBalanceResponses = {
-    /**
-     * OK
-     */
-    200: Array<{
-        [key: string]: unknown;
-    }>;
-};
-
-export type GetApiV1SoftwareByIdLicenseBalanceResponse = GetApiV1SoftwareByIdLicenseBalanceResponses[keyof GetApiV1SoftwareByIdLicenseBalanceResponses];
-
-export type GetApiV1LicensesData = {
-    body?: never;
-    path?: never;
-    query?: {
-        page?: number;
-        limit?: number;
-        product_id?: string;
-        active?: boolean;
-    };
-    url: '/api/v1/licenses';
-};
-
-export type GetApiV1LicensesErrors = {
-    /**
-     * Error
-     */
-    403: _Error;
-};
-
-export type GetApiV1LicensesError = GetApiV1LicensesErrors[keyof GetApiV1LicensesErrors];
-
-export type GetApiV1LicensesResponses = {
-    /**
-     * OK
-     */
-    200: Page;
-};
-
-export type GetApiV1LicensesResponse = GetApiV1LicensesResponses[keyof GetApiV1LicensesResponses];
-
-export type PostApiV1LicensesData = {
-    body: LicenseInput;
-    path?: never;
-    query?: never;
-    url: '/api/v1/licenses';
-};
-
-export type PostApiV1LicensesResponses = {
-    /**
-     * OK
-     */
-    201: {
-        [key: string]: unknown;
-    };
-};
-
-export type PostApiV1LicensesResponse = PostApiV1LicensesResponses[keyof PostApiV1LicensesResponses];
-
-export type GetApiV1LicensesBalanceData = {
-    body?: never;
-    path?: never;
-    query?: {
-        product_id?: string;
-    };
-    url: '/api/v1/licenses/balance';
-};
-
-export type GetApiV1LicensesBalanceResponses = {
-    /**
-     * OK
-     */
-    200: Array<{
-        [key: string]: unknown;
-    }>;
-};
-
-export type GetApiV1LicensesBalanceResponse = GetApiV1LicensesBalanceResponses[keyof GetApiV1LicensesBalanceResponses];
-
-export type GetApiV1LicensesByIdData = {
-    body?: never;
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/api/v1/licenses/{id}';
-};
-
-export type GetApiV1LicensesByIdResponses = {
-    /**
-     * OK
-     */
-    200: {
-        [key: string]: unknown;
-    };
-};
-
-export type GetApiV1LicensesByIdResponse = GetApiV1LicensesByIdResponses[keyof GetApiV1LicensesByIdResponses];
-
-export type PatchApiV1LicensesByIdData = {
-    body?: LicenseInput;
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/api/v1/licenses/{id}';
-};
-
-export type PatchApiV1LicensesByIdResponses = {
-    /**
-     * OK
-     */
-    200: {
-        [key: string]: unknown;
-    };
-};
-
-export type PatchApiV1LicensesByIdResponse = PatchApiV1LicensesByIdResponses[keyof PatchApiV1LicensesByIdResponses];
-
-export type PostApiV1LicensesByIdDeactivateData = {
-    body?: never;
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/api/v1/licenses/{id}/deactivate';
-};
-
-export type PostApiV1LicensesByIdDeactivateResponses = {
-    /**
-     * OK
-     */
-    200: {
-        [key: string]: unknown;
-    };
-};
-
-export type PostApiV1LicensesByIdDeactivateResponse = PostApiV1LicensesByIdDeactivateResponses[keyof PostApiV1LicensesByIdDeactivateResponses];
 
 export type GetApiV1AgreementsData = {
     body?: never;
@@ -933,12 +813,37 @@ export type PostApiV1AgreementsResponses = {
     /**
      * OK
      */
-    201: {
-        [key: string]: unknown;
-    };
+    201: Agreement;
 };
 
 export type PostApiV1AgreementsResponse = PostApiV1AgreementsResponses[keyof PostApiV1AgreementsResponses];
+
+export type DeleteApiV1AgreementsByIdData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/agreements/{id}';
+};
+
+export type DeleteApiV1AgreementsByIdErrors = {
+    /**
+     * Ошибка
+     */
+    409: _Error;
+};
+
+export type DeleteApiV1AgreementsByIdError = DeleteApiV1AgreementsByIdErrors[keyof DeleteApiV1AgreementsByIdErrors];
+
+export type DeleteApiV1AgreementsByIdResponses = {
+    /**
+     * Удалено
+     */
+    204: void;
+};
+
+export type DeleteApiV1AgreementsByIdResponse = DeleteApiV1AgreementsByIdResponses[keyof DeleteApiV1AgreementsByIdResponses];
 
 export type GetApiV1AgreementsByIdData = {
     body?: never;
@@ -953,17 +858,13 @@ export type GetApiV1AgreementsByIdResponses = {
     /**
      * OK
      */
-    200: {
-        [key: string]: unknown;
-    };
+    200: Agreement;
 };
 
 export type GetApiV1AgreementsByIdResponse = GetApiV1AgreementsByIdResponses[keyof GetApiV1AgreementsByIdResponses];
 
 export type PatchApiV1AgreementsByIdData = {
-    body?: AgreementInput & {
-        review_status?: string;
-    };
+    body?: AgreementInput;
     path: {
         id: string;
     };
@@ -975,12 +876,39 @@ export type PatchApiV1AgreementsByIdResponses = {
     /**
      * OK
      */
-    200: {
-        [key: string]: unknown;
-    };
+    200: Agreement;
 };
 
 export type PatchApiV1AgreementsByIdResponse = PatchApiV1AgreementsByIdResponses[keyof PatchApiV1AgreementsByIdResponses];
+
+export type PostApiV1AgreementsByIdFileData = {
+    body: {
+        file: Blob | File;
+    };
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/agreements/{id}/file';
+};
+
+export type PostApiV1AgreementsByIdFileErrors = {
+    /**
+     * Ошибка
+     */
+    400: _Error;
+};
+
+export type PostApiV1AgreementsByIdFileError = PostApiV1AgreementsByIdFileErrors[keyof PostApiV1AgreementsByIdFileErrors];
+
+export type PostApiV1AgreementsByIdFileResponses = {
+    /**
+     * OK
+     */
+    200: Agreement;
+};
+
+export type PostApiV1AgreementsByIdFileResponse = PostApiV1AgreementsByIdFileResponses[keyof PostApiV1AgreementsByIdFileResponses];
 
 export type PostApiV1AgreementsByIdAnalyzeData = {
     body?: never;
@@ -995,7 +923,7 @@ export type PostApiV1AgreementsByIdAnalyzeData = {
 
 export type PostApiV1AgreementsByIdAnalyzeErrors = {
     /**
-     * Error
+     * Ошибка
      */
     503: _Error;
 };
@@ -1006,9 +934,7 @@ export type PostApiV1AgreementsByIdAnalyzeResponses = {
     /**
      * OK
      */
-    200: {
-        [key: string]: unknown;
-    };
+    200: Analysis;
 };
 
 export type PostApiV1AgreementsByIdAnalyzeResponse = PostApiV1AgreementsByIdAnalyzeResponses[keyof PostApiV1AgreementsByIdAnalyzeResponses];
@@ -1022,22 +948,11 @@ export type GetApiV1AgreementsByIdAnalysisData = {
     url: '/api/v1/agreements/{id}/analysis';
 };
 
-export type GetApiV1AgreementsByIdAnalysisErrors = {
-    /**
-     * Error
-     */
-    404: _Error;
-};
-
-export type GetApiV1AgreementsByIdAnalysisError = GetApiV1AgreementsByIdAnalysisErrors[keyof GetApiV1AgreementsByIdAnalysisErrors];
-
 export type GetApiV1AgreementsByIdAnalysisResponses = {
     /**
      * OK
      */
-    200: {
-        [key: string]: unknown;
-    };
+    200: Analysis;
 };
 
 export type GetApiV1AgreementsByIdAnalysisResponse = GetApiV1AgreementsByIdAnalysisResponses[keyof GetApiV1AgreementsByIdAnalysisResponses];
@@ -1055,12 +970,167 @@ export type PostApiV1AgreementsByIdAnalysisApproveResponses = {
     /**
      * OK
      */
+    200: Analysis;
+};
+
+export type PostApiV1AgreementsByIdAnalysisApproveResponse = PostApiV1AgreementsByIdAnalysisApproveResponses[keyof PostApiV1AgreementsByIdAnalysisApproveResponses];
+
+export type GetApiV1AgreementsByIdSimilarData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/agreements/{id}/similar';
+};
+
+export type GetApiV1AgreementsByIdSimilarResponses = {
+    /**
+     * OK
+     */
     200: {
         [key: string]: unknown;
     };
 };
 
-export type PostApiV1AgreementsByIdAnalysisApproveResponse = PostApiV1AgreementsByIdAnalysisApproveResponses[keyof PostApiV1AgreementsByIdAnalysisApproveResponses];
+export type GetApiV1AgreementsByIdSimilarResponse = GetApiV1AgreementsByIdSimilarResponses[keyof GetApiV1AgreementsByIdSimilarResponses];
+
+export type GetApiV1ContractsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        page?: number;
+        limit?: number;
+        product_id?: string;
+        active?: boolean;
+        expiring_within_days?: number;
+    };
+    url: '/api/v1/contracts';
+};
+
+export type GetApiV1ContractsResponses = {
+    /**
+     * OK
+     */
+    200: Page;
+};
+
+export type GetApiV1ContractsResponse = GetApiV1ContractsResponses[keyof GetApiV1ContractsResponses];
+
+export type PostApiV1ContractsData = {
+    body: ContractInput;
+    path?: never;
+    query?: never;
+    url: '/api/v1/contracts';
+};
+
+export type PostApiV1ContractsResponses = {
+    /**
+     * OK
+     */
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type PostApiV1ContractsResponse = PostApiV1ContractsResponses[keyof PostApiV1ContractsResponses];
+
+export type GetApiV1ContractsByIdData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/contracts/{id}';
+};
+
+export type GetApiV1ContractsByIdResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type GetApiV1ContractsByIdResponse = GetApiV1ContractsByIdResponses[keyof GetApiV1ContractsByIdResponses];
+
+export type PatchApiV1ContractsByIdData = {
+    body?: ContractInput;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/contracts/{id}';
+};
+
+export type PatchApiV1ContractsByIdResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type PatchApiV1ContractsByIdResponse = PatchApiV1ContractsByIdResponses[keyof PatchApiV1ContractsByIdResponses];
+
+export type PostApiV1ContractsByIdDeactivateData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/contracts/{id}/deactivate';
+};
+
+export type PostApiV1ContractsByIdDeactivateResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type PostApiV1ContractsByIdDeactivateResponse = PostApiV1ContractsByIdDeactivateResponses[keyof PostApiV1ContractsByIdDeactivateResponses];
+
+export type GetApiV1DashboardData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/dashboard';
+};
+
+export type GetApiV1DashboardResponses = {
+    /**
+     * OK
+     */
+    200: Dashboard;
+};
+
+export type GetApiV1DashboardResponse = GetApiV1DashboardResponses[keyof GetApiV1DashboardResponses];
+
+export type GetApiV1BalanceData = {
+    body?: never;
+    path?: never;
+    query?: {
+        view?: 'commercial' | 'free';
+        product_id?: string;
+    };
+    url: '/api/v1/balance';
+};
+
+export type GetApiV1BalanceResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type GetApiV1BalanceResponse = GetApiV1BalanceResponses[keyof GetApiV1BalanceResponses];
 
 export type GetApiV1ComplianceFindingsData = {
     body?: never;
@@ -1069,12 +1139,12 @@ export type GetApiV1ComplianceFindingsData = {
         page?: number;
         limit?: number;
         /**
-         * Один или несколько типов через запятую
+         * Типы через запятую
          */
         type?: string;
         severity?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
         status?: 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED';
-        device_id?: string;
+        serial_number?: string;
         product_id?: string;
     };
     url: '/api/v1/compliance/findings';
@@ -1089,34 +1159,25 @@ export type GetApiV1ComplianceFindingsResponses = {
 
 export type GetApiV1ComplianceFindingsResponse = GetApiV1ComplianceFindingsResponses[keyof GetApiV1ComplianceFindingsResponses];
 
-export type GetApiV1ComplianceFindingsByIdData = {
-    body?: never;
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/api/v1/compliance/findings/{id}';
-};
-
-export type GetApiV1ComplianceFindingsByIdResponses = {
-    /**
-     * OK
-     */
-    200: {
-        [key: string]: unknown;
-    };
-};
-
-export type GetApiV1ComplianceFindingsByIdResponse = GetApiV1ComplianceFindingsByIdResponses[keyof GetApiV1ComplianceFindingsByIdResponses];
-
 export type PostApiV1ComplianceFindingsByIdAcknowledgeData = {
-    body?: never;
+    body: {
+        comment: string;
+    };
     path: {
         id: string;
     };
     query?: never;
     url: '/api/v1/compliance/findings/{id}/acknowledge';
 };
+
+export type PostApiV1ComplianceFindingsByIdAcknowledgeErrors = {
+    /**
+     * Ошибка
+     */
+    400: _Error;
+};
+
+export type PostApiV1ComplianceFindingsByIdAcknowledgeError = PostApiV1ComplianceFindingsByIdAcknowledgeErrors[keyof PostApiV1ComplianceFindingsByIdAcknowledgeErrors];
 
 export type PostApiV1ComplianceFindingsByIdAcknowledgeResponses = {
     /**
@@ -1165,98 +1226,6 @@ export type PostApiV1ComplianceRecalculateResponses = {
 
 export type PostApiV1ComplianceRecalculateResponse = PostApiV1ComplianceRecalculateResponses[keyof PostApiV1ComplianceRecalculateResponses];
 
-export type GetApiV1AnalyticsDashboardData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/api/v1/analytics/dashboard';
-};
-
-export type GetApiV1AnalyticsDashboardResponses = {
-    /**
-     * OK
-     */
-    200: {
-        [key: string]: unknown;
-    };
-};
-
-export type GetApiV1AnalyticsDashboardResponse = GetApiV1AnalyticsDashboardResponses[keyof GetApiV1AnalyticsDashboardResponses];
-
-export type GetApiV1AnalyticsSoftwareData = {
-    body?: never;
-    path?: never;
-    query?: {
-        limit?: number;
-    };
-    url: '/api/v1/analytics/software';
-};
-
-export type GetApiV1AnalyticsSoftwareResponses = {
-    /**
-     * OK
-     */
-    200: Array<{
-        [key: string]: unknown;
-    }>;
-};
-
-export type GetApiV1AnalyticsSoftwareResponse = GetApiV1AnalyticsSoftwareResponses[keyof GetApiV1AnalyticsSoftwareResponses];
-
-export type GetApiV1AnalyticsLicensesData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/api/v1/analytics/licenses';
-};
-
-export type GetApiV1AnalyticsLicensesResponses = {
-    /**
-     * OK
-     */
-    200: Array<{
-        [key: string]: unknown;
-    }>;
-};
-
-export type GetApiV1AnalyticsLicensesResponse = GetApiV1AnalyticsLicensesResponses[keyof GetApiV1AnalyticsLicensesResponses];
-
-export type GetApiV1AnalyticsComplianceData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/api/v1/analytics/compliance';
-};
-
-export type GetApiV1AnalyticsComplianceResponses = {
-    /**
-     * OK
-     */
-    200: {
-        [key: string]: unknown;
-    };
-};
-
-export type GetApiV1AnalyticsComplianceResponse = GetApiV1AnalyticsComplianceResponses[keyof GetApiV1AnalyticsComplianceResponses];
-
-export type GetApiV1AnalyticsDepartmentsData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/api/v1/analytics/departments';
-};
-
-export type GetApiV1AnalyticsDepartmentsResponses = {
-    /**
-     * OK
-     */
-    200: Array<{
-        [key: string]: unknown;
-    }>;
-};
-
-export type GetApiV1AnalyticsDepartmentsResponse = GetApiV1AnalyticsDepartmentsResponses[keyof GetApiV1AnalyticsDepartmentsResponses];
-
 export type GetApiV1MatchingPendingData = {
     body?: never;
     path?: never;
@@ -1276,26 +1245,6 @@ export type GetApiV1MatchingPendingResponses = {
 };
 
 export type GetApiV1MatchingPendingResponse = GetApiV1MatchingPendingResponses[keyof GetApiV1MatchingPendingResponses];
-
-export type GetApiV1MatchingByIdData = {
-    body?: never;
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/api/v1/matching/{id}';
-};
-
-export type GetApiV1MatchingByIdResponses = {
-    /**
-     * OK
-     */
-    200: {
-        [key: string]: unknown;
-    };
-};
-
-export type GetApiV1MatchingByIdResponse = GetApiV1MatchingByIdResponses[keyof GetApiV1MatchingByIdResponses];
 
 export type PostApiV1MatchingByIdApproveData = {
     body: {
@@ -1341,6 +1290,165 @@ export type PostApiV1MatchingByIdRejectResponses = {
 };
 
 export type PostApiV1MatchingByIdRejectResponse = PostApiV1MatchingByIdRejectResponses[keyof PostApiV1MatchingByIdRejectResponses];
+
+export type GetApiV1MatchingRulesData = {
+    body?: never;
+    path?: never;
+    query?: {
+        page?: number;
+        limit?: number;
+        search?: string;
+        product_id?: string;
+    };
+    url: '/api/v1/matching/rules';
+};
+
+export type GetApiV1MatchingRulesResponses = {
+    /**
+     * OK
+     */
+    200: Page;
+};
+
+export type GetApiV1MatchingRulesResponse = GetApiV1MatchingRulesResponses[keyof GetApiV1MatchingRulesResponses];
+
+export type PostApiV1MatchingRulesData = {
+    body: {
+        raw_name: string;
+        raw_publisher?: string;
+        raw_version?: string;
+        product_id: string;
+        version_id?: string;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/matching/rules';
+};
+
+export type PostApiV1MatchingRulesResponses = {
+    /**
+     * OK
+     */
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type PostApiV1MatchingRulesResponse = PostApiV1MatchingRulesResponses[keyof PostApiV1MatchingRulesResponses];
+
+export type DeleteApiV1MatchingRulesByIdData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/matching/rules/{id}';
+};
+
+export type DeleteApiV1MatchingRulesByIdResponses = {
+    /**
+     * Удалено
+     */
+    204: void;
+};
+
+export type DeleteApiV1MatchingRulesByIdResponse = DeleteApiV1MatchingRulesByIdResponses[keyof DeleteApiV1MatchingRulesByIdResponses];
+
+export type PatchApiV1MatchingRulesByIdData = {
+    body: {
+        product_id: string;
+        version_id?: string;
+    };
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/matching/rules/{id}';
+};
+
+export type PatchApiV1MatchingRulesByIdResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type PatchApiV1MatchingRulesByIdResponse = PatchApiV1MatchingRulesByIdResponses[keyof PatchApiV1MatchingRulesByIdResponses];
+
+export type GetApiV1MatchingSettingsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/matching/settings';
+};
+
+export type GetApiV1MatchingSettingsResponses = {
+    /**
+     * OK
+     */
+    200: MatchingSettings;
+};
+
+export type GetApiV1MatchingSettingsResponse = GetApiV1MatchingSettingsResponses[keyof GetApiV1MatchingSettingsResponses];
+
+export type PutApiV1MatchingSettingsData = {
+    body: MatchingSettings;
+    path?: never;
+    query?: never;
+    url: '/api/v1/matching/settings';
+};
+
+export type PutApiV1MatchingSettingsResponses = {
+    /**
+     * OK
+     */
+    200: MatchingSettings;
+};
+
+export type PutApiV1MatchingSettingsResponse = PutApiV1MatchingSettingsResponses[keyof PutApiV1MatchingSettingsResponses];
+
+export type GetApiV1AuditData = {
+    body?: never;
+    path?: never;
+    query?: {
+        page?: number;
+        limit?: number;
+        actor?: string;
+        entity?: string;
+        from?: string;
+        to?: string;
+    };
+    url: '/api/v1/audit';
+};
+
+export type GetApiV1AuditResponses = {
+    /**
+     * OK
+     */
+    200: Page;
+};
+
+export type GetApiV1AuditResponse = GetApiV1AuditResponses[keyof GetApiV1AuditResponses];
+
+export type GetApiV1ChatSuggestionsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/chat/suggestions';
+};
+
+export type GetApiV1ChatSuggestionsResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type GetApiV1ChatSuggestionsResponse = GetApiV1ChatSuggestionsResponses[keyof GetApiV1ChatSuggestionsResponses];
 
 export type GetApiV1ChatConversationsData = {
     body?: never;
@@ -1392,7 +1500,7 @@ export type DeleteApiV1ChatConversationsByIdData = {
 
 export type DeleteApiV1ChatConversationsByIdResponses = {
     /**
-     * Deleted
+     * Удалено
      */
     204: void;
 };
@@ -1453,7 +1561,7 @@ export type PostApiV1ChatConversationsByIdMessagesData = {
 
 export type PostApiV1ChatConversationsByIdMessagesErrors = {
     /**
-     * Error
+     * Ошибка
      */
     429: _Error;
 };
@@ -1462,7 +1570,7 @@ export type PostApiV1ChatConversationsByIdMessagesError = PostApiV1ChatConversat
 
 export type PostApiV1ChatConversationsByIdMessagesResponses = {
     /**
-     * SSE stream
+     * SSE
      */
     200: string;
 };

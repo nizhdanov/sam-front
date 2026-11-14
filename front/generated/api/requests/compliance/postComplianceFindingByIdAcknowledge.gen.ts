@@ -2,14 +2,15 @@
 
 import type { AxiosRequestParams, ApicraftAxiosResponse } from "@siberiacancode/apicraft";
 
-import type { PostApiV1ComplianceFindingsByIdAcknowledgeData } from "..\\..\\types.gen";
+import type { PostApiV1ComplianceFindingsByIdAcknowledgeData, PostApiV1ComplianceFindingsByIdAcknowledgeError } from "..\\..\\types.gen";
 
 import { instance } from "..\\..\\instance.gen";
 
 export type PostComplianceFindingByIdAcknowledgeRequestParams = AxiosRequestParams<PostApiV1ComplianceFindingsByIdAcknowledgeData>;
 
-export const postComplianceFindingByIdAcknowledge = ({ config, path }: PostComplianceFindingByIdAcknowledgeRequestParams): Promise<ApicraftAxiosResponse> => instance.request({
+export const postComplianceFindingByIdAcknowledge = ({ config, body, path }: PostComplianceFindingByIdAcknowledgeRequestParams): Promise<ApicraftAxiosResponse<never, PostApiV1ComplianceFindingsByIdAcknowledgeError>> => instance.request({
     method: "POST",
     url: `/compliance/findings/${path.id}/acknowledge`,
+    data: body,
     ...config
 });
