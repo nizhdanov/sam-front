@@ -9,8 +9,7 @@
     "preview": "vite preview",
     "lint": "eslint . --fix",
     "fmt": "prettier --write .",
-    "pretty": "prettier --write . && eslint . --fix",
-    "prepare": "lefthook install"
+    "pretty": "prettier --write . && eslint . --fix"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
@@ -40,7 +39,6 @@
   "devDependencies": {
     "@siberiacancode/apicraft": "^1.12.1",
     "@siberiacancode/eslint": "^2.19.1",
-    "@siberiacancode/lefthook": "^1.0.2",
     "@siberiacancode/prettier": "^1.10.1",
     "@tanstack/devtools-vite": "0.8.6",
     "@tanstack/eslint-config": "0.5.0",
@@ -55,7 +53,6 @@
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^6.0.1",
     "eslint": "^10.14.0",
-    "lefthook": "^2.2.2",
     "prettier": "^3.8.1",
     "typescript": "^6.0.2",
     "vite": "^8.0.0"
