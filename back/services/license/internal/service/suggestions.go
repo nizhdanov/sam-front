@@ -19,7 +19,8 @@ import (
 
 const (
 	suggestionBatch   = 40
-	suggestionWorkers = 4
+	suggestionWorkers = 1
+	suggestionRetries = 5
 )
 
 type SuggestionsStarted struct {
@@ -115,7 +116,7 @@ func (s *Service) normalizeBatch(ctx context.Context, batch []domain.MatchingTas
 		input = append(input, domain.NormalizeInput{Key: t.SourceKey, DisplayName: t.RawName, Publisher: text(t.RawPublisher)})
 		byKey[t.SourceKey] = t
 	}
-	normalized, model, err := s.normalizer.Normalize(ctx, input)
+	normalized, model, err := s.normalizeWithRetry(ctx, input)
 	if err != nil {
 		return nil, err
 	}
@@ -142,6 +143,20 @@ func (s *Service) normalizeBatch(ctx context.Context, batch []domain.MatchingTas
 		out[groupKey] = g
 	}
 	return out, nil
+}
+
+func (s *Service) normalizeWithRetry(ctx context.Context, input []domain.NormalizeInput) ([]domain.Normalized, string, error) {
+	for attempt := 1; ; attempt++ {
+		normalized, model, err := s.normalizer.Normalize(ctx, input)
+		if err == nil || apperr.KindOf(err) != apperr.KindRateLimited || attempt == suggestionRetries {
+			return normalized, model, err
+		}
+		select {
+		case <-time.After(time.Duration(attempt) * 10 * time.Second):
+		case <-ctx.Done():
+			return nil, "", ctx.Err()
+		}
+	}
 }
 
 func (s *Service) CatalogSuggestions(ctx context.Context, status domain.ReviewStatus, page httpx.PageRequest) ([]domain.CatalogSuggestion, int, error) {
