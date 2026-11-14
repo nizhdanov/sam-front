@@ -115,8 +115,15 @@ curl -N -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
 LLM_PROVIDER=gigachat
 GIGACHAT_AUTH_KEY=<authorization key из личного кабинета>
 GIGACHAT_SCOPE=GIGACHAT_API_PERS
-LLM_CHAT_MODEL=GigaChat
+GIGACHAT_BASE_URL=https://api.giga.chat/v1
+LLM_CHAT_MODEL=GigaChat-3-Ultra
+LLM_MATCHING_MODEL=GigaChat-3-Ultra
+LLM_EULA_MODEL=GigaChat-3-Ultra
 ```
+
+На проде используется `GigaChat-3-Ultra` для всех трёх задач. Для Ultra нужен новый
+адрес `https://api.giga.chat/v1`: старый `gigachat.devices.sberbank.ru` эту модель
+не предоставляет. Доступность модели зависит от проекта GigaChat.
 
 Вместо `GIGACHAT_AUTH_KEY` можно задать `GIGACHAT_CLIENT_ID` и
 `GIGACHAT_CLIENT_SECRET`: сервис сам кодирует пару в Base64. Если задан готовый ключ,
