@@ -1,13 +1,13 @@
 //  @ts-check
-import { eslint } from '@siberiacancode/eslint'
-import { tanstackConfig } from '@tanstack/eslint-config'
+import { eslint } from '@siberiacancode/eslint';
+import { tanstackConfig } from '@tanstack/eslint-config';
 
 export default eslint(
   {
     react: true,
     tailwind: true,
     typescript: true,
-    pnpm: true,
+    pnpm: true
   },
   ...tanstackConfig,
   {
@@ -17,10 +17,10 @@ export default eslint(
       'sort-imports': 'off',
       '@typescript-eslint/array-type': 'off',
       '@typescript-eslint/require-await': 'off',
-      'pnpm/json-enforce-catalog': 'off',
-    },
+      'pnpm/json-enforce-catalog': 'off'
+    }
   },
   {
-    ignores: ['eslint.config.js', 'prettier.config.js'],
-  },
-)
+    ignores: ['eslint.config.js', 'prettier.config.js']
+  }
+);
