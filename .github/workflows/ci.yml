@@ -8,15 +8,13 @@ on:
 permissions:
   contents: read
 
-# The caller's workflow name keeps CD checks separate from automatic CI.
-# A newer automatic CI run supersedes the previous one across all branches.
 concurrency:
   group: ci-${{ github.workflow }}
   cancel-in-progress: true
 
 jobs:
   backend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     defaults:
       run:
@@ -36,7 +34,7 @@ jobs:
       - run: go test -race ./...
 
   deployment:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4

@@ -16,7 +16,7 @@ jobs:
 
   build:
     needs: checks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     environment: production
     outputs:
@@ -55,6 +55,7 @@ jobs:
         env:
           BACKEND_CONFIG: ${{ secrets.BACKEND_CONFIG }}
         with:
+          source: .
           files: /tmp/sam-release/bake.json
           load: true
           push: false
@@ -72,7 +73,7 @@ jobs:
 
   deploy:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     environment: production
     steps:
