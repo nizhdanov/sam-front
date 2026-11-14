@@ -1,3 +1,17 @@
+# Repository Guidelines
+
+## Project Structure & Module Organization
+
+This is a Vite React TypeScript app. Application code lives in src, with routes in src/routes, shared UI in src/components, app bootstrap in src/app, and utilities in src/utils. Generated API clients and routes live in generated and should not be edited manually. browser assets are in public.
+
+## Coding Style & Naming Conventions
+
+Use TypeScript, React function components, and aliases @/* and @/generated/*. Follow the existing two-space formatting, single quotes, semicolons, and Tailwind class style enforced by @siberiacancode/eslint. Route files follow TanStack Router conventions in src/routes; helper folders commonly use index.ts barrels. Avoid hand-editing generated files unless the related generator requires it.
+
+## Commit & Pull Request Guidelines
+
+Recent commits use short messages with a branch or scope prefix, an emoji, and an imperative summary, for example main 🧊 fix build or main 🐙 reworked profile cases. Keep commits focused and include generated updates with the source change that requires them.
+
 <!-- intent-skills:start -->
 
 ## Skill Loading

@@ -6,6 +6,7 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "paths": {
+      "@/generated/*": ["./generated/*"],
       "@/*": ["./src/*"]
     },
     "types": ["vite/client"],
@@ -27,6 +28,7 @@
     "eslint.config.js",
     "prettier.config.js",
     "vite.config.js",
-    "generated/**/*"
+    "generated",
+    "src"
   ]
 }

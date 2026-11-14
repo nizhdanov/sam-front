@@ -3,7 +3,7 @@ import { ReactQueryDevtoolsPanel } from '@tanstack/react-query-devtools';
 import { createRootRoute, HeadContent, Outlet } from '@tanstack/react-router';
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools';
 
-import '../styles.css';
+import './styles.css';
 
 export const Route = createRootRoute({
   component: RootComponent

@@ -6,12 +6,12 @@ export default eslint(
     react: true,
     tailwind: {
       settings: {
-        entryPoint: 'src/styles.css'
+        entryPoint: 'src/routes/styles.css'
       }
     },
     typescript: true,
     pnpm: false,
-    ignores: ['src/routeTree.gen.ts', '.agents/*', 'generated/*']
+    ignores: ['src/routeTree.gen.ts', '.agents/*', 'generated/*', 'AGENTS.md']
   },
   {
     rules: {
