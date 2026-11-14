@@ -24,10 +24,12 @@ func newProvider(cfg config.Config) (provider.ModelProvider, error) {
 			return nil, err
 		}
 		return provider.NewGigaChat(provider.GigaChatConfig{
-			AuthURL: cfg.GigaChat.AuthURL,
-			BaseURL: cfg.GigaChat.BaseURL,
-			AuthKey: cfg.GigaChat.AuthKey,
-			Scope:   cfg.GigaChat.Scope,
+			AuthURL:      cfg.GigaChat.AuthURL,
+			BaseURL:      cfg.GigaChat.BaseURL,
+			AuthKey:      cfg.GigaChat.AuthKey,
+			ClientID:     cfg.GigaChat.ClientID,
+			ClientSecret: cfg.GigaChat.ClientSecret,
+			Scope:        cfg.GigaChat.Scope,
 		}, client), nil
 	}
 	return nil, fmt.Errorf("unknown LLM_PROVIDER %q", cfg.LLM.Provider)

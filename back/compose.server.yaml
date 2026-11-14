@@ -1,6 +1,9 @@
 # Behind the existing host nginx; port 8080 is occupied by Apache.
 # docker compose -f compose.yaml -f compose.server.yaml up -d --build
 services:
+  llm:
+    volumes:
+      - ./secrets/russian_trusted_root_ca.pem:/secrets/russian_trusted_root_ca.pem:ro
   nginx:
     ports: !override
       - "127.0.0.1:8443:443"

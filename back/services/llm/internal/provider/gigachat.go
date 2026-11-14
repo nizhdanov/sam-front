@@ -3,6 +3,7 @@ package provider
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -15,10 +16,12 @@ import (
 )
 
 type GigaChatConfig struct {
-	AuthURL string
-	BaseURL string
-	AuthKey string
-	Scope   string
+	AuthURL      string
+	BaseURL      string
+	AuthKey      string
+	ClientID     string
+	ClientSecret string
+	Scope        string
 }
 
 type GigaChat struct {
@@ -32,6 +35,10 @@ type GigaChat struct {
 
 func NewGigaChat(cfg GigaChatConfig, client *http.Client) *GigaChat {
 	cfg.BaseURL = strings.TrimRight(cfg.BaseURL, "/")
+	cfg.AuthKey = strings.TrimSpace(cfg.AuthKey)
+	if cfg.AuthKey == "" && cfg.ClientID != "" && cfg.ClientSecret != "" {
+		cfg.AuthKey = base64.StdEncoding.EncodeToString([]byte(cfg.ClientID + ":" + cfg.ClientSecret))
+	}
 	return &GigaChat{cfg: cfg, client: client}
 }
 
@@ -72,14 +79,21 @@ func (p *GigaChat) accessToken(ctx context.Context) (string, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
 		return "", fmt.Errorf("decode gigachat token: %w", err)
 	}
+	expiresAt := time.UnixMilli(body.ExpiresAt)
+	if strings.TrimSpace(body.AccessToken) == "" || !expiresAt.After(time.Now()) {
+		return "", fmt.Errorf("gigachat returned an empty or expired access token")
+	}
 	p.token = body.AccessToken
-	p.expiresAt = time.UnixMilli(body.ExpiresAt)
+	p.expiresAt = expiresAt
 	return p.token, nil
 }
 
-func (p *GigaChat) invalidate() {
+func (p *GigaChat) invalidate(rejectedToken string) {
 	p.mu.Lock()
-	p.token = ""
+	// A delayed 401 must not discard a token already refreshed by another request.
+	if p.token == rejectedToken {
+		p.token = ""
+	}
 	p.mu.Unlock()
 }
 
@@ -173,7 +187,7 @@ func (p *GigaChat) post(ctx context.Context, body gigaRequest) (*http.Response, 
 		}
 		if resp.StatusCode == http.StatusUnauthorized && attempt == 0 {
 			_ = resp.Body.Close()
-			p.invalidate()
+			p.invalidate(token)
 			continue
 		}
 		return resp, checkStatus(resp)

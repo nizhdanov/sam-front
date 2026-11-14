@@ -46,6 +46,8 @@ type GigaChat struct {
 	AuthURL            string `env:"AUTH_URL" envDefault:"https://ngw.devices.sberbank.ru:9443/api/v2/oauth"`
 	BaseURL            string `env:"BASE_URL" envDefault:"https://gigachat.devices.sberbank.ru/api/v1"`
 	AuthKey            string `env:"AUTH_KEY"`
+	ClientID           string `env:"CLIENT_ID"`
+	ClientSecret       string `env:"CLIENT_SECRET"`
 	Scope              string `env:"SCOPE" envDefault:"GIGACHAT_API_PERS"`
 	CACertPath         string `env:"CA_CERT_PATH"`
 	InsecureSkipVerify bool   `env:"INSECURE_SKIP_VERIFY" envDefault:"false"`
