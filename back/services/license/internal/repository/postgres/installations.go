@@ -136,3 +136,13 @@ func (r *Installations) ProductFacts(ctx context.Context, s domain.Scope) ([]dom
 		return p, err
 	})
 }
+
+func (r *Installations) DeactivateByKey(ctx context.Context, key string, at time.Time) ([]uuid.UUID, error) {
+	rows, err := pg.DB(ctx, r.pool).Query(ctx, `
+		UPDATE installations SET is_active = FALSE, removed_at = $2
+		WHERE source_key = $1 AND is_active RETURNING device_id`, key, at)
+	if err != nil {
+		return nil, fmt.Errorf("deactivate installations: %w", err)
+	}
+	return collect(rows, scanID)
+}

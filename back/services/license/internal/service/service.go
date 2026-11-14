@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -77,6 +78,7 @@ type Installations interface {
 	DeactivateMissing(ctx context.Context, deviceID uuid.UUID, keep []string, at time.Time) error
 	Assign(ctx context.Context, key string, productID uuid.UUID, versionID *uuid.UUID) ([]uuid.UUID, error)
 	Unassign(ctx context.Context, key string, status domain.MatchStatus) ([]uuid.UUID, error)
+	DeactivateByKey(ctx context.Context, key string, at time.Time) ([]uuid.UUID, error)
 	Facts(ctx context.Context, s domain.Scope) ([]domain.InstallationFacts, error)
 	ProductFacts(ctx context.Context, s domain.Scope) ([]domain.ProductFacts, error)
 }
@@ -129,6 +131,18 @@ type Audit interface {
 	List(ctx context.Context, f domain.AuditFilter, page httpx.PageRequest) ([]domain.AuditEntry, int, error)
 }
 
+type Suggestions interface {
+	Merge(ctx context.Context, s domain.CatalogSuggestion) error
+	List(ctx context.Context, status domain.ReviewStatus, page httpx.PageRequest) ([]domain.CatalogSuggestion, int, error)
+	PendingIDs(ctx context.Context) ([]uuid.UUID, error)
+	Get(ctx context.Context, id uuid.UUID) (domain.CatalogSuggestion, error)
+	Resolve(ctx context.Context, id uuid.UUID, status domain.ReviewStatus, productID *uuid.UUID, reviewer string) error
+}
+
+type Normalizer interface {
+	Normalize(ctx context.Context, items []domain.NormalizeInput) ([]domain.Normalized, string, error)
+}
+
 type AgreementAnalyzer interface {
 	Analyze(ctx context.Context, agreementID uuid.UUID, text string) (analysis []byte, model, promptVersion string, err error)
 }
@@ -149,7 +163,9 @@ type Deps struct {
 	Explorer           Explorer
 	Settings           Settings
 	Audit              Audit
+	Suggestions        Suggestions
 	Analyzer           AgreementAnalyzer
+	Normalizer         Normalizer
 	Log                *slog.Logger
 	MatchingConfig     domain.MatchingConfig
 	ExpiringWithinDays int
@@ -171,17 +187,22 @@ type Service struct {
 	explorer      Explorer
 	settings      Settings
 	audit         Audit
+	suggestions   Suggestions
 	analyzer      AgreementAnalyzer
+	normalizer    Normalizer
 	log           *slog.Logger
 	matchDefaults domain.MatchingConfig
 	expiringDays  int
+	rematching    atomic.Bool
+	suggesting    atomic.Bool
+	approving     atomic.Bool
 	now           func() time.Time
 }
 
 func New(d Deps) (*Service, error) {
 	if d.Tx == nil || d.Locks == nil || d.Products == nil || d.Versions == nil || d.Aliases == nil || d.Matching == nil ||
 		d.Devices == nil || d.Installations == nil || d.Entitlements == nil || d.Agreements == nil || d.Findings == nil ||
-		d.Analytics == nil || d.Explorer == nil || d.Settings == nil || d.Audit == nil || d.Analyzer == nil || d.Log == nil {
+		d.Analytics == nil || d.Explorer == nil || d.Settings == nil || d.Audit == nil || d.Suggestions == nil || d.Analyzer == nil || d.Normalizer == nil || d.Log == nil {
 		return nil, errors.New("license service: missing dependency")
 	}
 	return &Service{
@@ -200,7 +221,9 @@ func New(d Deps) (*Service, error) {
 		explorer:      d.Explorer,
 		settings:      d.Settings,
 		audit:         d.Audit,
+		suggestions:   d.Suggestions,
 		analyzer:      d.Analyzer,
+		normalizer:    d.Normalizer,
 		log:           d.Log,
 		matchDefaults: d.MatchingConfig,
 		expiringDays:  d.ExpiringWithinDays,

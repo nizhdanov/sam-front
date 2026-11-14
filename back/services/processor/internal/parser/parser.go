@@ -7,10 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"regexp"
 	"strings"
 	"unicode/utf8"
 
+	"sam/pkg/swfilter"
 	"sam/services/processor/internal/domain"
 )
 
@@ -22,8 +22,6 @@ const (
 )
 
 var ErrCritical = errors.New("critical format error")
-
-var systemUpdate = regexp.MustCompile(`(?i)\bKB\d{6,8}\b|^(security update|update|hotfix) for `)
 
 type Limits struct {
 	MaxRows       int
@@ -117,7 +115,7 @@ func ReadPreview(r io.Reader, limit, maxFieldBytes int) (Preview, error) {
 			Publisher:    field(record, cols[ColumnPublisher]),
 			Version:      field(record, cols[ColumnVersion]),
 		}
-		item.Excluded = systemUpdate.MatchString(item.DisplayName)
+		item.Excluded = swfilter.Excluded(item.DisplayName)
 		if rowErr := validate(row, item.SerialNumber, item.DisplayName, item.Publisher, item.Version, maxFieldBytes); rowErr != nil {
 			item.Error = rowErr.Message
 		}
@@ -163,7 +161,7 @@ func Parse(r io.Reader, limits Limits) (Result, error) {
 			continue
 		}
 
-		if systemUpdate.MatchString(name) {
+		if swfilter.Excluded(name) {
 			res.Excluded++
 			continue
 		}

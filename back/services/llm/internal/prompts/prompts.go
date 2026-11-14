@@ -12,7 +12,7 @@ const (
 	EULAVersion     = "eula-v2"
 )
 
-//go:embed chat/*.txt matching/*.txt eula/*.txt
+//go:embed chat/*.txt matching/*.txt eula/*.txt catalog/*.txt
 var files embed.FS
 
 func read(name string) string {
@@ -31,6 +31,7 @@ var (
 	}
 	matching = read("matching/software_matching.txt")
 	eula     = read("eula/agreement_analysis.txt")
+	catalog  = read("catalog/normalize.txt")
 )
 
 func Chat(role auth.Role) string {
@@ -40,3 +41,5 @@ func Chat(role auth.Role) string {
 func Matching() string { return matching }
 
 func EULA() string { return eula }
+
+func Catalog() string { return catalog }

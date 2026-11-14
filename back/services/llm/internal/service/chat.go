@@ -67,7 +67,7 @@ func (s *Service) Chat(ctx context.Context, history []ChatMessage, message strin
 		messages = append(messages, provider.Message{Role: provider.RoleAssistant, Content: resp.Content, ToolCalls: resp.ToolCalls})
 		for _, call := range resp.ToolCalls {
 			result := s.tools.Run(ctx, claims.Role, call)
-			s.log.DebugContext(ctx, "tool executed", "tool", call.Name, "result_bytes", len(result))
+			s.log.InfoContext(ctx, "tool executed", "tool", call.Name, "result_bytes", len(result))
 			messages = append(messages, provider.Message{Role: provider.RoleTool, Name: call.Name, ToolCallID: call.ID, Content: result})
 		}
 	}
