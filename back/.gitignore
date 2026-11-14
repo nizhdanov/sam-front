@@ -4,3 +4,4 @@ secrets/
 services/*/.env
 compose.override.yaml
 coverage.out
+/devtoken

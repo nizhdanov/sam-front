@@ -97,8 +97,8 @@ func (r *Imports) ByStatus(ctx context.Context, statuses ...domain.ImportStatus)
 
 func (r *Imports) SetStatus(ctx context.Context, id uuid.UUID, status domain.ImportStatus, message *string) error {
 	_, err := pg.DB(ctx, r.pool).Exec(ctx, `
-		UPDATE imports SET status = $2, error_message = $3, updated_at = NOW(),
-		       completed_at = CASE WHEN $2 IN ('COMPLETED', 'COMPLETED_WITH_ERRORS', 'FAILED') THEN NOW() ELSE NULL END
+		UPDATE imports SET status = $2::varchar, error_message = $3, updated_at = NOW(),
+		       completed_at = CASE WHEN $2::varchar IN ('COMPLETED', 'COMPLETED_WITH_ERRORS', 'FAILED') THEN NOW() ELSE NULL END
 		WHERE id = $1`, id, status, message)
 	if err != nil {
 		return fmt.Errorf("set import status: %w", err)

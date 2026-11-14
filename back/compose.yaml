@@ -1,0 +1,170 @@
+name: sam
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-service: &service
+  restart: unless-stopped
+  logging: *logging
+  volumes:
+    - ./secrets/jwt_public.pem:/secrets/jwt_public.pem:ro
+
+x-common-env: &common-env
+  LOG_LEVEL: info
+  LOG_FORMAT: json
+  JWT_PUBLIC_KEY_FILE: /secrets/jwt_public.pem
+  JWT_SERVICE_SECRET: ${JWT_SERVICE_SECRET:?set JWT_SERVICE_SECRET in .env}
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    logging: *logging
+    command:
+      - postgres
+      - -c
+      - max_connections=50
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - maintenance_work_mem=64MB
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      INVENTORY_DB_USER: inventory
+      INVENTORY_DB_PASSWORD: ${INVENTORY_DB_PASSWORD:-inventory}
+      LICENSE_DB_USER: license
+      LICENSE_DB_PASSWORD: ${LICENSE_DB_PASSWORD:-license}
+      CHAT_DB_USER: chat
+      CHAT_DB_PASSWORD: ${CHAT_DB_PASSWORD:-chat}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./deploy/postgres/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+      - ./deploy/seed:/seed:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  nats:
+    image: nats:2.11-alpine
+    restart: unless-stopped
+    logging: *logging
+    command: ["-js", "-sd", "/data", "-m", "8222"]
+    volumes:
+      - nats_data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8222/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    logging: *logging
+    ports:
+      - "${GATEWAY_PORT:-8080}:8080"
+    volumes:
+      - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - processor
+      - license
+      - chat
+
+  processor:
+    <<: *service
+    build:
+      context: .
+      dockerfile: services/processor/Dockerfile
+    environment:
+      <<: *common-env
+      POSTGRES_DSN: postgres://inventory:${INVENTORY_DB_PASSWORD:-inventory}@postgres:5432/inventory_db?sslmode=disable
+      NATS_URL: nats://nats:4222
+      IMPORT_STORAGE_DIR: /data/imports
+    volumes:
+      - ./secrets/jwt_public.pem:/secrets/jwt_public.pem:ro
+      - inventory_uploads:/data/imports
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+
+  worker:
+    <<: *service
+    build:
+      context: .
+      dockerfile: services/worker/Dockerfile
+    environment:
+      <<: *common-env
+      POSTGRES_DSN: postgres://inventory:${INVENTORY_DB_PASSWORD:-inventory}@postgres:5432/inventory_db?sslmode=disable
+      NATS_URL: nats://nats:4222
+      LICENSE_GRPC_ADDR: license:9093
+      LLM_GRPC_ADDR: llm:9095
+    depends_on:
+      processor:
+        condition: service_healthy
+      license:
+        condition: service_healthy
+
+  license:
+    <<: *service
+    build:
+      context: .
+      dockerfile: services/license/Dockerfile
+    environment:
+      <<: *common-env
+      POSTGRES_DSN: postgres://license:${LICENSE_DB_PASSWORD:-license}@postgres:5432/license_db?sslmode=disable
+      LLM_GRPC_ADDR: llm:9095
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  chat:
+    <<: *service
+    build:
+      context: .
+      dockerfile: services/chat/Dockerfile
+    environment:
+      <<: *common-env
+      POSTGRES_DSN: postgres://chat:${CHAT_DB_PASSWORD:-chat}@postgres:5432/chat_db?sslmode=disable
+      LLM_GRPC_ADDR: llm:9095
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  llm:
+    <<: *service
+    build:
+      context: .
+      dockerfile: services/llm/Dockerfile
+    environment:
+      <<: *common-env
+      LICENSE_GRPC_ADDR: license:9093
+      LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+      LLM_CHAT_MODEL: ${LLM_CHAT_MODEL:-GigaChat}
+      LLM_MATCHING_MODEL: ${LLM_MATCHING_MODEL:-GigaChat}
+      LLM_EULA_MODEL: ${LLM_EULA_MODEL:-GigaChat}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      GIGACHAT_AUTH_KEY: ${GIGACHAT_AUTH_KEY:-}
+      GIGACHAT_SCOPE: ${GIGACHAT_SCOPE:-GIGACHAT_API_PERS}
+      GIGACHAT_INSECURE_SKIP_VERIFY: ${GIGACHAT_INSECURE_SKIP_VERIFY:-false}
+
+volumes:
+  postgres_data:
+  nats_data:
+  inventory_uploads:
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${DOCKER_SUBNET:-172.30.77.0/24}

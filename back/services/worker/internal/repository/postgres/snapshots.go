@@ -84,8 +84,8 @@ func (r *Snapshots) Extend(ctx context.Context, l domain.Lease, lease time.Durat
 func (r *Snapshots) Finish(ctx context.Context, l domain.Lease, status domain.Status, message string) error {
 	tag, err := r.pool.Exec(ctx, `
 		UPDATE inventory_snapshots
-		SET status = $3, error_message = NULLIF($4, ''), lease_until = NULL,
-		    processed_at = CASE WHEN $3 IN ('COMPLETED', 'SUPERSEDED', 'FAILED') THEN NOW() ELSE processed_at END
+		SET status = $3::varchar, error_message = NULLIF($4, ''), lease_until = NULL,
+		    processed_at = CASE WHEN $3::varchar IN ('COMPLETED', 'SUPERSEDED', 'FAILED') THEN NOW() ELSE processed_at END
 		WHERE id = $1 AND attempt_token = $2 AND status = 'PROCESSING'`, l.SnapshotID, l.Token, status, message)
 	if err != nil {
 		return fmt.Errorf("finish snapshot: %w", err)

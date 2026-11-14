@@ -58,7 +58,7 @@ var toolKeywords = []struct {
 	keywords []string
 	args     string
 }{
-	{"get_license_costs", []string{"стоим", "цен", "cost", "price"}, `{}`},
+	{"get_license_costs", []string{"стоимост", "сколько стоят", "cost", "price"}, `{}`},
 	{"get_license_balance", []string{"баланс", "дефицит", "хватает", "balance", "deficit"}, `{}`},
 	{"get_paid_licenses", []string{"платн", "куплен", "paid"}, `{}`},
 	{"get_company_compliance", []string{"нарушен", "комплаенс", "compliance", "violation"}, `{}`},
