@@ -21,7 +21,8 @@ type Imports struct{ pool *pgxpool.Pool }
 func NewImports(pool *pgxpool.Pool) *Imports { return &Imports{pool: pool} }
 
 const importSelect = `
-	SELECT id, filename, COALESCE(storage_path, ''), source, status, file_size, total_rows, total_devices, created_by,
+	SELECT id, filename, COALESCE(storage_path, ''), source, status, file_size, total_rows, loaded_rows, duplicate_rows, excluded_rows,
+	       error_rows, total_devices, created_by,
 	       collected_at, error_message, created_at, updated_at, completed_at
 	FROM imports`
 
@@ -29,7 +30,8 @@ type scanner interface{ Scan(dest ...any) error }
 
 func scanImport(row scanner) (domain.Import, error) {
 	var i domain.Import
-	err := row.Scan(&i.ID, &i.Filename, &i.StoragePath, &i.Source, &i.Status, &i.FileSize, &i.TotalRows, &i.TotalDevices,
+	err := row.Scan(&i.ID, &i.Filename, &i.StoragePath, &i.Source, &i.Status, &i.FileSize, &i.TotalRows, &i.LoadedRows, &i.DuplicateRows, &i.ExcludedRows,
+		&i.ErrorRows, &i.TotalDevices,
 		&i.CreatedBy, &i.CollectedAt, &i.ErrorMessage, &i.CreatedAt, &i.UpdatedAt, &i.CompletedAt)
 	return i, err
 }
@@ -106,10 +108,12 @@ func (r *Imports) SetStatus(ctx context.Context, id uuid.UUID, status domain.Imp
 	return nil
 }
 
-func (r *Imports) SetParsed(ctx context.Context, id uuid.UUID, rows, devices int) error {
+func (r *Imports) SetParsed(ctx context.Context, id uuid.UUID, rows int, stats domain.RowStats, devices int) error {
 	_, err := pg.DB(ctx, r.pool).Exec(ctx, `
-		UPDATE imports SET total_rows = $2, total_devices = $3, status = 'PROCESSING', error_message = NULL, updated_at = NOW()
-		WHERE id = $1`, id, rows, devices)
+		UPDATE imports
+		SET total_rows = $2, loaded_rows = $3, duplicate_rows = $4, excluded_rows = $5, error_rows = $6,
+		    total_devices = $7, status = 'PROCESSING', error_message = NULL, updated_at = NOW()
+		WHERE id = $1`, id, rows, stats.LoadedRows, stats.DuplicateRows, stats.ExcludedRows, stats.ErrorRows, devices)
 	if err != nil {
 		return fmt.Errorf("set import parsed: %w", err)
 	}

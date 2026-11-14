@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 	"unicode/utf8"
 
@@ -21,6 +22,8 @@ const (
 )
 
 var ErrCritical = errors.New("critical format error")
+
+var systemUpdate = regexp.MustCompile(`(?i)\bKB\d{6,8}\b|^(security update|update|hotfix) for `)
 
 type Limits struct {
 	MaxRows       int
@@ -37,6 +40,7 @@ type Result struct {
 	Devices    map[string][]domain.RawSoftware
 	TotalRows  int
 	Duplicates int
+	Excluded   int
 	Errors     []RowError
 	Orphans    int
 }
@@ -70,7 +74,7 @@ func Parse(r io.Reader, limits Limits) (Result, error) {
 	}
 
 	res := Result{Devices: make(map[string][]domain.RawSoftware)}
-	seen := make(map[[4]string]struct{})
+	seen := make(map[[3]string]int)
 	for row := 2; ; row++ {
 		record, err := reader.Read()
 		if errors.Is(err, io.EOF) {
@@ -100,12 +104,20 @@ func Parse(r io.Reader, limits Limits) (Result, error) {
 			continue
 		}
 
-		key := [4]string{serial, name, publisher, version}
-		if _, dup := seen[key]; dup {
-			res.Duplicates++
+		if systemUpdate.MatchString(name) {
+			res.Excluded++
 			continue
 		}
-		seen[key] = struct{}{}
+
+		key := [3]string{serial, strings.ToLower(name), strings.ToLower(version)}
+		if i, dup := seen[key]; dup {
+			res.Duplicates++
+			if res.Devices[serial][i].Publisher == "" {
+				res.Devices[serial][i].Publisher = publisher
+			}
+			continue
+		}
+		seen[key] = len(res.Devices[serial])
 		res.Devices[serial] = append(res.Devices[serial], domain.RawSoftware{DisplayName: name, Publisher: publisher, Version: version})
 	}
 	if res.TotalRows == 0 {

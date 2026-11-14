@@ -30,7 +30,7 @@ type Imports interface {
 	List(ctx context.Context, page httpx.PageRequest) ([]domain.Import, int, error)
 	ByStatus(ctx context.Context, statuses ...domain.ImportStatus) ([]domain.Import, error)
 	SetStatus(ctx context.Context, id uuid.UUID, status domain.ImportStatus, message *string) error
-	SetParsed(ctx context.Context, id uuid.UUID, rows, devices int) error
+	SetParsed(ctx context.Context, id uuid.UUID, rows int, stats domain.RowStats, devices int) error
 	Expired(ctx context.Context, before time.Time) ([]uuid.UUID, error)
 	ClearStorage(ctx context.Context, id uuid.UUID) error
 }
@@ -229,8 +229,10 @@ func (s *Service) parse(ctx context.Context, id uuid.UUID) error {
 	if result.Orphans > 0 {
 		snapshotType = domain.SnapshotPartial
 	}
+	stats := domain.RowStats{DuplicateRows: result.Duplicates, ExcludedRows: result.Excluded, ErrorRows: len(result.Errors)}
 	snapshots := make([]domain.Snapshot, 0, len(result.Devices))
 	for serial, software := range result.Devices {
+		stats.LoadedRows += len(software)
 		snapshots = append(snapshots, domain.Snapshot{
 			ID:           uuid.New(),
 			ImportID:     id,
@@ -248,7 +250,7 @@ func (s *Service) parse(ctx context.Context, id uuid.UUID) error {
 		if err := s.errors.Insert(ctx, id, rowErrors); err != nil {
 			return err
 		}
-		return s.imports.SetParsed(ctx, id, result.TotalRows, len(snapshots))
+		return s.imports.SetParsed(ctx, id, result.TotalRows, stats, len(snapshots))
 	})
 }
 

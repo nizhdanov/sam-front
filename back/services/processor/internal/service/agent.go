@@ -85,7 +85,7 @@ func (s *Service) IngestAgent(ctx context.Context, r AgentReport) (domain.Import
 		if err := s.snapshots.Insert(ctx, []domain.Snapshot{snap}); err != nil {
 			return err
 		}
-		return s.imports.SetParsed(ctx, imp.ID, len(software), 1)
+		return s.imports.SetParsed(ctx, imp.ID, len(software), domain.RowStats{LoadedRows: len(software)}, 1)
 	})
 	if err != nil {
 		return domain.Import{}, err

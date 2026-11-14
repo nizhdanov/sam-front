@@ -53,13 +53,14 @@ type RawSoftware struct {
 }
 
 type Import struct {
-	ID           uuid.UUID
-	Filename     string
-	StoragePath  string
-	Source       Source
-	Status       ImportStatus
-	FileSize     int64
-	TotalRows    int
+	ID          uuid.UUID
+	Filename    string
+	StoragePath string
+	Source      Source
+	Status      ImportStatus
+	FileSize    int64
+	TotalRows   int
+	RowStats
 	TotalDevices int
 	CreatedBy    string
 	CollectedAt  time.Time
@@ -67,6 +68,13 @@ type Import struct {
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 	CompletedAt  *time.Time
+}
+
+type RowStats struct {
+	LoadedRows    int
+	DuplicateRows int
+	ExcludedRows  int
+	ErrorRows     int
 }
 
 type Progress struct {

@@ -72,6 +72,10 @@ type importResponse struct {
 	Status           domain.ImportStatus `json:"status"`
 	FileSize         int64               `json:"file_size"`
 	TotalRows        int                 `json:"total_rows"`
+	LoadedRows       int                 `json:"loaded_rows"`
+	DuplicateRows    int                 `json:"duplicate_rows"`
+	ExcludedRows     int                 `json:"excluded_rows"`
+	ErrorRows        int                 `json:"error_rows"`
 	TotalDevices     int                 `json:"total_devices"`
 	ProcessedDevices int                 `json:"processed_devices"`
 	FailedDevices    int                 `json:"failed_devices"`
@@ -93,6 +97,10 @@ func toResponse(v service.ImportView) importResponse {
 		Status:           v.Status,
 		FileSize:         v.FileSize,
 		TotalRows:        v.TotalRows,
+		LoadedRows:       v.LoadedRows,
+		DuplicateRows:    v.DuplicateRows,
+		ExcludedRows:     v.ExcludedRows,
+		ErrorRows:        v.ErrorRows,
 		TotalDevices:     v.TotalDevices,
 		ProcessedDevices: p.Completed + p.Superseded,
 		FailedDevices:    p.Failed,
