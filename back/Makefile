@@ -16,7 +16,7 @@ env: ## Create .env from .env.example if missing
 keys: ## Generate the JWT key pair into ./secrets
 	go run ./tools/devtoken -generate
 
-tokens: ## Print demo JWTs for the hardcoded employee, admin and director
+tokens: ## Print demo JWTs for the hardcoded user and admin
 	@go run ./tools/devtoken
 
 up: env keys ## Build and start the stack
@@ -37,6 +37,8 @@ ps: ## Show container status
 
 seed: ## Load demo data into license_db (idempotent)
 	$(COMPOSE) exec -T postgres psql -v ON_ERROR_STOP=1 -U license -d license_db -f /seed/license.sql
+	@curl -sf -o /dev/null -X POST -H "Authorization: Bearer $$(go run ./tools/devtoken | sed -n 5p)" \
+		http://localhost:$${GATEWAY_PORT:-8080}/api/v1/compliance/recalculate && echo "compliance recalculated"
 
 proto: ## Lint and generate gRPC code into gen/go
 	$(BUF) lint
