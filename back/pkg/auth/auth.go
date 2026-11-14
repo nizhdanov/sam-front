@@ -19,7 +19,6 @@ type Role string
 const (
 	RoleEmployee        Role = "EMPLOYEE"
 	RoleAdmin           Role = "ADMIN"
-	RoleDirector        Role = "IT_DIRECTOR"
 	RoleInventoryAgent  Role = "INVENTORY_AGENT"
 	RoleInventoryWorker Role = "INVENTORY_WORKER"
 	RoleLicenseService  Role = "LICENSE_SERVICE"
@@ -28,9 +27,8 @@ const (
 )
 
 var (
-	UserRoles    = []Role{RoleEmployee, RoleAdmin, RoleDirector}
+	UserRoles    = []Role{RoleEmployee, RoleAdmin}
 	ServiceRoles = []Role{RoleInventoryAgent, RoleInventoryWorker, RoleLicenseService, RoleLLMService, RoleChatService}
-	Privileged   = []Role{RoleAdmin, RoleDirector}
 )
 
 func (r Role) IsUser() bool { return slices.Contains(UserRoles, r) }
@@ -54,7 +52,7 @@ func (c *Claims) HasRole(roles ...Role) bool {
 	return c != nil && slices.Contains(roles, c.Role)
 }
 
-func (c *Claims) IsPrivileged() bool { return c.HasRole(Privileged...) }
+func (c *Claims) IsAdmin() bool { return c.HasRole(RoleAdmin) }
 
 func (c *Claims) Actor() string {
 	if c == nil {

@@ -18,7 +18,6 @@ import (
 var users = []auth.User{
 	{ID: "00000000-0000-4000-8000-000000000001", Username: "employee", Role: auth.RoleEmployee, EmployeeID: "10000000-0000-4000-8000-000000000001"},
 	{ID: "00000000-0000-4000-8000-000000000002", Username: "admin", Role: auth.RoleAdmin, EmployeeID: "10000000-0000-4000-8000-000000000002"},
-	{ID: "00000000-0000-4000-8000-000000000003", Username: "director", Role: auth.RoleDirector, EmployeeID: "10000000-0000-4000-8000-000000000003"},
 }
 
 func main() {

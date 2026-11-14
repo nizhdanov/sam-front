@@ -28,7 +28,6 @@ var (
 	byRole   = map[auth.Role]string{
 		auth.RoleEmployee: read("chat/employee.txt"),
 		auth.RoleAdmin:    read("chat/admin.txt"),
-		auth.RoleDirector: read("chat/director.txt"),
 	}
 	matching = read("matching/software_matching.txt")
 	eula     = read("eula/agreement_analysis.txt")
