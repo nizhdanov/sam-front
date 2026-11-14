@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
 	"time"
 
 	"golang.org/x/sync/errgroup"
 
 	"sam/pkg/auth"
+	"sam/pkg/buildconfig"
 	"sam/pkg/health"
 	"sam/pkg/natsx"
 	"sam/pkg/postgres"
@@ -40,7 +40,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger) (_ *App, err 
 		}
 	}()
 
-	pubKey, err := os.ReadFile(cfg.Auth.PublicKeyFile)
+	pubKey, err := buildconfig.ReadFile(cfg.Auth.PublicKeyFile)
 	if err != nil {
 		return nil, fmt.Errorf("read jwt public key: %w", err)
 	}

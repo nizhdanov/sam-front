@@ -4,13 +4,18 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"time"
+
+	"sam/pkg/buildconfig"
 )
 
 func Probe(defaultAddr string) error {
-	addr := os.Getenv("HTTP_ADDR")
+	values, err := buildconfig.Environment()
+	if err != nil {
+		return err
+	}
+	addr := values["HTTP_ADDR"]
 	if addr == "" {
 		addr = defaultAddr
 	}
