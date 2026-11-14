@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -24,6 +25,8 @@ func (m *Mock) Complete(_ context.Context, req Request) (Response, error) {
 		resp.Content = `{"status":"REQUIRES_REVIEW","product_id":null,"confidence":0,"reason":"[DEMO] mock provider does not perform AI matching"}`
 	case "eula":
 		resp.Content = mockEULA(lastContent(req.Messages, RoleUser))
+	case "catalog":
+		resp.Content = mockCatalog(lastContent(req.Messages, RoleUser))
 	default:
 		resp.Content, resp.ToolCalls = mockChat(req)
 	}
@@ -161,4 +164,25 @@ func approxTokens(messages []Message) int {
 		n += len(m.Content) / 4
 	}
 	return n
+}
+
+var mockVersionTail = regexp.MustCompile(`(?i)\s*([\(\[]?(x64|x86|64-bit|32-bit)[\)\]]?|\d+([.\-]\d+)*|v\d.*)(\s|$).*$`)
+
+func mockCatalog(payload string) string {
+	var items []struct {
+		Key         string `json:"key"`
+		DisplayName string `json:"display_name"`
+		Publisher   string `json:"publisher"`
+	}
+	_ = json.Unmarshal([]byte(payload), &items)
+	out := make([]map[string]any, 0, len(items))
+	for _, it := range items {
+		name := strings.TrimSpace(mockVersionTail.ReplaceAllString(it.DisplayName, ""))
+		if name == "" {
+			name = it.DisplayName
+		}
+		out = append(out, map[string]any{"key": it.Key, "canonical_name": name, "publisher": it.Publisher, "is_software": true})
+	}
+	body, _ := json.Marshal(map[string]any{"items": out})
+	return string(body)
 }
