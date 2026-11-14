@@ -11,7 +11,7 @@ export default eslint(
     },
     typescript: true,
     pnpm: false,
-    ignores: ['src/routeTree.gen.ts', '.agents/*']
+    ignores: ['src/routeTree.gen.ts', '.agents/*', 'generated/*']
   },
   {
     rules: {
