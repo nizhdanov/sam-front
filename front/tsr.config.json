@@ -1,3 +1,4 @@
 {
-  "target": "react"
+  "target": "react",
+  "generatedRouteTree": "generated/routeTree.gen.ts"
 }

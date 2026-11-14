@@ -23,5 +23,11 @@ export default eslint(
       'pnpm/json-enforce-catalog': 'off',
       'siberiacancode/function-component-definition': 'off'
     }
+  },
+  {
+    files: ['tests/**/*.test.mjs'],
+    rules: {
+      'test/no-import-node-test': 'off'
+    }
   }
 );

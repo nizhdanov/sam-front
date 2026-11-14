@@ -4,15 +4,15 @@
   "rsc": false,
   "tsx": true,
   "tailwind": {
-    "config": "tailwind.config.js",
-    "css": "src/styles.css",
+    "config": "",
+    "css": "src/routes/styles.css",
     "baseColor": "neutral",
     "cssVariables": true,
     "prefix": ""
   },
   "aliases": {
     "components": "@/components",
-    "utils": "@/utils/cn",
+    "utils": "cn",
     "ui": "@/components/ui",
     "lib": "@/utils/lib",
     "hooks": "@/hooks"

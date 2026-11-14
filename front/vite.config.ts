@@ -6,6 +6,14 @@ import { defineConfig } from 'vite';
 
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
+  server: {
+    proxy: {
+      '/api/v1': {
+        target: 'https://sam.v1sdev.ru',
+        changeOrigin: true
+      }
+    }
+  },
   plugins: [
     devtools(),
     tailwindcss(),
