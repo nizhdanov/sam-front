@@ -10,7 +10,7 @@
 | nginx | 8080 (публичный) | API Gateway: маршрутизация, лимиты тела запроса, rate limiting, CORS, request id |
 | processor | 8081 | Приём CSV и отчётов агента, группировка по ПК, публикация задач в NATS |
 | worker | 8082 (health) | Обработка снимков из JetStream, Smart Matching, синхронизация с License Service |
-| license | 8083 / 9093 gRPC | Каталог ПО, устройства, сотрудники, лицензии, EULA, Compliance Engine, аналитика |
+| license | 8083 / 9093 gRPC | Каталог ПО, устройства, договоры, лицензии, EULA, Compliance Engine, аналитика |
 | chat | 8084 | Диалоги пользователя, SSE-стриминг ответов |
 | llm | 8085 / 9095 gRPC | AI-оркестратор: GigaChat / OpenAI-compatible / mock, ролевые инструменты |
 | postgres | 5432 | `inventory_db`, `license_db`, `chat_db` с отдельными пользователями |
@@ -30,9 +30,9 @@ API сохраняет проверку JWT и ролей. Swagger UI 5.35.0 р�
 
 ```bash
 make up        # создаёт .env, RSA-ключи в ./secrets, собирает и запускает стек
-make seed      # демо-данные: сотрудники, устройства, каталог, лицензии
+make seed      # демо-данные: устройства, каталог, соглашения, договоры, лицензии
 make smoke     # загрузка testdata/inventory.csv и проверка основного сценария
-make tokens    # JWT для демо-пользователей employee и admin
+make tokens    # JWT для демо-пользователей user и admin
 ```
 
 Если Docker не может выделить подсеть, измените `DOCKER_SUBNET` в `.env`.
@@ -71,13 +71,16 @@ docker compose -f compose.yaml -f compose.server.yaml exec -T nginx nginx -s rel
 ## Аутентификация
 
 Токены выдаёт внешний Identity Provider, в стек он не входит. Сервисы проверяют JWT (RS256) публичным ключом
-`secrets/jwt_public.pem`: issuer `sam-auth`, audience `sam-backend`, claims `sub`, `role`, `employee_id`.
-Для разработки `make tokens` подписывает токены для трёх захардкоженных пользователей приватным ключом из `./secrets`.
+`secrets/jwt_public.pem`: issuer `sam-auth`, audience `sam-backend`, claims `sub`, `role`, `device_serial`.
+Для разработки `make tokens` подписывает токены для двух захардкоженных пользователей приватным ключом из `./secrets`.
 
-| Пользователь | Роль | Сотрудник |
+| Пользователь | Роль | Устройство |
 | --- | --- | --- |
-| employee | EMPLOYEE | Иванов Иван (PC-001) |
-| admin | ADMIN | Петрова Анна |
+| user | USER | PC-001 |
+| admin | ADMIN | — |
+
+USER видит справочник БПО, бесплатное и запрещённое ПО, свой компьютер (из `device_serial`) и задаёт чату вопросы
+только по бесплатному ПО. ADMIN — администратор SAM с полным доступом.
 
 Межсервисные вызовы подписываются HS256-токенами с сервисными ролями (`JWT_SERVICE_SECRET`).
 
@@ -85,16 +88,18 @@ docker compose -f compose.yaml -f compose.server.yaml exec -T nginx nginx -s rel
 
 ```bash
 TOKEN=$(make -s tokens | sed -n '5p')                       # admin
-curl -H "Authorization: Bearer $TOKEN" -F file=@testdata/inventory.csv localhost:8080/api/v1/imports
-curl -H "Authorization: Bearer $TOKEN" localhost:8080/api/v1/imports/<import_id>
-curl -H "Authorization: Bearer $TOKEN" localhost:8080/api/v1/analytics/dashboard
-curl -H "Authorization: Bearer $TOKEN" localhost:8080/api/v1/compliance/findings
-curl -H "Authorization: Bearer $TOKEN" localhost:8080/api/v1/licenses/balance
+curl -H "Authorization: Bearer $TOKEN" -F file=@testdata/inventory.csv localhost:8080/api/v1/imports   # предпросмотр
+curl -X POST -H "Authorization: Bearer $TOKEN" localhost:8080/api/v1/imports/<import_id>/confirm
+curl -H "Authorization: Bearer $TOKEN" localhost:8080/api/v1/imports/<import_id>                    # отчёт
+curl -H "Authorization: Bearer $TOKEN" localhost:8080/api/v1/dashboard
+curl -H "Authorization: Bearer $TOKEN" localhost:8080/api/v1/balance
+curl -H "Authorization: Bearer $TOKEN" "localhost:8080/api/v1/data/installations?product=photoshop"
+curl -H "Authorization: Bearer $TOKEN" "localhost:8080/api/v1/data/findings?finding_type=FORBIDDEN_SOFTWARE&format=xlsx" -o forbidden.xlsx
 curl -H "Authorization: Bearer $TOKEN" localhost:8080/api/v1/matching/pending
 
 CONV=$(curl -s -X POST -H "Authorization: Bearer $TOKEN" localhost:8080/api/v1/chat/conversations | jq -r .id)
 curl -N -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-  -d '{"content":"Где у нас дефицит лицензий?"}' localhost:8080/api/v1/chat/conversations/$CONV/messages
+  -d '{"content":"У кого стоит нелицензионный Adobe Photoshop?"}' localhost:8080/api/v1/chat/conversations/$CONV/messages
 ```
 
 Демо-данные содержат: дефицит лицензий Microsoft Office и Adobe Photoshop, истёкшую лицензию TeamViewer,
