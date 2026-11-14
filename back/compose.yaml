@@ -111,6 +111,9 @@ services:
       NATS_URL: nats://nats:4222
       LICENSE_GRPC_ADDR: license:9093
       LLM_GRPC_ADDR: llm:9095
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-4}
+    deploy:
+      replicas: ${WORKER_REPLICAS:-3}
     depends_on:
       processor:
         condition: service_healthy
