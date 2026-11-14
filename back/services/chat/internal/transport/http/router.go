@@ -44,6 +44,8 @@ func NewRouter(d Deps) http.Handler {
 	r.Get("/healthz", d.Health.LiveHandler())
 	r.Get("/readyz", d.Health.ReadyHandler())
 
+	r.With(auth.Middleware(d.Verifier)).Get("/api/v1/chat/suggestions", h.suggestions)
+
 	r.Route("/api/v1/chat/conversations", func(r chi.Router) {
 		r.Use(auth.Middleware(d.Verifier))
 		r.With(middleware.Timeout(d.RequestTimeout)).Group(func(r chi.Router) {

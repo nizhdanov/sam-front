@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -58,13 +59,16 @@ var toolKeywords = []struct {
 	keywords []string
 	args     string
 }{
-	{"get_license_balance", []string{"баланс", "дефицит", "хватает", "balance", "deficit"}, `{"only_deficit":true}`},
-	{"query_data", []string{"нарушен", "комплаенс", "compliance", "violation"}, `{"dataset":"findings","filters":{"status":"OPEN"}}`},
-	{"query_data", []string{"лиценз", "license"}, `{"dataset":"licenses"}`},
-	{"query_data", []string{"запрещ", "forbidden"}, `{"dataset":"products","filters":{"policy_status":"FORBIDDEN"}}`},
+	{"get_license_balance", []string{"баланс", "дефицит", "простаива", "хватает", "balance", "deficit"}, `{}`},
+	{"query_data", []string{"запрещ", "forbidden"}, `{"dataset":"findings","filters":{"finding_type":"FORBIDDEN_SOFTWARE"}}`},
+	{"query_data", []string{"устарев", "outdated"}, `{"dataset":"findings","filters":{"finding_type":"OUTDATED_SOFTWARE"}}`},
+	{"query_data", []string{"договор", "contract"}, `{"dataset":"contracts"}`},
+	{"query_data", []string{"бесплат", "бпо", "free"}, `{"dataset":"products","filters":{"cost_model":"FREE"}}`},
+	{"query_data", []string{"нарушен", "compliance"}, `{"dataset":"findings"}`},
 	{"query_data", []string{"устройств", "компьютер", "device"}, `{"dataset":"devices"}`},
 	{"query_data", []string{"установ", "программ", "software"}, `{"dataset":"installations"}`},
-	{"get_summary", []string{"сводк", "статистик", "dashboard", "summary"}, `{}`},
+	{"get_summary", []string{"сводк", "статистик", "kpi", "summary"}, `{}`},
+	{"get_my_device", []string{"мой компьютер", "моё устройство", "my device"}, `{}`},
 }
 
 func mockChat(req Request) (string, []ToolCall) {
@@ -96,35 +100,47 @@ func mockChat(req Request) (string, []ToolCall) {
 }
 
 func mockEULA(text string) string {
-	lower := strings.ToLower(text)
-	contains := func(words ...string) bool {
-		for _, w := range words {
-			if strings.Contains(lower, w) {
-				return true
+	paragraphs := strings.Split(text, "\n")
+	find := func(words ...string) []int {
+		var out []int
+		for _, p := range paragraphs {
+			number, body, ok := strings.Cut(strings.TrimPrefix(p, "["), "]")
+			n, err := strconv.Atoi(number)
+			if !ok || err != nil {
+				continue
+			}
+			lower := strings.ToLower(body)
+			for _, w := range words {
+				if strings.Contains(lower, w) {
+					out = append(out, n)
+					break
+				}
 			}
 		}
-		return false
+		return out
 	}
-	var commercial *bool
-	switch {
-	case contains("non-commercial", "noncommercial", "personal use only", "некоммерч"):
-		f := false
-		commercial = &f
-	case contains("commercial use is permitted", "commercial use permitted"):
-		t := true
-		commercial = &t
+	commercial := map[string]any{"value": "UNDEFINED", "paragraphs": []int{}, "quote": ""}
+	if refs := find("non-commercial", "noncommercial", "personal use only", "некоммерч"); len(refs) > 0 {
+		commercial = map[string]any{"value": "NO", "paragraphs": refs, "quote": ""}
+	} else if refs := find("commercial use is permitted", "commercial use permitted"); len(refs) > 0 {
+		commercial = map[string]any{"value": "YES", "paragraphs": refs, "quote": ""}
+	}
+	subscriptions := []any{}
+	if refs := find("subscription", "подписк"); len(refs) > 0 {
+		subscriptions = append(subscriptions, map[string]any{"kind": "HIDDEN_SUBSCRIPTION", "description": "упоминается подписка", "paragraphs": refs, "quote": ""})
+	}
+	if refs := find("renew", "продлева"); len(refs) > 0 {
+		subscriptions = append(subscriptions, map[string]any{"kind": "AUTO_RENEWAL", "description": "упоминается продление", "paragraphs": refs, "quote": ""})
 	}
 	result := map[string]any{
-		"license_type":           "UNKNOWN",
-		"commercial_use_allowed": commercial,
-		"redistribution_allowed": nil,
-		"requires_subscription":  contains("subscription", "подписк"),
-		"device_limit":           nil,
-		"user_limit":             nil,
-		"restrictions":           []any{},
-		"risk_level":             "MEDIUM",
-		"requires_human_review":  true,
-		"summary":                "[DEMO] keyword-based analysis by the mock provider, not a legal review",
+		"license_type":          nil,
+		"cost_model":            nil,
+		"license_type_evidence": map[string]any{"paragraphs": []int{}, "quote": ""},
+		"commercial_use":        commercial,
+		"subscriptions":         subscriptions,
+		"restrictions":          []any{},
+		"risks":                 []any{},
+		"summary":               "[DEMO] анализ по ключевым словам mock-провайдера, не юридическое заключение",
 	}
 	body, _ := json.Marshal(result)
 	return string(body)

@@ -20,35 +20,49 @@ type Definition struct {
 }
 
 var (
-	everyone = auth.UserRoles
-	admins   = []auth.Role{auth.RoleAdmin}
+	admins = []auth.Role{auth.RoleAdmin}
+	users  = []auth.Role{auth.RoleUser}
 )
+
+const adminQueryDescription = `Универсальный запрос к данным SAM. Возвращает таблицу {columns, rows, total, shown}.
+Наборы данных (dataset):
+- installations — фактические установки ПО на устройствах: device_id, serial_number, device_type, raw_name (имя из ОС), product (продукт каталога), publisher, version, current_version (актуальная версия), match_status, status (ACTUAL, OUTDATED, FORBIDDEN), license_type, cost_model (FREE, PAID, SHAREWARE), first_seen_at, last_seen_at, license_status (COVERED, DEFICIT n, NOT_REQUIRED, UNVERIFIED, UNMATCHED). Фильтры: product, product_id, raw_name, publisher, version, serial_number, device_type, match_status, recognized (true/false), status, license_type, cost_model, in_bpo. group_by: product, publisher, version, serial_number, device_type, match_status, status, license_type, cost_model (считает устройства).
+- devices — устройства: device_id, serial_number, device_type (PHYSICAL, VIRTUAL), status (NEW, ACTIVE), hostname, responsible, location, last_inventory_at, installations, open_findings. Фильтры: serial_number, hostname, responsible, location, device_type, status. group_by: device_type, status, location.
+- products — каталог: product_id, product, publisher, current_version, section, class, in_bpo, status, status_comment, license_type, cost_model, purchased (действующих мест), devices, license_status. Фильтры: product, product_id, publisher, section, class, status, license_type, cost_model, in_bpo. group_by: publisher, section, class, status, license_type, cost_model, in_bpo.
+- contracts — договоры закупки: contract_id, product_id, product, contract_number, metric, quantity, valid_from, expires_at, status (ACTIVE, EXPIRING, EXPIRED, INACTIVE, NOT_STARTED). Фильтры: product, product_id, contract_number, metric, status. group_by: product, metric, status (суммирует quantity).
+- findings — нарушения: finding_id, product_id, device_id, finding_type (FORBIDDEN_SOFTWARE, OUTDATED_SOFTWARE, UNSUPPORTED_SOFTWARE, LICENSE_DEFICIT, LICENSE_EXPIRED, LICENSE_UNVERIFIED, UNKNOWN_SOFTWARE, COMMERCIAL_USE_RESTRICTED), severity, status (OPEN, ACKNOWLEDGED), serial_number, raw_name, product, version, current_version, detected_at, comment. Фильтры: finding_type, severity, status, serial_number, product, product_id. group_by: finding_type, severity, status, serial_number, product.
+Текстовые фильтры ищут по подстроке, статусы и типы — точное значение.`
+
+const userQueryDescription = `Запрос к данным SAM, доступным пользователю. Возвращает таблицу {columns, rows, total, shown}.
+Наборы данных (dataset):
+- products — справочник разрешённого бесплатного ПО (перечень БПО) и запрещённого ПО: product_id, product, publisher, current_version (рекомендуемая актуальная версия), section, class, in_bpo, status (ACTUAL, OUTDATED, FORBIDDEN), status_comment (причина запрета), license_type, cost_model. Фильтры: product, publisher, section, class, status, license_type, cost_model, in_bpo.
+- installations — ПО, установленное на компьютере пользователя: serial_number, raw_name, product, version, current_version, status. Фильтры: product, raw_name, status, recognized.
+- findings — запрещённое и устаревшее ПО на компьютере пользователя: finding_type, raw_name, product, version, current_version, detected_at. Фильтры: finding_type, product.
+Текстовые фильтры ищут по подстроке, статусы и типы — точное значение.`
 
 var registry = []Definition{
 	{
-		Tool: provider.Tool{
-			Name: "query_data",
-			Description: `Универсальный запрос к данным инвентаризации. Возвращает таблицу {columns, rows, total, shown}.
-Наборы данных (dataset):
-- installations: установленное ПО по устройствам (serial_number, hostname, product, publisher, version, match_status, policy_status, lifecycle_status, license_type, last_seen_at, license_status). Фильтры: product, publisher, version, serial_number, match_status, policy_status, lifecycle_status, license_type. group_by: product, publisher, version, serial_number, match_status, policy_status, lifecycle_status, license_type (считает число устройств).
-- devices: устройства (serial_number, hostname, operating_system, last_inventory_at, installations, open_findings). Фильтры: serial_number, hostname, operating_system. group_by: operating_system.
-- products: каталог ПО (product, publisher, edition, policy_status, license_type, devices, license_status). Фильтры: product, publisher, policy_status, license_type. group_by: publisher, policy_status, license_type.
-- licenses: зарегистрированные лицензии (product, metric, quantity, valid_from, expires_at, status, purchase_reference). Фильтры: product, metric, status (ACTIVE, EXPIRED, INACTIVE, NOT_STARTED). group_by: product, metric, status (суммирует quantity).
-- findings: нарушения (finding_type, severity, status, serial_number, product, last_detected_at). Фильтры: finding_type, severity, status, serial_number, product. group_by: finding_type, severity, status, serial_number, product.
-Текстовые фильтры ищут по подстроке, остальные — точное значение. total — сколько строк всего, shown — сколько показано.`,
-			Parameters: json.RawMessage(`{"type":"object","properties":{
-				"dataset":{"type":"string","enum":["installations","devices","products","licenses","findings"]},
-				"filters":{"type":"object","description":"фильтры, допустимые для выбранного набора данных","properties":{"product":{"type":"string"},"publisher":{"type":"string"},"version":{"type":"string"},"serial_number":{"type":"string"},"hostname":{"type":"string"},"operating_system":{"type":"string"},"match_status":{"type":"string"},"policy_status":{"type":"string"},"lifecycle_status":{"type":"string"},"license_type":{"type":"string"},"metric":{"type":"string"},"status":{"type":"string"},"finding_type":{"type":"string"},"severity":{"type":"string"}}},
-				"group_by":{"type":"string","description":"поле для группировки и подсчёта"},
-				"limit":{"type":"integer","minimum":1,"maximum":100}},
-				"required":["dataset"]}`),
-		},
-		Roles: everyone,
+		Tool: provider.Tool{Name: "query_data", Description: adminQueryDescription, Parameters: json.RawMessage(`{"type":"object","properties":{
+		"dataset":{"type":"string","enum":["installations","devices","products","contracts","findings"]},
+		"filters":{"type":"object","description":"фильтры выбранного набора данных; значения — строки","properties":{"product":{"type":"string"},"product_id":{"type":"string"},"raw_name":{"type":"string"},"publisher":{"type":"string"},"version":{"type":"string"},"serial_number":{"type":"string"},"device_type":{"type":"string"},"match_status":{"type":"string"},"recognized":{"type":"string"},"status":{"type":"string"},"license_type":{"type":"string"},"cost_model":{"type":"string"},"in_bpo":{"type":"string"},"section":{"type":"string"},"class":{"type":"string"},"hostname":{"type":"string"},"responsible":{"type":"string"},"location":{"type":"string"},"contract_number":{"type":"string"},"metric":{"type":"string"},"finding_type":{"type":"string"},"severity":{"type":"string"}}},
+		"group_by":{"type":"string","description":"поле для группировки и подсчёта"},
+		"limit":{"type":"integer","minimum":1,"maximum":100}},
+		"required":["dataset"]}`)},
+		Roles: admins,
+	},
+	{
+		Tool: provider.Tool{Name: "query_data", Description: userQueryDescription, Parameters: json.RawMessage(`{"type":"object","properties":{
+		"dataset":{"type":"string","enum":["installations","products","findings"]},
+		"filters":{"type":"object","description":"фильтры выбранного набора данных; значения — строки","properties":{"product":{"type":"string"},"product_id":{"type":"string"},"raw_name":{"type":"string"},"publisher":{"type":"string"},"version":{"type":"string"},"serial_number":{"type":"string"},"device_type":{"type":"string"},"match_status":{"type":"string"},"recognized":{"type":"string"},"status":{"type":"string"},"license_type":{"type":"string"},"cost_model":{"type":"string"},"in_bpo":{"type":"string"},"section":{"type":"string"},"class":{"type":"string"},"hostname":{"type":"string"},"responsible":{"type":"string"},"location":{"type":"string"},"contract_number":{"type":"string"},"metric":{"type":"string"},"finding_type":{"type":"string"},"severity":{"type":"string"}}},
+		"group_by":{"type":"string","description":"поле для группировки и подсчёта"},
+		"limit":{"type":"integer","minimum":1,"maximum":100}},
+		"required":["dataset"]}`)},
+		Roles: users,
 	},
 	{
 		Tool: provider.Tool{
 			Name:        "get_license_balance",
-			Description: "Лицензионный баланс по продуктам: куплено, используется, свободно, дефицит и итоговый дефицит. Можно указать продукт и только дефицитные позиции.",
+			Description: "Лицензионный баланс «куплено vs установлено» по продуктам: куплено мест по действующим договорам, установлено, свободно (простаивает), дефицит и итоговый дефицит. Можно указать продукт и только дефицитные позиции.",
 			Parameters: json.RawMessage(`{"type":"object","properties":{
 				"product":{"type":"string","description":"часть названия продукта"},
 				"only_deficit":{"type":"boolean"}}}`),
@@ -58,10 +72,18 @@ var registry = []Definition{
 	{
 		Tool: provider.Tool{
 			Name:        "get_summary",
-			Description: "Общая сводка: устройства, ПО, лицензионный дефицит, нарушения по критичности.",
+			Description: "KPI парка: устройства, установки, процент распознанного ПО, дефицит лицензий, простаивающие лицензии, запрещённое и устаревшее ПО, истекающие договоры.",
 			Parameters:  json.RawMessage(`{"type":"object","properties":{}}`),
 		},
-		Roles: everyone,
+		Roles: admins,
+	},
+	{
+		Tool: provider.Tool{
+			Name:        "get_my_device",
+			Description: "Карточка компьютера пользователя: серийный номер, тип, количество установленного ПО и открытых нарушений.",
+			Parameters:  json.RawMessage(`{"type":"object","properties":{}}`),
+		},
+		Roles: users,
 	},
 }
 
@@ -76,12 +98,9 @@ func ForRole(role auth.Role) []provider.Tool {
 }
 
 func Allowed(role auth.Role, name string) bool {
-	for _, d := range registry {
-		if d.Name == name {
-			return slices.Contains(d.Roles, role)
-		}
-	}
-	return false
+	return slices.ContainsFunc(registry, func(d Definition) bool {
+		return d.Name == name && slices.Contains(d.Roles, role)
+	})
 }
 
 type DataSource interface {

@@ -9,7 +9,7 @@ import (
 
 const (
 	MatchingVersion = "matching-v1"
-	EULAVersion     = "eula-v1"
+	EULAVersion     = "eula-v2"
 )
 
 //go:embed chat/*.txt matching/*.txt eula/*.txt
@@ -26,8 +26,8 @@ func read(name string) string {
 var (
 	chatBase = read("chat/base.txt")
 	byRole   = map[auth.Role]string{
-		auth.RoleEmployee: read("chat/employee.txt"),
-		auth.RoleAdmin:    read("chat/admin.txt"),
+		auth.RoleUser:  read("chat/user.txt"),
+		auth.RoleAdmin: read("chat/admin.txt"),
 	}
 	matching = read("matching/software_matching.txt")
 	eula     = read("eula/agreement_analysis.txt")
