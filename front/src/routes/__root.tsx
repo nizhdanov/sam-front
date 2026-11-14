@@ -1,5 +1,6 @@
 import { TanStackDevtools } from '@tanstack/react-devtools';
-import { createRootRoute, Outlet } from '@tanstack/react-router';
+import { ReactQueryDevtoolsPanel } from '@tanstack/react-query-devtools';
+import { createRootRoute, HeadContent, Outlet } from '@tanstack/react-router';
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools';
 
 import '../styles.css';
@@ -11,6 +12,7 @@ export const Route = createRootRoute({
 function RootComponent() {
   return (
     <>
+      <HeadContent />
       <Outlet />
       <TanStackDevtools
         config={{
@@ -20,6 +22,10 @@ function RootComponent() {
           {
             name: 'TanStack Router',
             render: <TanStackRouterDevtoolsPanel />
+          },
+          {
+            name: 'React Query',
+            render: <ReactQueryDevtoolsPanel />
           }
         ]}
       />

@@ -10,3 +10,12 @@ allowBuilds:
 skills:
   dirs:
     - .agents/skills
+permissions:
+  '@tanstack/devtools-vite':
+    skills: true
+  '@tanstack/react-router':
+    skills: true
+  '@tanstack/react-table':
+    skills: true
+  '@tanstack/router-plugin':
+    skills: true
