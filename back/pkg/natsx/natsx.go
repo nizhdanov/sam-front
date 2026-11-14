@@ -70,3 +70,18 @@ func Ready(nc *nats.Conn) func(context.Context) error {
 		return nil
 	}
 }
+
+const (
+	SnapshotEventType     = "inventory.snapshot.created"
+	SnapshotSchemaVersion = 1
+)
+
+type SnapshotCreated struct {
+	EventID       string    `json:"event_id"`
+	EventType     string    `json:"event_type"`
+	SchemaVersion int       `json:"schema_version"`
+	InventoryID   string    `json:"inventory_id"`
+	ImportID      string    `json:"import_id"`
+	SerialNumber  string    `json:"serial_number"`
+	CreatedAt     time.Time `json:"created_at"`
+}
