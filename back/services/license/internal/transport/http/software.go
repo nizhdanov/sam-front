@@ -5,7 +5,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"sam/pkg/apperr"
 	"sam/pkg/auth"
 	"sam/pkg/httpx"
 	"sam/pkg/opt"
@@ -25,7 +24,21 @@ func (h *handler) listProducts(w http.ResponseWriter, r *http.Request) {
 		h.fail(w, r, err)
 		return
 	}
-	f := domain.ProductFilter{Search: q.Get("search"), PolicyStatus: domain.PolicyStatus(q.Get("policy_status")), IncludeArchived: archived != nil && *archived}
+	inBPO, err := httpx.QueryBool(r, "in_bpo")
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	f := domain.ProductFilter{
+		Search:          q.Get("search"),
+		Status:          domain.ProductStatus(q.Get("status")),
+		Section:         q.Get("section"),
+		Class:           q.Get("class"),
+		LicenseType:     domain.LicenseType(q.Get("license_type")),
+		CostModel:       domain.CostModel(q.Get("cost_model")),
+		InBPO:           inBPO,
+		IncludeArchived: archived != nil && *archived,
+	}
 	items, total, err := h.svc.ListProducts(r.Context(), f, page)
 	if err != nil {
 		h.fail(w, r, err)
@@ -61,13 +74,17 @@ func (h *handler) getProduct(w http.ResponseWriter, r *http.Request) {
 }
 
 type productRequest struct {
-	CanonicalName string     `json:"canonical_name"`
-	Publisher     *string    `json:"publisher"`
-	Edition       *string    `json:"edition"`
-	AgreementID   *uuid.UUID `json:"agreement_id"`
-	PolicyStatus  string     `json:"policy_status"`
-	PolicyComment *string    `json:"policy_comment"`
-	Description   *string    `json:"description"`
+	CanonicalName  string               `json:"canonical_name"`
+	Publisher      *string              `json:"publisher"`
+	Edition        *string              `json:"edition"`
+	Purpose        *string              `json:"purpose"`
+	Section        *string              `json:"section"`
+	Class          *string              `json:"class"`
+	InBPO          bool                 `json:"in_bpo"`
+	CurrentVersion *string              `json:"current_version"`
+	AgreementID    *uuid.UUID           `json:"agreement_id"`
+	Status         domain.ProductStatus `json:"status"`
+	StatusComment  *string              `json:"status_comment"`
 }
 
 func (h *handler) createProduct(w http.ResponseWriter, r *http.Request) {
@@ -76,10 +93,7 @@ func (h *handler) createProduct(w http.ResponseWriter, r *http.Request) {
 		h.fail(w, r, err)
 		return
 	}
-	p, err := h.svc.CreateProduct(r.Context(), service.ProductInput{
-		CanonicalName: req.CanonicalName, Publisher: req.Publisher, Edition: req.Edition,
-		AgreementID: req.AgreementID, PolicyStatus: domain.PolicyStatus(req.PolicyStatus), PolicyComment: req.PolicyComment, Description: req.Description,
-	})
+	p, err := h.svc.CreateProduct(r.Context(), service.ProductInput(req))
 	if err != nil {
 		h.fail(w, r, err)
 		return
@@ -88,14 +102,18 @@ func (h *handler) createProduct(w http.ResponseWriter, r *http.Request) {
 }
 
 type productPatchRequest struct {
-	CanonicalName *string              `json:"canonical_name"`
-	Publisher     *string              `json:"publisher"`
-	Edition       *string              `json:"edition"`
-	AgreementID   opt.Field[uuid.UUID] `json:"agreement_id"`
-	PolicyStatus  *domain.PolicyStatus `json:"policy_status"`
-	PolicyComment *string              `json:"policy_comment"`
-	Description   *string              `json:"description"`
-	Archived      *bool                `json:"archived"`
+	CanonicalName  *string               `json:"canonical_name"`
+	Publisher      *string               `json:"publisher"`
+	Edition        *string               `json:"edition"`
+	Purpose        *string               `json:"purpose"`
+	Section        *string               `json:"section"`
+	Class          *string               `json:"class"`
+	InBPO          *bool                 `json:"in_bpo"`
+	CurrentVersion opt.Field[string]     `json:"current_version"`
+	AgreementID    opt.Field[uuid.UUID]  `json:"agreement_id"`
+	Status         *domain.ProductStatus `json:"status"`
+	StatusComment  *string               `json:"status_comment"`
+	Archived       *bool                 `json:"archived"`
 }
 
 func (h *handler) updateProduct(w http.ResponseWriter, r *http.Request) {
@@ -117,30 +135,17 @@ func (h *handler) updateProduct(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusOK, p)
 }
 
-func (h *handler) updatePolicy(w http.ResponseWriter, r *http.Request) {
+func (h *handler) deleteProduct(w http.ResponseWriter, r *http.Request) {
 	id, err := pathID(r, "id")
 	if err != nil {
 		h.fail(w, r, err)
 		return
 	}
-	var req struct {
-		PolicyStatus domain.PolicyStatus `json:"policy_status"`
-		Comment      *string             `json:"comment"`
-	}
-	if err := httpx.Decode(w, r, &req); err != nil {
+	if err := h.svc.DeleteProduct(r.Context(), id); err != nil {
 		h.fail(w, r, err)
 		return
 	}
-	if req.PolicyStatus == "" {
-		h.fail(w, r, apperr.Invalid("policy_status is required"))
-		return
-	}
-	p, err := h.svc.UpdateProduct(r.Context(), id, domain.ProductPatch{PolicyStatus: &req.PolicyStatus, PolicyComment: req.Comment})
-	if err != nil {
-		h.fail(w, r, err)
-		return
-	}
-	httpx.JSON(w, http.StatusOK, p)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *handler) listVersions(w http.ResponseWriter, r *http.Request) {
@@ -209,95 +214,4 @@ func (h *handler) updateVersion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.JSON(w, http.StatusOK, v)
-}
-
-func (h *handler) listAliases(w http.ResponseWriter, r *http.Request) {
-	id, err := pathID(r, "id")
-	if err != nil {
-		h.fail(w, r, err)
-		return
-	}
-	items, err := h.svc.Aliases(r.Context(), id)
-	if err != nil {
-		h.fail(w, r, err)
-		return
-	}
-	httpx.JSON(w, http.StatusOK, map[string]any{"items": items})
-}
-
-type aliasRequest struct {
-	RawName      string     `json:"raw_name"`
-	RawPublisher string     `json:"raw_publisher"`
-	RawVersion   string     `json:"raw_version"`
-	VersionID    *uuid.UUID `json:"version_id"`
-}
-
-func (h *handler) createAlias(w http.ResponseWriter, r *http.Request) {
-	id, err := pathID(r, "id")
-	if err != nil {
-		h.fail(w, r, err)
-		return
-	}
-	var req aliasRequest
-	if err := httpx.Decode(w, r, &req); err != nil {
-		h.fail(w, r, err)
-		return
-	}
-	a, err := h.svc.CreateAlias(r.Context(), id, service.AliasInput(req))
-	if err != nil {
-		h.fail(w, r, err)
-		return
-	}
-	httpx.JSON(w, http.StatusCreated, a)
-}
-
-func (h *handler) deleteAlias(w http.ResponseWriter, r *http.Request) {
-	id, err := pathID(r, "id")
-	if err != nil {
-		h.fail(w, r, err)
-		return
-	}
-	aliasID, err := pathID(r, "aliasID")
-	if err != nil {
-		h.fail(w, r, err)
-		return
-	}
-	if err := h.svc.DeleteAlias(r.Context(), id, aliasID); err != nil {
-		h.fail(w, r, err)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
-}
-
-func (h *handler) productInstallations(w http.ResponseWriter, r *http.Request) {
-	id, err := pathID(r, "id")
-	if err != nil {
-		h.fail(w, r, err)
-		return
-	}
-	page, err := httpx.ParsePage(r)
-	if err != nil {
-		h.fail(w, r, err)
-		return
-	}
-	items, total, err := h.svc.ProductInstallations(r.Context(), id, page)
-	if err != nil {
-		h.fail(w, r, err)
-		return
-	}
-	respondPage(w, items, page, total)
-}
-
-func (h *handler) productBalance(w http.ResponseWriter, r *http.Request) {
-	id, err := pathID(r, "id")
-	if err != nil {
-		h.fail(w, r, err)
-		return
-	}
-	items, err := h.svc.Balances(r.Context(), &id)
-	if err != nil {
-		h.fail(w, r, err)
-		return
-	}
-	httpx.JSON(w, http.StatusOK, map[string]any{"items": items})
 }

@@ -57,8 +57,8 @@ func findingWhere(f domain.FindingFilter) where {
 	if f.ProductID != nil {
 		w.add("f.product_id = ?", *f.ProductID)
 	}
-	if f.EmployeeID != nil {
-		w.add("d.employee_id = ?", *f.EmployeeID)
+	if f.SerialNumber != "" {
+		w.add("d.serial_number = ?", f.SerialNumber)
 	}
 	return w
 }

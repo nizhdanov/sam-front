@@ -66,22 +66,26 @@ func (s *Service) Resolve(ctx context.Context, items []domain.RawSoftware) ([]do
 func (s *Service) resolveNew(ctx context.Context, item domain.RawSoftware) (domain.Resolution, error) {
 	res := domain.Resolution{SourceKey: item.SourceKey, Status: domain.ResolutionUnknown}
 	name := swkey.Normalize(item.DisplayName)
+	cfg, err := s.matchConfig(ctx)
+	if err != nil {
+		return res, err
+	}
 	if name != "" {
-		found, err := s.products.Candidates(ctx, name, s.matchCfg.MaxCandidates*2)
+		found, err := s.products.Candidates(ctx, name, cfg.MaxCandidates*2)
 		if err != nil {
 			return res, err
 		}
 		for _, c := range found {
-			if c.Similarity >= s.matchCfg.CandidateThreshold && domain.PublishersCompatible(item.Publisher, c.Publisher) {
+			if c.Similarity >= cfg.CandidateThreshold && domain.PublishersCompatible(item.Publisher, c.Publisher) {
 				res.Candidates = append(res.Candidates, c)
 			}
 		}
-		if len(res.Candidates) > s.matchCfg.MaxCandidates {
-			res.Candidates = res.Candidates[:s.matchCfg.MaxCandidates]
+		if len(res.Candidates) > cfg.MaxCandidates {
+			res.Candidates = res.Candidates[:cfg.MaxCandidates]
 		}
 	}
 
-	status, chosen, method := domain.DecideMatch(name, res.Candidates, s.matchCfg)
+	status, chosen, method := domain.DecideMatch(name, res.Candidates, cfg)
 	res.Status = status
 	switch status {
 	case domain.ResolutionMatched:
@@ -131,7 +135,11 @@ func (s *Service) SaveSuggestion(ctx context.Context, sg domain.Suggestion) (*do
 		}
 	}
 
-	if !domain.AcceptSuggestion(chosen, sg.Software.Publisher, sg.Confidence, s.matchCfg) {
+	cfg, err := s.matchConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !domain.AcceptSuggestion(chosen, sg.Software.Publisher, sg.Confidence, cfg) {
 		return nil, s.matching.UpsertPending(ctx, sg)
 	}
 	a := assignmentFor(sg.Software, chosen.ProductID, sg.Method)
@@ -212,7 +220,7 @@ func (s *Service) ApproveMatching(ctx context.Context, id, productID uuid.UUID, 
 		if task.Status != domain.ReviewPending {
 			return apperr.Conflict("matching task is already reviewed")
 		}
-		return s.assign(ctx, domain.Assignment{
+		err = s.assign(ctx, domain.Assignment{
 			SourceKey:    task.SourceKey,
 			RawName:      task.RawName,
 			RawPublisher: task.RawPublisher,
@@ -222,6 +230,11 @@ func (s *Service) ApproveMatching(ctx context.Context, id, productID uuid.UUID, 
 			Method:       domain.MethodManual,
 			ReviewedBy:   &reviewer,
 		})
+		if err != nil {
+			return err
+		}
+		return s.record(ctx, "matching", id.String(), domain.AuditApprove, "Сопоставлено «"+task.RawName+"»",
+			map[string]any{"product_id": productID})
 	})
 	if err != nil {
 		return domain.MatchingTask{}, err
@@ -243,6 +256,10 @@ func (s *Service) RejectMatching(ctx context.Context, id uuid.UUID, reason strin
 			return apperr.Conflict("matching task is already reviewed")
 		}
 		if err := s.matching.Reject(ctx, id, c.Actor(), reason); err != nil {
+			return err
+		}
+		if err := s.record(ctx, "matching", id.String(), domain.AuditReject, "Отклонено «"+task.RawName+"»",
+			map[string]any{"reason": reason}); err != nil {
 			return err
 		}
 		if _, err := s.aliases.BySourceKey(ctx, task.SourceKey); err == nil {

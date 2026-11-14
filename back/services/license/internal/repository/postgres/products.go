@@ -20,17 +20,22 @@ type Products struct{ pool *pgxpool.Pool }
 func NewProducts(pool *pgxpool.Pool) *Products { return &Products{pool: pool} }
 
 const productSelect = `
-	SELECT p.id, p.canonical_name, p.publisher, p.edition, p.agreement_id, a.name, a.license_type, p.policy_status,
-	       p.policy_comment, p.description,
+	SELECT p.id, p.canonical_name, p.publisher, p.edition, p.purpose, p.section, p.class, p.in_bpo, p.current_version,
+	       p.agreement_id, a.name, a.license_type, a.cost_model, p.status, p.status_comment,
+	       (SELECT COALESCE(SUM(e.quantity), 0) FROM license_entitlements e
+	        WHERE e.product_id = p.id AND e.is_active
+	          AND (e.valid_from IS NULL OR e.valid_from <= NOW()) AND (e.expires_at IS NULL OR e.expires_at > NOW())),
 	       (SELECT COUNT(*) FROM installations i WHERE i.product_id = p.id AND i.is_active),
+	       (SELECT COUNT(DISTINCT i.device_id) FROM installations i WHERE i.product_id = p.id AND i.is_active),
 	       p.archived_at, p.created_at, p.updated_at
 	FROM software_products p
 	LEFT JOIN license_agreements a ON a.id = p.agreement_id`
 
 func scanProduct(row scanner) (domain.Product, error) {
 	var p domain.Product
-	err := row.Scan(&p.ID, &p.CanonicalName, &p.Publisher, &p.Edition, &p.AgreementID, &p.AgreementName, &p.LicenseType,
-		&p.PolicyStatus, &p.PolicyComment, &p.Description, &p.Installations, &p.ArchivedAt, &p.CreatedAt, &p.UpdatedAt)
+	err := row.Scan(&p.ID, &p.CanonicalName, &p.Publisher, &p.Edition, &p.Purpose, &p.Section, &p.Class, &p.InBPO,
+		&p.CurrentVersion, &p.AgreementID, &p.AgreementName, &p.LicenseType, &p.CostModel, &p.Status, &p.StatusComment,
+		&p.Purchased, &p.Installations, &p.Devices, &p.ArchivedAt, &p.CreatedAt, &p.UpdatedAt)
 	return p, err
 }
 
@@ -42,12 +47,31 @@ func (r *Products) List(ctx context.Context, f domain.ProductFilter, page httpx.
 	if f.Search != "" {
 		w.add("(p.canonical_name ILIKE ? OR p.publisher ILIKE ?)", "%"+f.Search+"%")
 	}
-	if f.PolicyStatus != "" {
-		w.add("p.policy_status = ?", f.PolicyStatus)
+	if f.Status != "" {
+		w.add("p.status = ?", f.Status)
+	}
+	if f.Section != "" {
+		w.add("p.section = ?", f.Section)
+	}
+	if f.Class != "" {
+		w.add("p.class = ?", f.Class)
+	}
+	if f.LicenseType != "" {
+		w.add("a.license_type = ?", f.LicenseType)
+	}
+	if f.CostModel != "" {
+		w.add("a.cost_model = ?", f.CostModel)
+	}
+	if f.InBPO != nil {
+		w.add("p.in_bpo = ?", *f.InBPO)
+	}
+	if f.PublicOnly {
+		w.raw("(p.in_bpo OR a.cost_model = 'FREE' OR p.status = 'FORBIDDEN')")
 	}
 	db := pg.DB(ctx, r.pool)
 	var total int
-	if err := db.QueryRow(ctx, `SELECT COUNT(*) FROM software_products p`+w.String(), w.args...).Scan(&total); err != nil {
+	count := `SELECT COUNT(*) FROM software_products p LEFT JOIN license_agreements a ON a.id = p.agreement_id`
+	if err := db.QueryRow(ctx, count+w.String(), w.args...).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("count products: %w", err)
 	}
 	query := productSelect + w.String() + ` ORDER BY p.canonical_name, p.edition NULLS FIRST LIMIT ` + w.arg(page.Limit) + ` OFFSET ` + w.arg(page.Offset())
@@ -75,10 +99,10 @@ func (r *Products) GetMany(ctx context.Context, ids []uuid.UUID) ([]domain.Produ
 func (r *Products) Create(ctx context.Context, p domain.Product) error {
 	_, err := pg.DB(ctx, r.pool).Exec(ctx, `
 		INSERT INTO software_products (id, canonical_name, normalized_name, publisher, normalized_publisher, edition,
-		                               agreement_id, policy_status, policy_comment, description)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+		                               purpose, section, class, in_bpo, current_version, agreement_id, status, status_comment)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
 		p.ID, p.CanonicalName, swkey.Normalize(p.CanonicalName), p.Publisher, swkey.NormalizePublisher(value(p.Publisher)),
-		p.Edition, p.AgreementID, p.PolicyStatus, p.PolicyComment, p.Description)
+		p.Edition, p.Purpose, p.Section, p.Class, p.InBPO, p.CurrentVersion, p.AgreementID, p.Status, p.StatusComment)
 	if pg.IsForeignKeyViolation(err) {
 		return apperr.Invalid("agreement does not exist")
 	}
@@ -105,17 +129,29 @@ func (r *Products) Update(ctx context.Context, id uuid.UUID, p domain.ProductPat
 	if p.Edition != nil {
 		s.add("edition", nonEmpty(*p.Edition))
 	}
+	if p.Purpose != nil {
+		s.add("purpose", nonEmpty(*p.Purpose))
+	}
+	if p.Section != nil {
+		s.add("section", nonEmpty(*p.Section))
+	}
+	if p.Class != nil {
+		s.add("class", nonEmpty(*p.Class))
+	}
+	if p.InBPO != nil {
+		s.add("in_bpo", *p.InBPO)
+	}
+	if p.CurrentVersion.Set {
+		s.add("current_version", p.CurrentVersion.Value)
+	}
 	if p.AgreementID.Set {
 		s.add("agreement_id", p.AgreementID.Value)
 	}
-	if p.PolicyStatus != nil {
-		s.add("policy_status", *p.PolicyStatus)
+	if p.Status != nil {
+		s.add("status", *p.Status)
 	}
-	if p.PolicyComment != nil {
-		s.add("policy_comment", nonEmpty(*p.PolicyComment))
-	}
-	if p.Description != nil {
-		s.add("description", nonEmpty(*p.Description))
+	if p.StatusComment != nil {
+		s.add("status_comment", nonEmpty(*p.StatusComment))
 	}
 	if p.Archived != nil {
 		if *p.Archived {
@@ -132,8 +168,46 @@ func (r *Products) Update(ctx context.Context, id uuid.UUID, p domain.ProductPat
 	if pg.IsForeignKeyViolation(err) {
 		return apperr.Invalid("agreement does not exist")
 	}
+	if pg.IsUniqueViolation(err) {
+		return apperr.Conflict("product with the same name, publisher and edition already exists")
+	}
 	if err != nil {
 		return fmt.Errorf("update product: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return apperr.NotFound("software product not found")
+	}
+	return nil
+}
+
+func (r *Products) Usage(ctx context.Context, id uuid.UUID) (installations, contracts int, err error) {
+	err = pg.DB(ctx, r.pool).QueryRow(ctx, `
+		SELECT (SELECT COUNT(*) FROM installations WHERE product_id = $1),
+		       (SELECT COUNT(*) FROM license_entitlements WHERE product_id = $1)`, id).Scan(&installations, &contracts)
+	if err != nil {
+		return 0, 0, fmt.Errorf("product usage: %w", err)
+	}
+	return installations, contracts, nil
+}
+
+func (r *Products) Delete(ctx context.Context, id uuid.UUID) error {
+	db := pg.DB(ctx, r.pool)
+	for _, q := range []string{
+		`DELETE FROM software_aliases WHERE product_id = $1`,
+		`DELETE FROM software_versions WHERE product_id = $1`,
+		`UPDATE matching_candidates SET suggested_product = NULL WHERE suggested_product = $1`,
+		`DELETE FROM compliance_findings WHERE product_id = $1`,
+	} {
+		if _, err := db.Exec(ctx, q, id); err != nil {
+			return fmt.Errorf("delete product references: %w", err)
+		}
+	}
+	tag, err := db.Exec(ctx, `DELETE FROM software_products WHERE id = $1`, id)
+	if pg.IsForeignKeyViolation(err) {
+		return apperr.Conflict("product is still referenced")
+	}
+	if err != nil {
+		return fmt.Errorf("delete product: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
 		return apperr.NotFound("software product not found")

@@ -29,10 +29,7 @@ func (h *handler) listFindings(w http.ResponseWriter, r *http.Request) {
 			f.Types = append(f.Types, ft)
 		}
 	}
-	if f.DeviceID, err = queryID(r, "device_id"); err != nil {
-		h.fail(w, r, err)
-		return
-	}
+	f.SerialNumber = q.Get("serial_number")
 	if f.ProductID, err = queryID(r, "product_id"); err != nil {
 		h.fail(w, r, err)
 		return
@@ -43,20 +40,6 @@ func (h *handler) listFindings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respondPage(w, items, page, total)
-}
-
-func (h *handler) getFinding(w http.ResponseWriter, r *http.Request) {
-	id, err := pathID(r, "id")
-	if err != nil {
-		h.fail(w, r, err)
-		return
-	}
-	f, err := h.svc.GetFinding(r.Context(), id)
-	if err != nil {
-		h.fail(w, r, err)
-		return
-	}
-	httpx.JSON(w, http.StatusOK, f)
 }
 
 func (h *handler) acknowledgeFinding(w http.ResponseWriter, r *http.Request) {
@@ -106,29 +89,6 @@ func (h *handler) dashboard(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusOK, d)
 }
 
-func (h *handler) softwareAnalytics(w http.ResponseWriter, r *http.Request) {
-	limit, err := httpx.QueryInt(r, "limit", 20, 1, httpx.MaxLimit)
-	if err != nil {
-		h.fail(w, r, err)
-		return
-	}
-	items, err := h.svc.SoftwareAnalytics(r.Context(), limit)
-	if err != nil {
-		h.fail(w, r, err)
-		return
-	}
-	httpx.JSON(w, http.StatusOK, map[string]any{"items": items})
-}
-
-func (h *handler) departmentAnalytics(w http.ResponseWriter, r *http.Request) {
-	items, err := h.svc.DepartmentAnalytics(r.Context())
-	if err != nil {
-		h.fail(w, r, err)
-		return
-	}
-	httpx.JSON(w, http.StatusOK, map[string]any{"items": items})
-}
-
 func (h *handler) pendingMatches(w http.ResponseWriter, r *http.Request) {
 	page, err := httpx.ParsePage(r)
 	if err != nil {
@@ -141,20 +101,6 @@ func (h *handler) pendingMatches(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respondPage(w, items, page, total)
-}
-
-func (h *handler) getMatch(w http.ResponseWriter, r *http.Request) {
-	id, err := pathID(r, "id")
-	if err != nil {
-		h.fail(w, r, err)
-		return
-	}
-	t, err := h.svc.MatchingTask(r.Context(), id)
-	if err != nil {
-		h.fail(w, r, err)
-		return
-	}
-	httpx.JSON(w, http.StatusOK, t)
 }
 
 type approveRequest struct {

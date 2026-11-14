@@ -9,7 +9,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"sam/pkg/apperr"
-	"sam/pkg/httpx"
 	pg "sam/pkg/postgres"
 	"sam/services/license/internal/domain"
 )
@@ -19,54 +18,18 @@ type Devices struct{ pool *pgxpool.Pool }
 func NewDevices(pool *pgxpool.Pool) *Devices { return &Devices{pool: pool} }
 
 const deviceSelect = `
-	SELECT d.id, d.serial_number, d.hostname, d.employee_id, e.full_name, e.department, d.operating_system,
+	SELECT d.id, d.serial_number, d.device_type, d.status, d.hostname, d.operating_system, d.responsible, d.location,
 	       d.last_inventory_at,
 	       (SELECT COUNT(*) FROM installations i WHERE i.device_id = d.id AND i.is_active),
-	       (SELECT COUNT(*) FROM compliance_findings f WHERE f.device_id = d.id AND f.status <> 'RESOLVED'),
+	       (SELECT COUNT(*) FROM compliance_findings f WHERE f.device_id = d.id AND f.status = 'OPEN'),
 	       d.created_at, d.updated_at
-	FROM devices d
-	LEFT JOIN employees e ON e.id = d.employee_id`
+	FROM devices d`
 
 func scanDevice(row scanner) (domain.Device, error) {
 	var d domain.Device
-	err := row.Scan(&d.ID, &d.SerialNumber, &d.Hostname, &d.EmployeeID, &d.EmployeeName, &d.Department,
-		&d.OperatingSystem, &d.LastInventoryAt, &d.Installations, &d.OpenFindings, &d.CreatedAt, &d.UpdatedAt)
+	err := row.Scan(&d.ID, &d.SerialNumber, &d.Type, &d.Status, &d.Hostname, &d.OperatingSystem, &d.Responsible,
+		&d.Location, &d.LastInventoryAt, &d.Installations, &d.OpenFindings, &d.CreatedAt, &d.UpdatedAt)
 	return d, err
-}
-
-func (r *Devices) List(ctx context.Context, f domain.DeviceFilter, page httpx.PageRequest) ([]domain.Device, int, error) {
-	var w where
-	if f.Search != "" {
-		w.add("(d.serial_number ILIKE ? OR d.hostname ILIKE ? OR e.full_name ILIKE ?)", "%"+f.Search+"%")
-	}
-	if f.SerialNumber != "" {
-		w.add("d.serial_number = ?", f.SerialNumber)
-	}
-	if f.EmployeeID != nil {
-		w.add("d.employee_id = ?", *f.EmployeeID)
-	}
-	if f.Department != "" {
-		w.add("e.department = ?", f.Department)
-	}
-	if f.HasViolations != nil {
-		cond := "EXISTS (SELECT 1 FROM compliance_findings f WHERE f.device_id = d.id AND f.status <> 'RESOLVED')"
-		if !*f.HasViolations {
-			cond = "NOT " + cond
-		}
-		w.raw(cond)
-	}
-	db := pg.DB(ctx, r.pool)
-	var total int
-	if err := db.QueryRow(ctx, `SELECT COUNT(*) FROM devices d LEFT JOIN employees e ON e.id = d.employee_id`+w.String(), w.args...).Scan(&total); err != nil {
-		return nil, 0, fmt.Errorf("count devices: %w", err)
-	}
-	query := deviceSelect + w.String() + ` ORDER BY d.serial_number LIMIT ` + w.arg(page.Limit) + ` OFFSET ` + w.arg(page.Offset())
-	rows, err := db.Query(ctx, query, w.args...)
-	if err != nil {
-		return nil, 0, fmt.Errorf("list devices: %w", err)
-	}
-	items, err := collect(rows, scanDevice)
-	return items, total, err
 }
 
 func (r *Devices) Get(ctx context.Context, id uuid.UUID) (domain.Device, error) {
@@ -74,10 +37,30 @@ func (r *Devices) Get(ctx context.Context, id uuid.UUID) (domain.Device, error) 
 	return one(rows, err, scanDevice, "device")
 }
 
+func (r *Devices) BySerial(ctx context.Context, serial string) (domain.Device, error) {
+	rows, err := pg.DB(ctx, r.pool).Query(ctx, deviceSelect+` WHERE d.serial_number = $1`, serial)
+	return one(rows, err, scanDevice, "device")
+}
+
+func (r *Devices) History(ctx context.Context, id uuid.UUID) ([]domain.DeviceImport, error) {
+	rows, err := pg.DB(ctx, r.pool).Query(ctx, `
+		SELECT inventory_id, collected_at, result_status, processed_at
+		FROM processed_snapshots WHERE device_id = $1 ORDER BY collected_at DESC, processed_at DESC`, id)
+	if err != nil {
+		return nil, fmt.Errorf("device history: %w", err)
+	}
+	return collect(rows, func(row scanner) (domain.DeviceImport, error) {
+		var h domain.DeviceImport
+		err := row.Scan(&h.InventoryID, &h.CollectedAt, &h.Result, &h.ProcessedAt)
+		return h, err
+	})
+}
+
 func (r *Devices) LockBySerial(ctx context.Context, serial string) (uuid.UUID, *time.Time, error) {
 	db := pg.DB(ctx, r.pool)
-	if _, err := db.Exec(ctx, `INSERT INTO devices (id, serial_number) VALUES ($1, $2) ON CONFLICT (serial_number) DO NOTHING`,
-		uuid.New(), serial); err != nil {
+	if _, err := db.Exec(ctx, `
+		INSERT INTO devices (id, serial_number, device_type, status) VALUES ($1, $2, $3, 'NEW')
+		ON CONFLICT (serial_number) DO NOTHING`, uuid.New(), serial, domain.DetectDeviceType(serial)); err != nil {
 		return uuid.Nil, nil, fmt.Errorf("ensure device: %w", err)
 	}
 	var id uuid.UUID
@@ -99,23 +82,26 @@ func (r *Devices) MarkInventoried(ctx context.Context, id uuid.UUID, at time.Tim
 
 func (r *Devices) Update(ctx context.Context, id uuid.UUID, p domain.DevicePatch) error {
 	var s set
-	if p.Hostname != nil {
-		s.add("hostname", nonEmpty(*p.Hostname))
+	if p.Type != nil {
+		s.add("device_type", *p.Type)
 	}
-	if p.OperatingSystem != nil {
-		s.add("operating_system", nonEmpty(*p.OperatingSystem))
+	if p.Status != nil {
+		s.add("status", *p.Status)
 	}
-	if p.EmployeeID.Set {
-		s.add("employee_id", p.EmployeeID.Value)
+	if p.Hostname.Set {
+		s.add("hostname", p.Hostname.Value)
+	}
+	if p.Responsible.Set {
+		s.add("responsible", p.Responsible.Value)
+	}
+	if p.Location.Set {
+		s.add("location", p.Location.Value)
 	}
 	if s.empty() {
 		return nil
 	}
 	query, args := s.update("devices", id)
 	tag, err := pg.DB(ctx, r.pool).Exec(ctx, query, args...)
-	if pg.IsForeignKeyViolation(err) {
-		return apperr.Invalid("employee does not exist")
-	}
 	if err != nil {
 		return fmt.Errorf("update device: %w", err)
 	}

@@ -11,31 +11,41 @@ import (
 type LicenseType string
 
 const (
-	LicenseCommercial  LicenseType = "COMMERCIAL"
-	LicenseFreeware    LicenseType = "FREEWARE"
-	LicenseOpenSource  LicenseType = "OPEN_SOURCE"
-	LicenseTrial       LicenseType = "TRIAL"
-	LicenseProprietary LicenseType = "PROPRIETARY"
-	LicenseUnknown     LicenseType = "UNKNOWN"
+	LicenseOpenSource LicenseType = "OPEN_SOURCE"
+	LicenseCommercial LicenseType = "COMMERCIAL"
+	LicenseTrial      LicenseType = "TRIAL"
 )
 
 func (t LicenseType) Valid() bool {
 	switch t {
-	case LicenseCommercial, LicenseFreeware, LicenseOpenSource, LicenseTrial, LicenseProprietary, LicenseUnknown:
+	case LicenseOpenSource, LicenseCommercial, LicenseTrial:
 		return true
 	}
 	return false
 }
 
-func (t LicenseType) RequiresEntitlement() bool {
-	return t == LicenseCommercial || t == LicenseProprietary || t == LicenseTrial
+type CostModel string
+
+const (
+	CostFree      CostModel = "FREE"
+	CostPaid      CostModel = "PAID"
+	CostShareware CostModel = "SHAREWARE"
+)
+
+func (c CostModel) Valid() bool {
+	switch c {
+	case CostFree, CostPaid, CostShareware:
+		return true
+	}
+	return false
 }
+
+func (c CostModel) RequiresEntitlement() bool { return c == CostPaid || c == CostShareware }
 
 type Metric string
 
 const (
 	MetricPerDevice  Metric = "PER_DEVICE"
-	MetricPerUser    Metric = "PER_USER"
 	MetricUnlimited  Metric = "UNLIMITED"
 	MetricConcurrent Metric = "CONCURRENT"
 	MetricUnknown    Metric = "UNKNOWN"
@@ -43,7 +53,7 @@ const (
 
 func (m Metric) Valid() bool {
 	switch m {
-	case MetricPerDevice, MetricPerUser, MetricUnlimited, MetricConcurrent, MetricUnknown:
+	case MetricPerDevice, MetricUnlimited, MetricConcurrent, MetricUnknown:
 		return true
 	}
 	return false
@@ -78,6 +88,12 @@ func (e Entitlement) ExpiredAt(t time.Time) bool {
 	return e.IsActive && e.ExpiresAt != nil && !e.ExpiresAt.After(t)
 }
 
+type ContractFilter struct {
+	ProductID      *uuid.UUID
+	ActiveOnly     bool
+	ExpiringWithin int
+}
+
 type EntitlementPatch struct {
 	ProductID         *uuid.UUID
 	AgreementID       opt.Field[uuid.UUID]
@@ -92,10 +108,13 @@ type Agreement struct {
 	ID                uuid.UUID   `json:"id"`
 	Name              string      `json:"name"`
 	LicenseType       LicenseType `json:"license_type"`
+	CostModel         CostModel   `json:"cost_model"`
 	AgreementText     *string     `json:"agreement_text,omitempty"`
+	FileName          *string     `json:"file_name"`
 	SourceURL         *string     `json:"source_url"`
 	CommercialAllowed *bool       `json:"commercial_allowed"`
 	ReviewStatus      string      `json:"review_status"`
+	Products          int         `json:"products_count"`
 	CreatedAt         time.Time   `json:"created_at"`
 	UpdatedAt         time.Time   `json:"updated_at"`
 }
@@ -103,10 +122,20 @@ type Agreement struct {
 type AgreementPatch struct {
 	Name              *string
 	LicenseType       *LicenseType
+	CostModel         *CostModel
 	AgreementText     opt.Field[string]
+	FileName          opt.Field[string]
 	SourceURL         opt.Field[string]
 	CommercialAllowed opt.Field[bool]
 	ReviewStatus      *string
+}
+
+type SimilarAgreement struct {
+	ID          uuid.UUID   `json:"id"`
+	Name        string      `json:"name"`
+	LicenseType LicenseType `json:"license_type"`
+	CostModel   CostModel   `json:"cost_model"`
+	Similarity  float64     `json:"similarity"`
 }
 
 type AgreementAnalysis struct {

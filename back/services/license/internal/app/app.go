@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
-	"os"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -15,6 +14,7 @@ import (
 	grpchealth "google.golang.org/grpc/health"
 
 	"sam/pkg/auth"
+	"sam/pkg/buildconfig"
 	"sam/pkg/health"
 	"sam/pkg/postgres"
 	"sam/services/license/internal/config"
@@ -45,7 +45,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger) (_ *App, err 
 		}
 	}()
 
-	pubKey, err := os.ReadFile(cfg.Auth.PublicKeyFile)
+	pubKey, err := buildconfig.ReadFile(cfg.Auth.PublicKeyFile)
 	if err != nil {
 		return nil, fmt.Errorf("read jwt public key: %w", err)
 	}
@@ -70,23 +70,26 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger) (_ *App, err 
 	a.closers = append(a.closers, func() { _ = llmConn.Close() })
 
 	a.svc, err = service.New(service.Deps{
-		Tx:            postgres.NewTxRunner(pool),
-		Locks:         pgrepo.NewLocks(pool),
-		Products:      pgrepo.NewProducts(pool),
-		Versions:      pgrepo.NewVersions(pool),
-		Aliases:       pgrepo.NewAliases(pool),
-		Matching:      pgrepo.NewMatching(pool),
-		Devices:       pgrepo.NewDevices(pool),
-		Employees:     pgrepo.NewEmployees(pool),
-		Installations: pgrepo.NewInstallations(pool),
-		Entitlements:  pgrepo.NewEntitlements(pool),
-		Agreements:    pgrepo.NewAgreements(pool),
-		Findings:      pgrepo.NewFindings(pool),
-		Analytics:     pgrepo.NewAnalytics(pool),
-		Explorer:      pgrepo.NewExplorer(pool),
-		Analyzer:      llm.New(llmConn),
-		Log:           log,
-	}, domain.MatchingConfig(cfg.Matching))
+		Tx:                 postgres.NewTxRunner(pool),
+		Locks:              pgrepo.NewLocks(pool),
+		Products:           pgrepo.NewProducts(pool),
+		Versions:           pgrepo.NewVersions(pool),
+		Aliases:            pgrepo.NewAliases(pool),
+		Matching:           pgrepo.NewMatching(pool),
+		Devices:            pgrepo.NewDevices(pool),
+		Installations:      pgrepo.NewInstallations(pool),
+		Entitlements:       pgrepo.NewEntitlements(pool),
+		Agreements:         pgrepo.NewAgreements(pool),
+		Findings:           pgrepo.NewFindings(pool),
+		Analytics:          pgrepo.NewAnalytics(pool),
+		Explorer:           pgrepo.NewExplorer(pool),
+		Settings:           pgrepo.NewSettings(pool),
+		Audit:              pgrepo.NewAudit(pool),
+		Analyzer:           llm.New(llmConn),
+		Log:                log,
+		MatchingConfig:     domain.MatchingConfig(cfg.Matching),
+		ExpiringWithinDays: cfg.Compliance.ExpiringWithinDays,
+	})
 	if err != nil {
 		return nil, err
 	}

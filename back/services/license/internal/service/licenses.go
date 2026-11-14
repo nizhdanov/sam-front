@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,11 +11,11 @@ import (
 	"sam/services/license/internal/domain"
 )
 
-func (s *Service) ListEntitlements(ctx context.Context, productID *uuid.UUID, activeOnly bool, page httpx.PageRequest) ([]domain.Entitlement, int, error) {
+func (s *Service) ListEntitlements(ctx context.Context, f domain.ContractFilter, page httpx.PageRequest) ([]domain.Entitlement, int, error) {
 	if _, err := requireAdmin(ctx); err != nil {
 		return nil, 0, err
 	}
-	return s.entitlements.List(ctx, productID, activeOnly, page)
+	return s.entitlements.List(ctx, f, page)
 }
 
 func (s *Service) GetEntitlement(ctx context.Context, id uuid.UUID) (domain.Entitlement, error) {
@@ -53,6 +52,10 @@ func (s *Service) CreateEntitlement(ctx context.Context, e domain.Entitlement) (
 		if err := s.entitlements.Create(ctx, e); err != nil {
 			return err
 		}
+		if err := s.record(ctx, "contract", e.ID.String(), domain.AuditCreate, contractSummary("Добавлен договор", e),
+			map[string]any{"product_id": e.ProductID, "quantity": e.Quantity, "expires_at": e.ExpiresAt}); err != nil {
+			return err
+		}
 		return s.recalculate(ctx, domain.Scope{ProductIDs: []uuid.UUID{e.ProductID}})
 	})
 	if err != nil {
@@ -78,6 +81,10 @@ func (s *Service) UpdateEntitlement(ctx context.Context, id uuid.UUID, p domain.
 	}
 	err = s.withProducts(ctx, products, func(ctx context.Context) error {
 		if err := s.entitlements.Update(ctx, id, p); err != nil {
+			return err
+		}
+		if err := s.record(ctx, "contract", id.String(), domain.AuditUpdate, contractSummary("Изменён договор", current),
+			contractChanges(p)); err != nil {
 			return err
 		}
 		return s.recalculate(ctx, domain.Scope{ProductIDs: products})
@@ -116,12 +123,49 @@ func (s *Service) DeactivateEntitlement(ctx context.Context, id uuid.UUID) (doma
 		if err := s.entitlements.Deactivate(ctx, id); err != nil {
 			return err
 		}
+		if err := s.record(ctx, "contract", id.String(), domain.AuditUpdate, contractSummary("Деактивирован договор", current),
+			map[string]any{"is_active": false}); err != nil {
+			return err
+		}
 		return s.recalculate(ctx, domain.Scope{ProductIDs: []uuid.UUID{current.ProductID}})
 	})
 	if err != nil {
 		return domain.Entitlement{}, err
 	}
 	return s.entitlements.Get(ctx, id)
+}
+
+func contractSummary(prefix string, e domain.Entitlement) string {
+	if e.PurchaseReference != nil {
+		return prefix + " " + *e.PurchaseReference
+	}
+	return prefix
+}
+
+func contractChanges(p domain.EntitlementPatch) map[string]any {
+	out := map[string]any{}
+	if p.ProductID != nil {
+		out["product_id"] = *p.ProductID
+	}
+	if p.Metric != nil {
+		out["license_metric"] = *p.Metric
+	}
+	if p.Quantity != nil {
+		out["quantity"] = *p.Quantity
+	}
+	if p.ValidFrom.Set {
+		out["valid_from"] = p.ValidFrom.Value
+	}
+	if p.ExpiresAt.Set {
+		out["expires_at"] = p.ExpiresAt.Value
+	}
+	if p.PurchaseReference.Set {
+		out["contract_number"] = p.PurchaseReference.Value
+	}
+	if p.AgreementID.Set {
+		out["agreement_id"] = p.AgreementID.Value
+	}
+	return out
 }
 
 func (s *Service) Balances(ctx context.Context, productID *uuid.UUID) ([]domain.Balance, error) {
@@ -152,10 +196,16 @@ func (s *Service) Balances(ctx context.Context, productID *uuid.UUID) ([]domain.
 	return balances, nil
 }
 
-func upper(s *string) *string {
-	if v := trimmed(s); v != nil {
-		u := strings.ToUpper(*v)
-		return &u
+func (s *Service) CommercialBalances(ctx context.Context, productID *uuid.UUID) ([]domain.Balance, error) {
+	balances, err := s.Balances(ctx, productID)
+	if err != nil {
+		return nil, err
 	}
-	return nil
+	out := make([]domain.Balance, 0, len(balances))
+	for _, b := range balances {
+		if b.CostModel == nil || b.CostModel.RequiresEntitlement() || (b.Purchased != nil && *b.Purchased > 0) {
+			out = append(out, b)
+		}
+	}
+	return out, nil
 }

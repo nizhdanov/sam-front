@@ -27,6 +27,8 @@ type Products interface {
 	GetMany(ctx context.Context, ids []uuid.UUID) ([]domain.Product, error)
 	Create(ctx context.Context, p domain.Product) error
 	Update(ctx context.Context, id uuid.UUID, p domain.ProductPatch) error
+	Delete(ctx context.Context, id uuid.UUID) error
+	Usage(ctx context.Context, id uuid.UUID) (installations, contracts int, err error)
 	Candidates(ctx context.Context, normalizedName string, limit int) ([]domain.Candidate, error)
 	ProductIDsByAgreement(ctx context.Context, agreementID uuid.UUID) ([]uuid.UUID, error)
 }
@@ -40,11 +42,12 @@ type Versions interface {
 }
 
 type Aliases interface {
-	ByProduct(ctx context.Context, productID uuid.UUID) ([]domain.Alias, error)
+	List(ctx context.Context, f domain.RuleFilter, page httpx.PageRequest) ([]domain.Alias, int, error)
+	Get(ctx context.Context, id uuid.UUID) (domain.Alias, error)
 	BySourceKeys(ctx context.Context, keys []string) (map[string]domain.Alias, error)
 	BySourceKey(ctx context.Context, key string) (domain.Alias, error)
 	Upsert(ctx context.Context, a domain.Assignment) error
-	Delete(ctx context.Context, productID, id uuid.UUID) (string, error)
+	Delete(ctx context.Context, id uuid.UUID) (string, error)
 }
 
 type Matching interface {
@@ -57,23 +60,17 @@ type Matching interface {
 }
 
 type Devices interface {
-	List(ctx context.Context, f domain.DeviceFilter, page httpx.PageRequest) ([]domain.Device, int, error)
 	Get(ctx context.Context, id uuid.UUID) (domain.Device, error)
+	BySerial(ctx context.Context, serial string) (domain.Device, error)
 	LockBySerial(ctx context.Context, serial string) (uuid.UUID, *time.Time, error)
 	MarkInventoried(ctx context.Context, id uuid.UUID, at time.Time, snapshotID uuid.UUID) error
 	Update(ctx context.Context, id uuid.UUID, p domain.DevicePatch) error
 	MarkProcessed(ctx context.Context, inventoryID, deviceID uuid.UUID, collectedAt time.Time, result domain.SyncResult) error
 	Processed(ctx context.Context, inventoryID uuid.UUID) (bool, error)
-}
-
-type Employees interface {
-	List(ctx context.Context, search, department string, page httpx.PageRequest) ([]domain.Employee, int, error)
-	Get(ctx context.Context, id uuid.UUID) (domain.Employee, error)
-	Update(ctx context.Context, id uuid.UUID, p domain.EmployeePatch) error
+	History(ctx context.Context, id uuid.UUID) ([]domain.DeviceImport, error)
 }
 
 type Installations interface {
-	List(ctx context.Context, f domain.InstallationFilter, page httpx.PageRequest) ([]domain.Installation, int, error)
 	ActiveProductIDs(ctx context.Context, deviceID uuid.UUID) ([]uuid.UUID, error)
 	CountActive(ctx context.Context, deviceID uuid.UUID) (int, error)
 	Upsert(ctx context.Context, deviceID uuid.UUID, seenAt time.Time, items []domain.InstallationInput) error
@@ -85,7 +82,7 @@ type Installations interface {
 }
 
 type Entitlements interface {
-	List(ctx context.Context, productID *uuid.UUID, activeOnly bool, page httpx.PageRequest) ([]domain.Entitlement, int, error)
+	List(ctx context.Context, f domain.ContractFilter, page httpx.PageRequest) ([]domain.Entitlement, int, error)
 	Get(ctx context.Context, id uuid.UUID) (domain.Entitlement, error)
 	Active(ctx context.Context, s domain.Scope) (map[uuid.UUID][]domain.Entitlement, error)
 	Create(ctx context.Context, e domain.Entitlement) error
@@ -98,6 +95,8 @@ type Agreements interface {
 	Get(ctx context.Context, id uuid.UUID) (domain.Agreement, error)
 	Create(ctx context.Context, a domain.Agreement) error
 	Update(ctx context.Context, id uuid.UUID, p domain.AgreementPatch) error
+	Delete(ctx context.Context, id uuid.UUID) error
+	Similar(ctx context.Context, id uuid.UUID, limit int) ([]domain.SimilarAgreement, error)
 	LatestAnalysis(ctx context.Context, agreementID uuid.UUID, contentHash string) (domain.AgreementAnalysis, error)
 	SaveAnalysis(ctx context.Context, a domain.AgreementAnalysis) error
 	ApproveAnalysis(ctx context.Context, id uuid.UUID, reviewer string) error
@@ -112,13 +111,22 @@ type Findings interface {
 }
 
 type Analytics interface {
-	Dashboard(ctx context.Context, employeeID *uuid.UUID) (domain.Dashboard, error)
-	Software(ctx context.Context, limit int) ([]domain.SoftwareUsage, error)
-	Departments(ctx context.Context) ([]domain.DepartmentStats, error)
+	Dashboard(ctx context.Context, expiringWithinDays int) (domain.Dashboard, error)
+	FreeSoftware(ctx context.Context) ([]domain.FreeSoftware, error)
 }
 
 type Explorer interface {
 	Query(ctx context.Context, q domain.DataQuery) (domain.DataTable, error)
+}
+
+type Settings interface {
+	Get(ctx context.Context, key string, dst any) (bool, error)
+	Set(ctx context.Context, key string, value any, by string) error
+}
+
+type Audit interface {
+	Record(ctx context.Context, e domain.AuditEntry) error
+	List(ctx context.Context, f domain.AuditFilter, page httpx.PageRequest) ([]domain.AuditEntry, int, error)
 }
 
 type AgreementAnalyzer interface {
@@ -126,22 +134,25 @@ type AgreementAnalyzer interface {
 }
 
 type Deps struct {
-	Tx            TxRunner
-	Locks         Locks
-	Products      Products
-	Versions      Versions
-	Aliases       Aliases
-	Matching      Matching
-	Devices       Devices
-	Employees     Employees
-	Installations Installations
-	Entitlements  Entitlements
-	Agreements    Agreements
-	Findings      Findings
-	Analytics     Analytics
-	Explorer      Explorer
-	Analyzer      AgreementAnalyzer
-	Log           *slog.Logger
+	Tx                 TxRunner
+	Locks              Locks
+	Products           Products
+	Versions           Versions
+	Aliases            Aliases
+	Matching           Matching
+	Devices            Devices
+	Installations      Installations
+	Entitlements       Entitlements
+	Agreements         Agreements
+	Findings           Findings
+	Analytics          Analytics
+	Explorer           Explorer
+	Settings           Settings
+	Audit              Audit
+	Analyzer           AgreementAnalyzer
+	Log                *slog.Logger
+	MatchingConfig     domain.MatchingConfig
+	ExpiringWithinDays int
 }
 
 type Service struct {
@@ -152,23 +163,25 @@ type Service struct {
 	aliases       Aliases
 	matching      Matching
 	devices       Devices
-	employees     Employees
 	installations Installations
 	entitlements  Entitlements
 	agreements    Agreements
 	findings      Findings
 	analytics     Analytics
 	explorer      Explorer
+	settings      Settings
+	audit         Audit
 	analyzer      AgreementAnalyzer
 	log           *slog.Logger
-	matchCfg      domain.MatchingConfig
+	matchDefaults domain.MatchingConfig
+	expiringDays  int
 	now           func() time.Time
 }
 
-func New(d Deps, matching domain.MatchingConfig) (*Service, error) {
+func New(d Deps) (*Service, error) {
 	if d.Tx == nil || d.Locks == nil || d.Products == nil || d.Versions == nil || d.Aliases == nil || d.Matching == nil ||
-		d.Devices == nil || d.Employees == nil || d.Installations == nil || d.Entitlements == nil || d.Agreements == nil ||
-		d.Findings == nil || d.Analytics == nil || d.Explorer == nil || d.Analyzer == nil || d.Log == nil {
+		d.Devices == nil || d.Installations == nil || d.Entitlements == nil || d.Agreements == nil || d.Findings == nil ||
+		d.Analytics == nil || d.Explorer == nil || d.Settings == nil || d.Audit == nil || d.Analyzer == nil || d.Log == nil {
 		return nil, errors.New("license service: missing dependency")
 	}
 	return &Service{
@@ -179,16 +192,18 @@ func New(d Deps, matching domain.MatchingConfig) (*Service, error) {
 		aliases:       d.Aliases,
 		matching:      d.Matching,
 		devices:       d.Devices,
-		employees:     d.Employees,
 		installations: d.Installations,
 		entitlements:  d.Entitlements,
 		agreements:    d.Agreements,
 		findings:      d.Findings,
 		analytics:     d.Analytics,
 		explorer:      d.Explorer,
+		settings:      d.Settings,
+		audit:         d.Audit,
 		analyzer:      d.Analyzer,
 		log:           d.Log,
-		matchCfg:      matching,
+		matchDefaults: d.MatchingConfig,
+		expiringDays:  d.ExpiringWithinDays,
 		now:           time.Now,
 	}, nil
 }

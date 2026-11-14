@@ -34,7 +34,7 @@
 | БД | Владелец (миграции) | Кто ещё пишет | Таблицы |
 | --- | --- | --- | --- |
 | `inventory_db` | processor | worker (статусы, lease) | imports, inventory_snapshots, import_errors |
-| `license_db` | license | — | employees, devices, software_products/versions/aliases, installations, license_agreements, license_entitlements, matching_candidates, processed_snapshots, compliance_findings, agreement_analyses |
+| `license_db` | license | — | devices, software_products/versions/aliases, installations, license_agreements, license_entitlements, matching_candidates, processed_snapshots, compliance_findings, agreement_analyses, settings, audit_log |
 | `chat_db` | chat | — | conversations, messages |
 
 Каждый сервис применяет свои миграции goose при старте (с advisory-локом), подключается отдельным пользователем
@@ -73,11 +73,12 @@
 
 | Тип | Условие |
 | --- | --- |
-| `FORBIDDEN_SOFTWARE` | установлен продукт с политикой `FORBIDDEN` |
-| `LICENSE_DEFICIT` | потребление по `PER_DEVICE`/`PER_USER` больше суммы действующих прав; продукт, требующий лицензии, установлен без единого права (дефицит = число устройств) |
-| `LICENSE_EXPIRED` | коммерческий продукт установлен, все права истекли |
-| `LICENSE_UNVERIFIED` | метрика, которую нельзя посчитать по установкам (`CONCURRENT`, `UNKNOWN`), или права с разными метриками |
-| `UNSUPPORTED_SOFTWARE` / `OUTDATED_SOFTWARE` | версия с lifecycle `UNSUPPORTED` / `OUTDATED` |
+| `FORBIDDEN_SOFTWARE` | установлен продукт со статусом `FORBIDDEN` (статус требует комментария) |
+| `LICENSE_DEFICIT` | установлено на большем числе устройств, чем мест в действующих договорах; платное или условно-бесплатное ПО (`cost_model` соглашения `PAID`/`SHAREWARE`) без договоров — дефицит = число устройств |
+| `LICENSE_EXPIRED` | ПО установлено, все договоры истекли |
+| `LICENSE_UNVERIFIED` | метрика, которую нельзя посчитать по установкам (`CONCURRENT`, `UNKNOWN`), или договоры с разными метриками |
+| `OUTDATED_SOFTWARE` | установленная версия ниже `current_version` продукта, продукт в статусе `OUTDATED` или версия с lifecycle `OUTDATED` |
+| `UNSUPPORTED_SOFTWARE` | версия с lifecycle `UNSUPPORTED` |
 | `UNKNOWN_SOFTWARE` | ПО не сопоставлено с каталогом |
 | `COMMERCIAL_USE_RESTRICTED` | соглашение запрещает коммерческое использование |
 
@@ -96,8 +97,8 @@
 
 | Роль | Доступ |
 | --- | --- |
-| `EMPLOYEE` | свои устройства и ПО, каталог, свои находки, урезанная сводка; без лицензий, цен, соглашений |
-| `ADMIN` | всё, включая изменение каталога, лицензий, сопоставлений, подтверждение находок |
+| `USER` | справочник БПО, бесплатное и запрещённое ПО, свой компьютер (claim `device_serial`): установки и нарушения на нём; без договоров, баланса, соглашений, журнала |
+| `ADMIN` | всё: каталог, соглашения, договоры, импорты, сопоставление, нарушения, журнал |
 
 ## AI-ассистент
 
@@ -107,11 +108,15 @@
   `AssistantDataService.RunQuery` в license с токеном пользователя, поэтому даже при обходе промпта данные режутся
   RBAC license. Результат инструмента ограничен 12000 байт, цикл вызовов — 5 итераций.
 - Основной инструмент — `query_data`: модель выбирает набор данных (`installations`, `devices`, `products`,
-  `licenses`, `findings`), фильтры и группировку. license собирает параметризованный SQL только из белых списков
+  `contracts`, `findings`), фильтры и группировку. license собирает параметризованный SQL только из белых списков
   колонок, считает количества и итоги в БД и возвращает таблицу `{columns, rows, total, shown}`. Модель ничего не
   пересчитывает, а только оформляет ответ в Markdown: вывод, таблица, итог. Тот же механизм доступен по REST:
   `GET /api/v1/data/{dataset}`.
-- Дополнительно: `get_license_balance` (только ADMIN) и `get_summary`.
+- Дополнительно: `get_license_balance` и `get_summary` (ADMIN), `get_my_device` (USER). Набор инструментов и их
+  описания различаются по ролям; для USER license дополнительно ограничивает выборки своим устройством и
+  бесплатным/запрещённым ПО.
+- Ответ — Markdown с таблицами; объекты оформляются ссылками `sam://device|product|contract/<id>`, фронтенд
+  открывает по ним карточки. Таблицы из ответов выгружаются через `POST /api/v1/export`.
 - Провайдеры: `gigachat` (OAuth, кеш токена, `functions`), `openai_compatible`, `mock` (детерминированный, `[DEMO]`).
 - Ограничения: семафор параллельных запросов, таймауты, дневной бюджет токенов.
 

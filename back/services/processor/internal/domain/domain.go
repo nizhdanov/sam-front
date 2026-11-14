@@ -16,6 +16,8 @@ const (
 type ImportStatus string
 
 const (
+	ImportAwaiting            ImportStatus = "AWAITING_CONFIRMATION"
+	ImportCancelled           ImportStatus = "CANCELLED"
 	ImportPending             ImportStatus = "PENDING"
 	ImportParsing             ImportStatus = "PARSING"
 	ImportProcessing          ImportStatus = "PROCESSING"
@@ -25,7 +27,7 @@ const (
 )
 
 func (s ImportStatus) Terminal() bool {
-	return s == ImportCompleted || s == ImportCompletedWithErrors || s == ImportFailed
+	return s == ImportCompleted || s == ImportCompletedWithErrors || s == ImportFailed || s == ImportCancelled
 }
 
 type SnapshotStatus string
@@ -97,7 +99,7 @@ func (p Progress) Percent() float64 {
 }
 
 func (p Progress) Derive(current ImportStatus) ImportStatus {
-	if current == ImportPending || current == ImportParsing || current == ImportFailed {
+	if current == ImportAwaiting || current == ImportCancelled || current == ImportPending || current == ImportParsing || current == ImportFailed {
 		return current
 	}
 	if p.Total == 0 || p.Finished() < p.Total {

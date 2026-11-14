@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -16,6 +15,7 @@ import (
 	grpchealth "google.golang.org/grpc/health"
 
 	"sam/pkg/auth"
+	"sam/pkg/buildconfig"
 	"sam/pkg/health"
 	"sam/services/llm/internal/config"
 	"sam/services/llm/internal/platform/license"
@@ -41,7 +41,7 @@ func New(cfg config.Config, log *slog.Logger) (_ *App, err error) {
 		}
 	}()
 
-	pubKey, err := os.ReadFile(cfg.Auth.PublicKeyFile)
+	pubKey, err := buildconfig.ReadFile(cfg.Auth.PublicKeyFile)
 	if err != nil {
 		return nil, fmt.Errorf("read jwt public key: %w", err)
 	}

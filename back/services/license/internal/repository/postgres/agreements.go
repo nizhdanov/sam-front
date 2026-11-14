@@ -18,13 +18,15 @@ type Agreements struct{ pool *pgxpool.Pool }
 func NewAgreements(pool *pgxpool.Pool) *Agreements { return &Agreements{pool: pool} }
 
 const agreementSelect = `
-	SELECT id, name, license_type, agreement_text, source_url, commercial_allowed, review_status, created_at, updated_at
-	FROM license_agreements`
+	SELECT a.id, a.name, a.license_type, a.cost_model, a.agreement_text, a.file_name, a.source_url, a.commercial_allowed,
+	       a.review_status, (SELECT COUNT(*) FROM software_products p WHERE p.agreement_id = a.id AND p.archived_at IS NULL),
+	       a.created_at, a.updated_at
+	FROM license_agreements a`
 
 func scanAgreement(row scanner) (domain.Agreement, error) {
 	var a domain.Agreement
-	err := row.Scan(&a.ID, &a.Name, &a.LicenseType, &a.AgreementText, &a.SourceURL, &a.CommercialAllowed, &a.ReviewStatus,
-		&a.CreatedAt, &a.UpdatedAt)
+	err := row.Scan(&a.ID, &a.Name, &a.LicenseType, &a.CostModel, &a.AgreementText, &a.FileName, &a.SourceURL,
+		&a.CommercialAllowed, &a.ReviewStatus, &a.Products, &a.CreatedAt, &a.UpdatedAt)
 	return a, err
 }
 
@@ -34,7 +36,7 @@ func (r *Agreements) List(ctx context.Context, page httpx.PageRequest) ([]domain
 	if err := db.QueryRow(ctx, `SELECT COUNT(*) FROM license_agreements`).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("count agreements: %w", err)
 	}
-	rows, err := db.Query(ctx, agreementSelect+` ORDER BY name LIMIT $1 OFFSET $2`, page.Limit, page.Offset())
+	rows, err := db.Query(ctx, agreementSelect+` ORDER BY a.name LIMIT $1 OFFSET $2`, page.Limit, page.Offset())
 	if err != nil {
 		return nil, 0, fmt.Errorf("list agreements: %w", err)
 	}
@@ -43,15 +45,15 @@ func (r *Agreements) List(ctx context.Context, page httpx.PageRequest) ([]domain
 }
 
 func (r *Agreements) Get(ctx context.Context, id uuid.UUID) (domain.Agreement, error) {
-	rows, err := pg.DB(ctx, r.pool).Query(ctx, agreementSelect+` WHERE id = $1`, id)
+	rows, err := pg.DB(ctx, r.pool).Query(ctx, agreementSelect+` WHERE a.id = $1`, id)
 	return one(rows, err, scanAgreement, "agreement")
 }
 
 func (r *Agreements) Create(ctx context.Context, a domain.Agreement) error {
 	_, err := pg.DB(ctx, r.pool).Exec(ctx, `
-		INSERT INTO license_agreements (id, name, license_type, agreement_text, source_url, commercial_allowed)
-		VALUES ($1, $2, $3, $4, $5, $6)`,
-		a.ID, a.Name, a.LicenseType, a.AgreementText, a.SourceURL, a.CommercialAllowed)
+		INSERT INTO license_agreements (id, name, license_type, cost_model, agreement_text, file_name, source_url, commercial_allowed)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+		a.ID, a.Name, a.LicenseType, a.CostModel, a.AgreementText, a.FileName, a.SourceURL, a.CommercialAllowed)
 	if err != nil {
 		return fmt.Errorf("create agreement: %w", err)
 	}
@@ -66,8 +68,14 @@ func (r *Agreements) Update(ctx context.Context, id uuid.UUID, p domain.Agreemen
 	if p.LicenseType != nil {
 		s.add("license_type", *p.LicenseType)
 	}
+	if p.CostModel != nil {
+		s.add("cost_model", *p.CostModel)
+	}
 	if p.AgreementText.Set {
 		s.add("agreement_text", p.AgreementText.Value)
+	}
+	if p.FileName.Set {
+		s.add("file_name", p.FileName.Value)
 	}
 	if p.SourceURL.Set {
 		s.add("source_url", p.SourceURL.Value)
@@ -90,6 +98,49 @@ func (r *Agreements) Update(ctx context.Context, id uuid.UUID, p domain.Agreemen
 		return apperr.NotFound("agreement not found")
 	}
 	return nil
+}
+
+func (r *Agreements) Delete(ctx context.Context, id uuid.UUID) error {
+	db := pg.DB(ctx, r.pool)
+	var products int
+	if err := db.QueryRow(ctx, `SELECT COUNT(*) FROM software_products WHERE agreement_id = $1`, id).Scan(&products); err != nil {
+		return fmt.Errorf("count agreement products: %w", err)
+	}
+	if products > 0 {
+		return apperr.Conflict(fmt.Sprintf("agreement is used by %d product(s)", products))
+	}
+	if _, err := db.Exec(ctx, `UPDATE license_entitlements SET agreement_id = NULL WHERE agreement_id = $1`, id); err != nil {
+		return fmt.Errorf("detach agreement contracts: %w", err)
+	}
+	if _, err := db.Exec(ctx, `DELETE FROM agreement_analyses WHERE agreement_id = $1`, id); err != nil {
+		return fmt.Errorf("delete agreement analyses: %w", err)
+	}
+	tag, err := db.Exec(ctx, `DELETE FROM license_agreements WHERE id = $1`, id)
+	if err != nil {
+		return fmt.Errorf("delete agreement: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return apperr.NotFound("agreement not found")
+	}
+	return nil
+}
+
+func (r *Agreements) Similar(ctx context.Context, id uuid.UUID, limit int) ([]domain.SimilarAgreement, error) {
+	rows, err := pg.DB(ctx, r.pool).Query(ctx, `
+		WITH src AS (SELECT LEFT(agreement_text, 20000) AS body FROM license_agreements WHERE id = $1)
+		SELECT a.id, a.name, a.license_type, a.cost_model, similarity(LEFT(a.agreement_text, 20000), src.body)::float8 AS score
+		FROM license_agreements a, src
+		WHERE a.id <> $1 AND a.agreement_text IS NOT NULL AND src.body IS NOT NULL
+		ORDER BY score DESC, a.name
+		LIMIT $2`, id, limit)
+	if err != nil {
+		return nil, fmt.Errorf("similar agreements: %w", err)
+	}
+	return collect(rows, func(row scanner) (domain.SimilarAgreement, error) {
+		var a domain.SimilarAgreement
+		err := row.Scan(&a.ID, &a.Name, &a.LicenseType, &a.CostModel, &a.Similarity)
+		return a, err
+	})
 }
 
 const analysisSelect = `

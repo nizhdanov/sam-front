@@ -47,6 +47,8 @@ func (s *Service) RunQuery(ctx context.Context, name string, raw []byte) (any, e
 		return s.assistantBalance(ctx, p.Product, p.OnlyDeficit)
 	case "get_summary":
 		return s.Dashboard(ctx)
+	case "get_my_device":
+		return s.MyDevice(ctx)
 	}
 	return nil, apperr.Invalid("unknown query " + name)
 }
@@ -56,37 +58,23 @@ func (s *Service) QueryData(ctx context.Context, q domain.DataQuery) (domain.Dat
 	if err != nil {
 		return domain.DataTable{}, err
 	}
-	if !c.IsAdmin() {
-		if q.Dataset == domain.DatasetLicenses {
-			return domain.DataTable{}, apperr.Forbidden("license data is available to administrators only")
-		}
-		employee := employeeOf(c)
-		if employee == nil {
-			return domain.DataTable{}, apperr.Forbidden("user is not linked to an employee")
-		}
-		q.EmployeeID = employee
-	}
+	q.Admin = c.IsAdmin()
+	q.DeviceSerial = c.DeviceSerial
 	table, err := s.explorer.Query(ctx, q)
 	if err != nil {
 		return table, err
 	}
 	idx := slices.Index(table.Columns, "product_id")
-	if idx < 0 {
+	if !q.Admin || idx < 0 || q.Dataset == domain.DatasetContracts || q.Dataset == domain.DatasetFindings {
 		return table, nil
 	}
-	var statuses map[uuid.UUID]string
-	if c.IsAdmin() {
-		if statuses, err = s.licenseStatuses(ctx); err != nil {
-			return table, err
-		}
-		table.Columns = append(table.Columns, "license_status")
+	statuses, err := s.licenseStatuses(ctx)
+	if err != nil {
+		return table, err
 	}
-	table.Columns = slices.Delete(table.Columns, idx, idx+1)
+	table.Columns = append(table.Columns, "license_status")
 	for i, row := range table.Rows {
-		if statuses != nil {
-			row = append(row, licenseStatusOf(row[idx], statuses))
-		}
-		table.Rows[i] = slices.Delete(row, idx, idx+1)
+		table.Rows[i] = append(row, licenseStatusOf(row[idx], statuses))
 	}
 	return table, nil
 }

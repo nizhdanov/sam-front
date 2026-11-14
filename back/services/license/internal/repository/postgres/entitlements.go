@@ -30,23 +30,27 @@ func scanEntitlement(row scanner) (domain.Entitlement, error) {
 	return e, err
 }
 
-func (r *Entitlements) List(ctx context.Context, productID *uuid.UUID, activeOnly bool, page httpx.PageRequest) ([]domain.Entitlement, int, error) {
+func (r *Entitlements) List(ctx context.Context, f domain.ContractFilter, page httpx.PageRequest) ([]domain.Entitlement, int, error) {
 	var w where
-	if productID != nil {
-		w.add("e.product_id = ?", *productID)
+	if f.ProductID != nil {
+		w.add("e.product_id = ?", *f.ProductID)
 	}
-	if activeOnly {
+	if f.ActiveOnly {
 		w.raw("e.is_active")
+	}
+	if f.ExpiringWithin > 0 {
+		w.raw("e.is_active AND e.expires_at > NOW()")
+		w.add("e.expires_at <= NOW() + make_interval(days => ?)", f.ExpiringWithin)
 	}
 	db := pg.DB(ctx, r.pool)
 	var total int
 	if err := db.QueryRow(ctx, `SELECT COUNT(*) FROM license_entitlements e`+w.String(), w.args...).Scan(&total); err != nil {
-		return nil, 0, fmt.Errorf("count licenses: %w", err)
+		return nil, 0, fmt.Errorf("count contracts: %w", err)
 	}
 	query := entitlementSelect + w.String() + ` ORDER BY p.canonical_name, e.created_at LIMIT ` + w.arg(page.Limit) + ` OFFSET ` + w.arg(page.Offset())
 	rows, err := db.Query(ctx, query, w.args...)
 	if err != nil {
-		return nil, 0, fmt.Errorf("list licenses: %w", err)
+		return nil, 0, fmt.Errorf("list contracts: %w", err)
 	}
 	items, err := collect(rows, scanEntitlement)
 	return items, total, err

@@ -6,6 +6,8 @@ import (
 
 	"github.com/caarlos0/env/v11"
 
+	"sam/pkg/buildconfig"
+
 	"sam/services/llm/internal/platform/license"
 )
 
@@ -54,7 +56,11 @@ type GigaChat struct {
 }
 
 func Load() (Config, error) {
-	cfg, err := env.ParseAs[Config]()
+	values, err := buildconfig.Environment()
+	if err != nil {
+		return Config{}, err
+	}
+	cfg, err := env.ParseAsWithOptions[Config](env.Options{Environment: values})
 	if err != nil {
 		return Config{}, fmt.Errorf("parse env: %w", err)
 	}

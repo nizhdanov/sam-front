@@ -52,9 +52,6 @@ func (s *Service) AnalyzeAgreement(ctx context.Context, text string) (Analysis, 
 	if err := extractJSON(resp.Content, &parsed); err != nil {
 		return Analysis{}, err
 	}
-	if _, ok := parsed["requires_human_review"]; !ok {
-		parsed["requires_human_review"] = true
-	}
 	body, err := json.Marshal(parsed)
 	if err != nil {
 		return Analysis{}, err

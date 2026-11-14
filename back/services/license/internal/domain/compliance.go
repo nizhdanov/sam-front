@@ -83,12 +83,12 @@ type Finding struct {
 }
 
 type FindingFilter struct {
-	Types      []FindingType
-	Severity   Severity
-	Status     FindingStatus
-	DeviceID   *uuid.UUID
-	ProductID  *uuid.UUID
-	EmployeeID *uuid.UUID
+	Types        []FindingType
+	Severity     Severity
+	Status       FindingStatus
+	DeviceID     *uuid.UUID
+	ProductID    *uuid.UUID
+	SerialNumber string
 }
 
 type InstallationFacts struct {
@@ -96,7 +96,8 @@ type InstallationFacts struct {
 	DeviceID          uuid.UUID
 	ProductID         *uuid.UUID
 	ProductName       *string
-	PolicyStatus      *PolicyStatus
+	Status            *ProductStatus
+	CurrentVersion    *string
 	Lifecycle         *Lifecycle
 	Version           *string
 	CommercialAllowed *bool
@@ -131,16 +132,23 @@ func InstallationFindings(f InstallationFacts) []Finding {
 		add(FindingUnknownSoftware, map[string]any{"match_status": f.MatchStatus})
 		return out
 	}
-	if f.PolicyStatus != nil && *f.PolicyStatus == PolicyForbidden {
-		add(FindingForbiddenSoftware, map[string]any{"policy_status": *f.PolicyStatus})
+	if f.Status != nil && *f.Status == StatusForbidden {
+		add(FindingForbiddenSoftware, map[string]any{"status": *f.Status})
 	}
-	if f.Lifecycle != nil {
-		switch *f.Lifecycle {
-		case LifecycleOutdated:
-			add(FindingOutdatedSoftware, map[string]any{"version": valueOrNil(f.Version)})
-		case LifecycleUnsupported:
-			add(FindingUnsupportedSoftware, map[string]any{"version": valueOrNil(f.Version)})
-		}
+	installed := f.Version
+	if installed == nil {
+		installed = f.RawVersion
+	}
+	switch {
+	case f.Status != nil && *f.Status == StatusOutdated:
+		add(FindingOutdatedSoftware, map[string]any{"version": valueOrNil(installed), "reason": "PRODUCT_OUTDATED"})
+	case f.CurrentVersion != nil && installed != nil && CompareVersions(*installed, *f.CurrentVersion) < 0:
+		add(FindingOutdatedSoftware, map[string]any{"version": *installed, "current_version": *f.CurrentVersion})
+	case f.Lifecycle != nil && *f.Lifecycle == LifecycleOutdated:
+		add(FindingOutdatedSoftware, map[string]any{"version": valueOrNil(installed)})
+	}
+	if f.Lifecycle != nil && *f.Lifecycle == LifecycleUnsupported {
+		add(FindingUnsupportedSoftware, map[string]any{"version": valueOrNil(installed)})
 	}
 	if f.CommercialAllowed != nil && !*f.CommercialAllowed {
 		add(FindingCommercialUse, map[string]any{"commercial_allowed": false})
@@ -157,22 +165,17 @@ const (
 	CalcUnsupportedMetric CalculationStatus = "UNSUPPORTED_METRIC"
 )
 
-type Usage struct {
-	Devices           int
-	Users             int
-	UnassignedDevices int
-}
-
 type ProductFacts struct {
-	ID          uuid.UUID
-	Name        string
-	LicenseType *LicenseType
-	Usage       Usage
+	ID        uuid.UUID
+	Name      string
+	CostModel *CostModel
+	Devices   int
 }
 
 type Balance struct {
 	ProductID         uuid.UUID         `json:"product_id"`
 	ProductName       string            `json:"product_name"`
+	CostModel         *CostModel        `json:"cost_model"`
 	Metric            Metric            `json:"metric"`
 	Purchased         *int              `json:"purchased"`
 	Consumed          int               `json:"consumed"`
@@ -184,7 +187,7 @@ type Balance struct {
 }
 
 func EvaluateLicensing(p ProductFacts, entitlements []Entitlement, now time.Time) ([]Balance, []Finding) {
-	requiresLicense := p.LicenseType != nil && p.LicenseType.RequiresEntitlement()
+	requiresLicense := p.CostModel != nil && p.CostModel.RequiresEntitlement()
 	if !requiresLicense && len(entitlements) == 0 {
 		return nil, nil
 	}
@@ -211,23 +214,23 @@ func EvaluateLicensing(p ProductFacts, entitlements []Entitlement, now time.Time
 			Key: key, Type: t, Severity: severities[t], ProductID: &productID, Details: details,
 		})
 	}
-	installed := p.Usage.Devices > 0
+	installed := p.Devices > 0
 
 	if len(valid) == 0 {
 		zero := 0
 		balance := Balance{
-			ProductID: p.ID, ProductName: p.Name, Metric: MetricUnknown,
-			Purchased: &zero, Available: &zero, Consumed: p.Usage.Devices, Deficit: p.Usage.Devices,
+			ProductID: p.ID, ProductName: p.Name, CostModel: p.CostModel, Metric: MetricUnknown,
+			Purchased: &zero, Available: &zero, Consumed: p.Devices, Deficit: p.Devices,
 			CalculationStatus: CalcVerified, LastCalculatedAt: now,
 		}
 		switch {
 		case installed && len(expired) > 0:
 			balance.Note = "all entitlements have expired"
-			addFinding(FindingLicenseExpired, "", map[string]any{"expired_at": latestExpiry(expired), "devices": p.Usage.Devices})
+			addFinding(FindingLicenseExpired, "", map[string]any{"expired_at": latestExpiry(expired), "devices": p.Devices})
 		case installed && requiresLicense:
 			balance.Note = "no entitlements registered for a product that requires a license"
 			addFinding(FindingLicenseDeficit, "", map[string]any{
-				"reason": "NO_ENTITLEMENTS", "purchased": 0, "consumed": p.Usage.Devices, "deficit": p.Usage.Devices,
+				"reason": "NO_ENTITLEMENTS", "purchased": 0, "consumed": p.Devices, "deficit": p.Devices,
 			})
 		}
 		return []Balance{balance}, findings
@@ -239,8 +242,8 @@ func EvaluateLicensing(p ProductFacts, entitlements []Entitlement, now time.Time
 	}
 	if _, ok := byMetric[MetricUnlimited]; ok {
 		return []Balance{{
-			ProductID: p.ID, ProductName: p.Name, Metric: MetricUnlimited,
-			Consumed: p.Usage.Devices, CalculationStatus: CalcVerified, LastCalculatedAt: now,
+			ProductID: p.ID, ProductName: p.Name, CostModel: p.CostModel, Metric: MetricUnlimited,
+			Consumed: p.Devices, CalculationStatus: CalcVerified, LastCalculatedAt: now,
 		}}, nil
 	}
 
@@ -257,19 +260,13 @@ func EvaluateLicensing(p ProductFacts, entitlements []Entitlement, now time.Time
 		for _, e := range byMetric[m] {
 			purchased += e.Quantity
 		}
-		b := Balance{ProductID: p.ID, ProductName: p.Name, Metric: m, CalculationStatus: CalcVerified, LastCalculatedAt: now}
+		b := Balance{ProductID: p.ID, ProductName: p.Name, CostModel: p.CostModel, Metric: m, CalculationStatus: CalcVerified, LastCalculatedAt: now}
 
 		switch m {
 		case MetricPerDevice:
-			b.Consumed = p.Usage.Devices
-		case MetricPerUser:
-			b.Consumed = p.Usage.Users
-			if p.Usage.UnassignedDevices > 0 {
-				b.CalculationStatus = CalcIncomplete
-				b.Note = fmt.Sprintf("%d device(s) with this product have no assigned employee", p.Usage.UnassignedDevices)
-			}
+			b.Consumed = p.Devices
 		default:
-			b.Consumed = p.Usage.Devices
+			b.Consumed = p.Devices
 			b.CalculationStatus = CalcUnsupportedMetric
 			b.Note = "usage for this metric cannot be derived from installation data"
 			balances = append(balances, b)
@@ -330,4 +327,44 @@ type ComplianceSummary struct {
 	Acknowledged int                 `json:"acknowledged"`
 	BySeverity   map[Severity]int    `json:"by_severity"`
 	ByType       map[FindingType]int `json:"by_type"`
+}
+
+func CompareVersions(a, b string) int {
+	pa, pb := versionParts(a), versionParts(b)
+	for i := range max(len(pa), len(pb)) {
+		var x, y int
+		if i < len(pa) {
+			x = pa[i]
+		}
+		if i < len(pb) {
+			y = pb[i]
+		}
+		if x != y {
+			if x < y {
+				return -1
+			}
+			return 1
+		}
+	}
+	return 0
+}
+
+func versionParts(v string) []int {
+	var parts []int
+	n, inNumber := 0, false
+	for _, r := range v {
+		if r >= '0' && r <= '9' {
+			n = n*10 + int(r-'0')
+			inNumber = true
+			continue
+		}
+		if inNumber {
+			parts = append(parts, n)
+			n, inNumber = 0, false
+		}
+	}
+	if inNumber {
+		parts = append(parts, n)
+	}
+	return parts
 }

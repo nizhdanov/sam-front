@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	pg "sam/pkg/postgres"
@@ -15,94 +14,49 @@ type Analytics struct{ pool *pgxpool.Pool }
 
 func NewAnalytics(pool *pgxpool.Pool) *Analytics { return &Analytics{pool: pool} }
 
-func (r *Analytics) Dashboard(ctx context.Context, employeeID *uuid.UUID) (domain.Dashboard, error) {
-	var d domain.Dashboard
-	db := pg.DB(ctx, r.pool)
-	err := db.QueryRow(ctx, `
-		WITH scoped AS (
-			SELECT id, employee_id FROM devices WHERE $1::uuid IS NULL OR employee_id = $1
-		)
+func (r *Analytics) Dashboard(ctx context.Context, expiringWithinDays int) (domain.Dashboard, error) {
+	d := domain.Dashboard{ExpiringWithinDays: expiringWithinDays}
+	err := pg.DB(ctx, r.pool).QueryRow(ctx, `
 		SELECT
-			(SELECT COUNT(*) FROM scoped),
-			(SELECT COUNT(*) FROM scoped WHERE employee_id IS NOT NULL),
-			(SELECT COUNT(DISTINCT i.product_id) FROM installations i JOIN scoped s ON s.id = i.device_id WHERE i.is_active),
-			(SELECT COUNT(*) FROM installations i JOIN scoped s ON s.id = i.device_id WHERE i.is_active),
-			(SELECT COUNT(*) FROM installations i JOIN scoped s ON s.id = i.device_id WHERE i.is_active AND i.product_id IS NULL),
-			(SELECT COUNT(*) FROM matching_candidates WHERE status = 'PENDING' AND $1::uuid IS NULL)`, employeeID).
-		Scan(&d.Devices.Total, &d.Devices.Assigned, &d.Software.ProductsTotal, &d.Software.InstallationsTotal,
-			&d.Software.UnknownInstallations, &d.Software.PendingReview)
+			(SELECT COUNT(*) FROM devices),
+			(SELECT COUNT(*) FROM devices WHERE status = 'NEW'),
+			(SELECT COUNT(*) FROM installations WHERE is_active),
+			(SELECT COUNT(*) FROM installations WHERE is_active AND product_id IS NOT NULL),
+			(SELECT COUNT(*) FROM matching_candidates WHERE status = 'PENDING'),
+			(SELECT COUNT(*) FROM compliance_findings WHERE status = 'OPEN' AND finding_type = 'FORBIDDEN_SOFTWARE'),
+			(SELECT COUNT(DISTINCT device_id) FROM compliance_findings WHERE status = 'OPEN' AND finding_type = 'FORBIDDEN_SOFTWARE'),
+			(SELECT COUNT(*) FROM compliance_findings WHERE status = 'OPEN' AND finding_type = 'OUTDATED_SOFTWARE'),
+			(SELECT COUNT(DISTINCT device_id) FROM compliance_findings WHERE status = 'OPEN' AND finding_type = 'OUTDATED_SOFTWARE'),
+			(SELECT COUNT(*) FROM license_entitlements
+			 WHERE is_active AND expires_at > NOW() AND expires_at <= NOW() + make_interval(days => $1))`, expiringWithinDays).
+		Scan(&d.Devices, &d.NewDevices, &d.Installations, &d.Recognized, &d.PendingReview,
+			&d.Forbidden.Installations, &d.Forbidden.Devices, &d.Outdated.Installations, &d.Outdated.Devices,
+			&d.ExpiringContracts)
 	if err != nil {
 		return d, fmt.Errorf("dashboard: %w", err)
 	}
-	d.Devices.Unassigned = d.Devices.Total - d.Devices.Assigned
-
-	rows, err := db.Query(ctx, `
-		SELECT f.severity, COUNT(*)
-		FROM compliance_findings f LEFT JOIN devices dv ON dv.id = f.device_id
-		WHERE f.status <> 'RESOLVED' AND ($1::uuid IS NULL OR (dv.employee_id = $1 AND f.finding_type <> ALL($2)))
-		GROUP BY f.severity`, employeeID, domain.ProductFindingTypes)
-	if err != nil {
-		return d, fmt.Errorf("dashboard findings: %w", err)
+	if d.Installations > 0 {
+		d.RecognizedPercent = float64(d.Recognized*10000/d.Installations) / 100
 	}
-	defer rows.Close()
-	for rows.Next() {
-		var severity domain.Severity
-		var n int
-		if err := rows.Scan(&severity, &n); err != nil {
-			return d, err
-		}
-		d.Compliance.OpenFindings += n
-		switch severity {
-		case domain.SeverityCritical:
-			d.Compliance.Critical = n
-		case domain.SeverityHigh:
-			d.Compliance.High = n
-		case domain.SeverityMedium:
-			d.Compliance.Medium = n
-		case domain.SeverityLow:
-			d.Compliance.Low = n
-		}
-	}
-	return d, rows.Err()
+	return d, nil
 }
 
-func (r *Analytics) Software(ctx context.Context, limit int) ([]domain.SoftwareUsage, error) {
+func (r *Analytics) FreeSoftware(ctx context.Context) ([]domain.FreeSoftware, error) {
 	rows, err := pg.DB(ctx, r.pool).Query(ctx, `
-		SELECT p.id, p.canonical_name, p.publisher, p.policy_status, COUNT(DISTINCT i.device_id), COUNT(i.id)
+		SELECT p.id::text, p.canonical_name, p.publisher, p.in_bpo, p.status, p.current_version,
+		       (SELECT COUNT(DISTINCT i.device_id) FROM installations i WHERE i.product_id = p.id AND i.is_active),
+		       (SELECT COUNT(DISTINCT f.device_id) FROM compliance_findings f
+		        WHERE f.product_id = p.id AND f.finding_type = 'OUTDATED_SOFTWARE' AND f.status <> 'RESOLVED')
 		FROM software_products p
-		JOIN installations i ON i.product_id = p.id AND i.is_active
-		GROUP BY p.id
-		ORDER BY COUNT(DISTINCT i.device_id) DESC, p.canonical_name
-		LIMIT $1`, limit)
+		LEFT JOIN license_agreements a ON a.id = p.agreement_id
+		WHERE p.archived_at IS NULL AND (a.cost_model = 'FREE' OR p.in_bpo)
+		ORDER BY p.canonical_name`)
 	if err != nil {
-		return nil, fmt.Errorf("software analytics: %w", err)
+		return nil, fmt.Errorf("free software: %w", err)
 	}
-	return collect(rows, func(row scanner) (domain.SoftwareUsage, error) {
-		var s domain.SoftwareUsage
-		err := row.Scan(&s.ProductID, &s.Name, &s.Publisher, &s.PolicyStatus, &s.Devices, &s.Installations)
-		return s, err
-	})
-}
-
-func (r *Analytics) Departments(ctx context.Context) ([]domain.DepartmentStats, error) {
-	rows, err := pg.DB(ctx, r.pool).Query(ctx, `
-		SELECT COALESCE(e.department, 'Unassigned') AS department,
-		       COUNT(DISTINCT e.id),
-		       COUNT(DISTINCT d.id),
-		       COUNT(DISTINCT i.id),
-		       COUNT(DISTINCT f.id)
-		FROM devices d
-		LEFT JOIN employees e ON e.id = d.employee_id
-		LEFT JOIN installations i ON i.device_id = d.id AND i.is_active
-		LEFT JOIN compliance_findings f ON f.device_id = d.id AND f.status <> 'RESOLVED'
-		GROUP BY 1
-		ORDER BY 1`)
-	if err != nil {
-		return nil, fmt.Errorf("department analytics: %w", err)
-	}
-	return collect(rows, func(row scanner) (domain.DepartmentStats, error) {
-		var s domain.DepartmentStats
-		err := row.Scan(&s.Department, &s.Employees, &s.Devices, &s.Installations, &s.OpenFindings)
-		return s, err
+	return collect(rows, func(row scanner) (domain.FreeSoftware, error) {
+		var f domain.FreeSoftware
+		err := row.Scan(&f.ProductID, &f.ProductName, &f.Publisher, &f.InBPO, &f.Status, &f.CurrentVersion, &f.Devices, &f.OutdatedDevices)
+		return f, err
 	})
 }

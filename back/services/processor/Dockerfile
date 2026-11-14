@@ -4,9 +4,13 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod go mod download
 COPY . .
-RUN --mount=type=cache,target=/go/pkg/mod \
+ARG CONFIG_REVISION=development
+RUN --mount=type=secret,id=backend_config \
+    --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/app ./services/processor/cmd/processor \
+    go run ./tools/embedconfig --service processor --revision "$CONFIG_REVISION" \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/app ./services/processor/cmd/processor \
+    && printf '{}\n' > pkg/buildconfig/defaults.json \
     && mkdir -p /out/data/imports
 
 FROM gcr.io/distroless/static-debian12:nonroot

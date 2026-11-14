@@ -45,14 +45,30 @@ type Result struct {
 	Orphans    int
 }
 
-func Parse(r io.Reader, limits Limits) (Result, error) {
+type PreviewRow struct {
+	Row          int    `json:"row"`
+	SerialNumber string `json:"serial_number"`
+	DisplayName  string `json:"display_name"`
+	Publisher    string `json:"publisher"`
+	Version      string `json:"version"`
+	Excluded     bool   `json:"excluded"`
+	Error        string `json:"error,omitempty"`
+}
+
+type Preview struct {
+	Delimiter string       `json:"delimiter"`
+	Columns   []string     `json:"columns"`
+	Rows      []PreviewRow `json:"rows"`
+}
+
+func open(r io.Reader) (*csv.Reader, map[string]int, []string, rune, error) {
 	br := bufio.NewReaderSize(r, 64<<10)
 	if bom, err := br.Peek(3); err == nil && bytes.Equal(bom, []byte{0xEF, 0xBB, 0xBF}) {
 		_, _ = br.Discard(3)
 	}
 	delimiter, err := sniffDelimiter(br)
 	if err != nil {
-		return Result{}, err
+		return nil, nil, nil, 0, err
 	}
 
 	reader := csv.NewReader(br)
@@ -63,12 +79,55 @@ func Parse(r io.Reader, limits Limits) (Result, error) {
 
 	header, err := reader.Read()
 	if errors.Is(err, io.EOF) {
-		return Result{}, fmt.Errorf("%w: file is empty", ErrCritical)
+		return nil, nil, nil, 0, fmt.Errorf("%w: file is empty", ErrCritical)
 	}
 	if err != nil {
-		return Result{}, fmt.Errorf("%w: read header: %v", ErrCritical, err)
+		return nil, nil, nil, 0, fmt.Errorf("%w: read header: %v", ErrCritical, err)
 	}
 	cols, err := columnIndex(header)
+	if err != nil {
+		return nil, nil, nil, 0, err
+	}
+	return reader, cols, append([]string(nil), header...), delimiter, nil
+}
+
+func ReadPreview(r io.Reader, limit, maxFieldBytes int) (Preview, error) {
+	reader, cols, header, delimiter, err := open(r)
+	if err != nil {
+		return Preview{}, err
+	}
+	preview := Preview{Delimiter: string(delimiter), Columns: header, Rows: []PreviewRow{}}
+	for row := 2; len(preview.Rows) < limit; row++ {
+		record, err := reader.Read()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			var parseErr *csv.ParseError
+			if errors.As(err, &parseErr) {
+				preview.Rows = append(preview.Rows, PreviewRow{Row: row, Error: parseErr.Err.Error()})
+				continue
+			}
+			return preview, fmt.Errorf("%w: read row %d: %v", ErrCritical, row, err)
+		}
+		item := PreviewRow{
+			Row:          row,
+			SerialNumber: field(record, cols[ColumnSerial]),
+			DisplayName:  field(record, cols[ColumnName]),
+			Publisher:    field(record, cols[ColumnPublisher]),
+			Version:      field(record, cols[ColumnVersion]),
+		}
+		item.Excluded = systemUpdate.MatchString(item.DisplayName)
+		if rowErr := validate(row, item.SerialNumber, item.DisplayName, item.Publisher, item.Version, maxFieldBytes); rowErr != nil {
+			item.Error = rowErr.Message
+		}
+		preview.Rows = append(preview.Rows, item)
+	}
+	return preview, nil
+}
+
+func Parse(r io.Reader, limits Limits) (Result, error) {
+	reader, cols, _, _, err := open(r)
 	if err != nil {
 		return Result{}, err
 	}
