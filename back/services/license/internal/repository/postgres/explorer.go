@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -29,6 +30,7 @@ const (
 	exactFilter
 	uuidFilter
 	boolFilter
+	phraseFilter
 )
 
 type filter struct {
@@ -165,7 +167,7 @@ var datasets = map[domain.Dataset]dataset{
 			"product":      {expr: "p.canonical_name"},
 			"product_id":   {expr: "p.id", kind: uuidFilter},
 			"publisher":    {expr: "p.publisher"},
-			"purpose":      {expr: "p.purpose"},
+			"purpose":      {expr: "p.purpose", kind: phraseFilter},
 			"section":      {expr: "p.section"},
 			"class":        {expr: "p.class"},
 			"status":       {expr: "p.status", kind: exactFilter},
@@ -333,6 +335,10 @@ func (r *Explorer) Query(ctx context.Context, q domain.DataQuery) (domain.DataTa
 				return domain.DataTable{}, apperr.Invalid(name + " must be true or false")
 			}
 			conds = append(conds, f.expr+" = "+arg(b))
+		case phraseFilter:
+			for _, stem := range stems(value) {
+				conds = append(conds, f.expr+" ILIKE "+arg("%"+escapeLike(stem)+"%"))
+			}
 		default:
 			conds = append(conds, f.expr+" ILIKE "+arg("%"+escapeLike(value)+"%"))
 		}
@@ -425,4 +431,21 @@ func toInt64(v any) int64 {
 
 func escapeLike(s string) string {
 	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
+}
+
+func stems(phrase string) []string {
+	var out []string
+	for _, word := range strings.FieldsFunc(phrase, func(r rune) bool { return !unicode.IsLetter(r) && !unicode.IsDigit(r) }) {
+		runes := []rune(word)
+		switch {
+		case len(runes) < 3:
+			continue
+		case len(runes) > 5:
+			runes = runes[:len(runes)-2]
+		case len(runes) > 3:
+			runes = runes[:len(runes)-1]
+		}
+		out = append(out, string(runes))
+	}
+	return out
 }
