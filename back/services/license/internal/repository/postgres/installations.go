@@ -90,12 +90,11 @@ func (r *Installations) Unassign(ctx context.Context, key string, status domain.
 
 func (r *Installations) Facts(ctx context.Context, s domain.Scope) ([]domain.InstallationFacts, error) {
 	query := `
-		SELECT i.id, i.device_id, i.product_id, p.canonical_name, p.status, p.current_version, v.lifecycle_status, v.version,
-		       a.commercial_allowed, i.raw_name, i.raw_version, i.match_status
+		SELECT i.id, i.device_id, i.product_id, p.canonical_name, p.status, p.current_version, v.version,
+		       i.raw_name, i.raw_version, i.match_status
 		FROM installations i
 		LEFT JOIN software_products p ON p.id = i.product_id
 		LEFT JOIN software_versions v ON v.id = i.version_id
-		LEFT JOIN license_agreements a ON a.id = p.agreement_id
 		WHERE i.is_active`
 	var args []any
 	if !s.All {
@@ -108,8 +107,8 @@ func (r *Installations) Facts(ctx context.Context, s domain.Scope) ([]domain.Ins
 	}
 	return collect(rows, func(row scanner) (domain.InstallationFacts, error) {
 		var f domain.InstallationFacts
-		err := row.Scan(&f.ID, &f.DeviceID, &f.ProductID, &f.ProductName, &f.Status, &f.CurrentVersion, &f.Lifecycle, &f.Version,
-			&f.CommercialAllowed, &f.RawName, &f.RawVersion, &f.MatchStatus)
+		err := row.Scan(&f.ID, &f.DeviceID, &f.ProductID, &f.ProductName, &f.Status, &f.CurrentVersion, &f.Version,
+			&f.RawName, &f.RawVersion, &f.MatchStatus)
 		return f, err
 	})
 }
@@ -135,14 +134,4 @@ func (r *Installations) ProductFacts(ctx context.Context, s domain.Scope) ([]dom
 		err := row.Scan(&p.ID, &p.Name, &p.CostModel, &p.Devices)
 		return p, err
 	})
-}
-
-func (r *Installations) DeactivateByKey(ctx context.Context, key string, at time.Time) ([]uuid.UUID, error) {
-	rows, err := pg.DB(ctx, r.pool).Query(ctx, `
-		UPDATE installations SET is_active = FALSE, removed_at = $2
-		WHERE source_key = $1 AND is_active RETURNING device_id`, key, at)
-	if err != nil {
-		return nil, fmt.Errorf("deactivate installations: %w", err)
-	}
-	return collect(rows, scanID)
 }

@@ -53,7 +53,7 @@ paths:
       summary: Загрузить CSV-выгрузку
       description: |
         Сохраняет файл и возвращает предпросмотр первых 20 строк (`preview`): разделитель, колонки, значения,
-        пометки `excluded` (KB-обновления и системные компоненты — рантаймы, драйверы, языковые пакеты; не попадут в учёт) и `error`. Импорт остаётся в статусе
+        пометки `excluded` (KB-обновления, не попадут в учёт) и `error`. Импорт остаётся в статусе
         `AWAITING_CONFIRMATION`, пока не вызван `POST /imports/{id}/confirm`. С `confirm=true` обработка стартует сразу.
         Ошибка заголовков (нет обязательных колонок) возвращается сразу ответом 400.
 
@@ -586,14 +586,6 @@ paths:
         - { name: status, in: query, schema: { type: string, enum: [PENDING, APPROVED, REJECTED], default: PENDING } }
       responses:
         "200": { $ref: "#/components/responses/Page" }
-  /api/v1/matching/rematch:
-    post:
-      tags: [matching]
-      summary: Пересопоставить очередь по актуальному каталогу
-      description: "Фоново прогоняет все PENDING-задачи через правила, точные и fuzzy-совпадения; системные компоненты (рантаймы, драйверы, языковые пакеты) снимает как «не ПО». Итог — в журнале (`entity=matching`, action REMATCH). Доступ: ADMIN."
-      responses:
-        "202": { $ref: "#/components/responses/Object" }
-        "409": { $ref: "#/components/responses/Error" }
   /api/v1/matching/{id}/approve:
     post:
       tags: [matching]
@@ -821,7 +813,7 @@ components:
     CostModel: { type: string, enum: [FREE, PAID, SHAREWARE], description: "бесплатно / платно / условно-бесплатно" }
     FindingType:
       type: string
-      enum: [FORBIDDEN_SOFTWARE, OUTDATED_SOFTWARE, UNSUPPORTED_SOFTWARE, UNKNOWN_SOFTWARE, LICENSE_DEFICIT, LICENSE_EXPIRED, LICENSE_UNVERIFIED, COMMERCIAL_USE_RESTRICTED]
+      enum: [FORBIDDEN_SOFTWARE, OUTDATED_SOFTWARE, LICENSE_DEFICIT]
     Import:
       type: object
       properties:

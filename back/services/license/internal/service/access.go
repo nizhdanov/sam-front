@@ -37,5 +37,3 @@ func (s *Service) record(ctx context.Context, entity, id, action, summary string
 		Changes:  changes,
 	})
 }
-
-func actor(ctx context.Context) string { return auth.ClaimsFrom(ctx).Actor() }

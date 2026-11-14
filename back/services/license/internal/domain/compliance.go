@@ -11,22 +11,17 @@ import (
 type FindingType string
 
 const (
-	FindingLicenseDeficit      FindingType = "LICENSE_DEFICIT"
-	FindingForbiddenSoftware   FindingType = "FORBIDDEN_SOFTWARE"
-	FindingOutdatedSoftware    FindingType = "OUTDATED_SOFTWARE"
-	FindingUnsupportedSoftware FindingType = "UNSUPPORTED_SOFTWARE"
-	FindingUnknownSoftware     FindingType = "UNKNOWN_SOFTWARE"
-	FindingLicenseExpired      FindingType = "LICENSE_EXPIRED"
-	FindingCommercialUse       FindingType = "COMMERCIAL_USE_RESTRICTED"
-	FindingLicenseUnverified   FindingType = "LICENSE_UNVERIFIED"
+	FindingLicenseDeficit    FindingType = "LICENSE_DEFICIT"
+	FindingForbiddenSoftware FindingType = "FORBIDDEN_SOFTWARE"
+	FindingOutdatedSoftware  FindingType = "OUTDATED_SOFTWARE"
 )
 
 var (
 	InstallationFindingTypes = []FindingType{
-		FindingForbiddenSoftware, FindingOutdatedSoftware, FindingUnsupportedSoftware, FindingUnknownSoftware, FindingCommercialUse,
+		FindingForbiddenSoftware, FindingOutdatedSoftware,
 	}
 	ProductFindingTypes = []FindingType{
-		FindingLicenseDeficit, FindingLicenseExpired, FindingLicenseUnverified,
+		FindingLicenseDeficit,
 	}
 )
 
@@ -44,14 +39,9 @@ const (
 )
 
 var severities = map[FindingType]Severity{
-	FindingLicenseDeficit:      SeverityHigh,
-	FindingForbiddenSoftware:   SeverityCritical,
-	FindingOutdatedSoftware:    SeverityMedium,
-	FindingUnsupportedSoftware: SeverityHigh,
-	FindingUnknownSoftware:     SeverityMedium,
-	FindingLicenseExpired:      SeverityHigh,
-	FindingCommercialUse:       SeverityHigh,
-	FindingLicenseUnverified:   SeverityMedium,
+	FindingLicenseDeficit:    SeverityHigh,
+	FindingForbiddenSoftware: SeverityCritical,
+	FindingOutdatedSoftware:  SeverityMedium,
 }
 
 type FindingStatus string
@@ -92,18 +82,16 @@ type FindingFilter struct {
 }
 
 type InstallationFacts struct {
-	ID                uuid.UUID
-	DeviceID          uuid.UUID
-	ProductID         *uuid.UUID
-	ProductName       *string
-	Status            *ProductStatus
-	CurrentVersion    *string
-	Lifecycle         *Lifecycle
-	Version           *string
-	CommercialAllowed *bool
-	RawName           string
-	RawVersion        *string
-	MatchStatus       MatchStatus
+	ID             uuid.UUID
+	DeviceID       uuid.UUID
+	ProductID      *uuid.UUID
+	ProductName    *string
+	Status         *ProductStatus
+	CurrentVersion *string
+	Version        *string
+	RawName        string
+	RawVersion     *string
+	MatchStatus    MatchStatus
 }
 
 func InstallationFindings(f InstallationFacts) []Finding {
@@ -129,7 +117,6 @@ func InstallationFindings(f InstallationFacts) []Finding {
 	}
 
 	if f.ProductID == nil {
-		add(FindingUnknownSoftware, map[string]any{"match_status": f.MatchStatus})
 		return out
 	}
 	if f.Status != nil && *f.Status == StatusForbidden {
@@ -144,14 +131,6 @@ func InstallationFindings(f InstallationFacts) []Finding {
 		add(FindingOutdatedSoftware, map[string]any{"version": valueOrNil(installed), "reason": "PRODUCT_OUTDATED"})
 	case f.CurrentVersion != nil && installed != nil && CompareVersions(*installed, *f.CurrentVersion) < 0:
 		add(FindingOutdatedSoftware, map[string]any{"version": *installed, "current_version": *f.CurrentVersion})
-	case f.Lifecycle != nil && *f.Lifecycle == LifecycleOutdated:
-		add(FindingOutdatedSoftware, map[string]any{"version": valueOrNil(installed)})
-	}
-	if f.Lifecycle != nil && *f.Lifecycle == LifecycleUnsupported {
-		add(FindingUnsupportedSoftware, map[string]any{"version": valueOrNil(installed)})
-	}
-	if f.CommercialAllowed != nil && !*f.CommercialAllowed {
-		add(FindingCommercialUse, map[string]any{"commercial_allowed": false})
 	}
 	return out
 }
@@ -226,7 +205,9 @@ func EvaluateLicensing(p ProductFacts, entitlements []Entitlement, now time.Time
 		switch {
 		case installed && len(expired) > 0:
 			balance.Note = "all entitlements have expired"
-			addFinding(FindingLicenseExpired, "", map[string]any{"expired_at": latestExpiry(expired), "devices": p.Devices})
+			addFinding(FindingLicenseDeficit, "", map[string]any{
+				"reason": "ALL_CONTRACTS_EXPIRED", "expired_at": latestExpiry(expired), "purchased": 0, "consumed": p.Devices, "deficit": p.Devices,
+			})
 		case installed && requiresLicense:
 			balance.Note = "no entitlements registered for a product that requires a license"
 			addFinding(FindingLicenseDeficit, "", map[string]any{
@@ -270,9 +251,6 @@ func EvaluateLicensing(p ProductFacts, entitlements []Entitlement, now time.Time
 			b.CalculationStatus = CalcUnsupportedMetric
 			b.Note = "usage for this metric cannot be derived from installation data"
 			balances = append(balances, b)
-			if installed {
-				addFinding(FindingLicenseUnverified, string(m), map[string]any{"reason": "UNSUPPORTED_METRIC", "metric": m})
-			}
 			continue
 		}
 
@@ -290,9 +268,6 @@ func EvaluateLicensing(p ProductFacts, entitlements []Entitlement, now time.Time
 				"metric": m, "purchased": purchased, "consumed": b.Consumed, "deficit": b.Deficit,
 			})
 		}
-	}
-	if mixed && installed {
-		addFinding(FindingLicenseUnverified, "MIXED", map[string]any{"reason": "MIXED_METRICS", "metrics": metrics})
 	}
 	return balances, findings
 }

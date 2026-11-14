@@ -94,7 +94,6 @@ func NewRouter(d Deps) http.Handler {
 
 		r.Route("/matching", func(r chi.Router) {
 			r.Get("/pending", h.pendingMatches)
-			r.Post("/rematch", h.rematch)
 			r.Post("/{id}/approve", h.approveMatch)
 			r.Post("/{id}/reject", h.rejectMatch)
 			r.Get("/rules", h.listRules)

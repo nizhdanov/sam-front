@@ -142,12 +142,3 @@ func (h *handler) auditLog(w http.ResponseWriter, r *http.Request) {
 	}
 	respondPage(w, items, page, total)
 }
-
-func (h *handler) rematch(w http.ResponseWriter, r *http.Request) {
-	res, err := h.svc.StartRematch(r.Context())
-	if err != nil {
-		h.fail(w, r, err)
-		return
-	}
-	httpx.JSON(w, http.StatusAccepted, res)
-}

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -78,7 +77,6 @@ type Installations interface {
 	DeactivateMissing(ctx context.Context, deviceID uuid.UUID, keep []string, at time.Time) error
 	Assign(ctx context.Context, key string, productID uuid.UUID, versionID *uuid.UUID) ([]uuid.UUID, error)
 	Unassign(ctx context.Context, key string, status domain.MatchStatus) ([]uuid.UUID, error)
-	DeactivateByKey(ctx context.Context, key string, at time.Time) ([]uuid.UUID, error)
 	Facts(ctx context.Context, s domain.Scope) ([]domain.InstallationFacts, error)
 	ProductFacts(ctx context.Context, s domain.Scope) ([]domain.ProductFacts, error)
 }
@@ -177,7 +175,6 @@ type Service struct {
 	log           *slog.Logger
 	matchDefaults domain.MatchingConfig
 	expiringDays  int
-	rematching    atomic.Bool
 	now           func() time.Time
 }
 
