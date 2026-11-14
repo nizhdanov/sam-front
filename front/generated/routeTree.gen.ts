@@ -10,33 +10,205 @@
 
 import { Route as rootRouteImport } from './../src/routes/__root'
 import { Route as IndexRouteImport } from './../src/routes/index'
+import { Route as AuthenticatedRouteImport } from './../src/routes/_authenticated'
+import { Route as AccessDeniedRouteImport } from './../src/routes/access-denied'
+import { Route as AuthenticatedAdminRouteImport } from './../src/routes/_authenticated/_admin'
+import { Route as AuthenticatedMeRouteImport } from './../src/routes/_authenticated/me'
+import { Route as AuthenticatedSoftwareRouteImport } from './../src/routes/_authenticated/software'
+import { Route as AuthenticatedAdminAgreementsRouteImport } from './../src/routes/_authenticated/_admin/agreements'
+import { Route as AuthenticatedAdminAuditRouteImport } from './../src/routes/_authenticated/_admin/audit'
+import { Route as AuthenticatedAdminContractsRouteImport } from './../src/routes/_authenticated/_admin/contracts'
+import { Route as AuthenticatedAdminDashboardRouteImport } from './../src/routes/_authenticated/_admin/dashboard'
+import { Route as AuthenticatedAdminDevicesRouteImport } from './../src/routes/_authenticated/_admin/devices'
+import { Route as AuthenticatedAdminImportsRouteImport } from './../src/routes/_authenticated/_admin/imports'
+import { Route as AuthenticatedAdminInstallationsRouteImport } from './../src/routes/_authenticated/_admin/installations'
+import { Route as AuthenticatedAdminComplianceBalanceRouteImport } from './../src/routes/_authenticated/_admin/compliance/balance'
+import { Route as AuthenticatedAdminComplianceFindingsRouteImport } from './../src/routes/_authenticated/_admin/compliance/findings'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedRoute = AuthenticatedRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccessDeniedRoute = AccessDeniedRouteImport.update({
+  id: '/access-denied',
+  path: '/access-denied',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/_admin',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedMeRoute = AuthenticatedMeRouteImport.update({
+  id: '/me',
+  path: '/me',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedSoftwareRoute = AuthenticatedSoftwareRouteImport.update({
+  id: '/software',
+  path: '/software',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedAdminAgreementsRoute =
+  AuthenticatedAdminAgreementsRouteImport.update({
+    id: '/agreements',
+    path: '/agreements',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminAuditRoute = AuthenticatedAdminAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
+const AuthenticatedAdminContractsRoute =
+  AuthenticatedAdminContractsRouteImport.update({
+    id: '/contracts',
+    path: '/contracts',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminDashboardRoute =
+  AuthenticatedAdminDashboardRouteImport.update({
+    id: '/dashboard',
+    path: '/dashboard',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminDevicesRoute =
+  AuthenticatedAdminDevicesRouteImport.update({
+    id: '/devices',
+    path: '/devices',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminImportsRoute =
+  AuthenticatedAdminImportsRouteImport.update({
+    id: '/imports',
+    path: '/imports',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminInstallationsRoute =
+  AuthenticatedAdminInstallationsRouteImport.update({
+    id: '/installations',
+    path: '/installations',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminComplianceBalanceRoute =
+  AuthenticatedAdminComplianceBalanceRouteImport.update({
+    id: '/compliance/balance',
+    path: '/compliance/balance',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminComplianceFindingsRoute =
+  AuthenticatedAdminComplianceFindingsRouteImport.update({
+    id: '/compliance/findings',
+    path: '/compliance/findings',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/access-denied': typeof AccessDeniedRoute
+  '/me': typeof AuthenticatedMeRoute
+  '/software': typeof AuthenticatedSoftwareRoute
+  '/agreements': typeof AuthenticatedAdminAgreementsRoute
+  '/audit': typeof AuthenticatedAdminAuditRoute
+  '/contracts': typeof AuthenticatedAdminContractsRoute
+  '/dashboard': typeof AuthenticatedAdminDashboardRoute
+  '/devices': typeof AuthenticatedAdminDevicesRoute
+  '/imports': typeof AuthenticatedAdminImportsRoute
+  '/installations': typeof AuthenticatedAdminInstallationsRoute
+  '/compliance/balance': typeof AuthenticatedAdminComplianceBalanceRoute
+  '/compliance/findings': typeof AuthenticatedAdminComplianceFindingsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/access-denied': typeof AccessDeniedRoute
+  '/me': typeof AuthenticatedMeRoute
+  '/software': typeof AuthenticatedSoftwareRoute
+  '/agreements': typeof AuthenticatedAdminAgreementsRoute
+  '/audit': typeof AuthenticatedAdminAuditRoute
+  '/contracts': typeof AuthenticatedAdminContractsRoute
+  '/dashboard': typeof AuthenticatedAdminDashboardRoute
+  '/devices': typeof AuthenticatedAdminDevicesRoute
+  '/imports': typeof AuthenticatedAdminImportsRoute
+  '/installations': typeof AuthenticatedAdminInstallationsRoute
+  '/compliance/balance': typeof AuthenticatedAdminComplianceBalanceRoute
+  '/compliance/findings': typeof AuthenticatedAdminComplianceFindingsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/access-denied': typeof AccessDeniedRoute
+  '/_authenticated/_admin': typeof AuthenticatedAdminRouteWithChildren
+  '/_authenticated/me': typeof AuthenticatedMeRoute
+  '/_authenticated/software': typeof AuthenticatedSoftwareRoute
+  '/_authenticated/_admin/agreements': typeof AuthenticatedAdminAgreementsRoute
+  '/_authenticated/_admin/audit': typeof AuthenticatedAdminAuditRoute
+  '/_authenticated/_admin/contracts': typeof AuthenticatedAdminContractsRoute
+  '/_authenticated/_admin/dashboard': typeof AuthenticatedAdminDashboardRoute
+  '/_authenticated/_admin/devices': typeof AuthenticatedAdminDevicesRoute
+  '/_authenticated/_admin/imports': typeof AuthenticatedAdminImportsRoute
+  '/_authenticated/_admin/installations': typeof AuthenticatedAdminInstallationsRoute
+  '/_authenticated/_admin/compliance/balance': typeof AuthenticatedAdminComplianceBalanceRoute
+  '/_authenticated/_admin/compliance/findings': typeof AuthenticatedAdminComplianceFindingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/access-denied'
+    | '/me'
+    | '/software'
+    | '/agreements'
+    | '/audit'
+    | '/contracts'
+    | '/dashboard'
+    | '/devices'
+    | '/imports'
+    | '/installations'
+    | '/compliance/balance'
+    | '/compliance/findings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/access-denied'
+    | '/me'
+    | '/software'
+    | '/agreements'
+    | '/audit'
+    | '/contracts'
+    | '/dashboard'
+    | '/devices'
+    | '/imports'
+    | '/installations'
+    | '/compliance/balance'
+    | '/compliance/findings'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/access-denied'
+    | '/_authenticated/_admin'
+    | '/_authenticated/me'
+    | '/_authenticated/software'
+    | '/_authenticated/_admin/agreements'
+    | '/_authenticated/_admin/audit'
+    | '/_authenticated/_admin/contracts'
+    | '/_authenticated/_admin/dashboard'
+    | '/_authenticated/_admin/devices'
+    | '/_authenticated/_admin/imports'
+    | '/_authenticated/_admin/installations'
+    | '/_authenticated/_admin/compliance/balance'
+    | '/_authenticated/_admin/compliance/findings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  AccessDeniedRoute: typeof AccessDeniedRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +220,156 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/access-denied': {
+      id: '/access-denied'
+      path: '/access-denied'
+      fullPath: '/access-denied'
+      preLoaderRoute: typeof AccessDeniedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/_admin': {
+      id: '/_authenticated/_admin'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/me': {
+      id: '/_authenticated/me'
+      path: '/me'
+      fullPath: '/me'
+      preLoaderRoute: typeof AuthenticatedMeRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/software': {
+      id: '/_authenticated/software'
+      path: '/software'
+      fullPath: '/software'
+      preLoaderRoute: typeof AuthenticatedSoftwareRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/_admin/agreements': {
+      id: '/_authenticated/_admin/agreements'
+      path: '/agreements'
+      fullPath: '/agreements'
+      preLoaderRoute: typeof AuthenticatedAdminAgreementsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/audit': {
+      id: '/_authenticated/_admin/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AuthenticatedAdminAuditRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/contracts': {
+      id: '/_authenticated/_admin/contracts'
+      path: '/contracts'
+      fullPath: '/contracts'
+      preLoaderRoute: typeof AuthenticatedAdminContractsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/dashboard': {
+      id: '/_authenticated/_admin/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedAdminDashboardRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/devices': {
+      id: '/_authenticated/_admin/devices'
+      path: '/devices'
+      fullPath: '/devices'
+      preLoaderRoute: typeof AuthenticatedAdminDevicesRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/imports': {
+      id: '/_authenticated/_admin/imports'
+      path: '/imports'
+      fullPath: '/imports'
+      preLoaderRoute: typeof AuthenticatedAdminImportsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/installations': {
+      id: '/_authenticated/_admin/installations'
+      path: '/installations'
+      fullPath: '/installations'
+      preLoaderRoute: typeof AuthenticatedAdminInstallationsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/compliance/balance': {
+      id: '/_authenticated/_admin/compliance/balance'
+      path: '/compliance/balance'
+      fullPath: '/compliance/balance'
+      preLoaderRoute: typeof AuthenticatedAdminComplianceBalanceRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/compliance/findings': {
+      id: '/_authenticated/_admin/compliance/findings'
+      path: '/compliance/findings'
+      fullPath: '/compliance/findings'
+      preLoaderRoute: typeof AuthenticatedAdminComplianceFindingsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
   }
 }
 
+interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminAgreementsRoute: typeof AuthenticatedAdminAgreementsRoute
+  AuthenticatedAdminAuditRoute: typeof AuthenticatedAdminAuditRoute
+  AuthenticatedAdminContractsRoute: typeof AuthenticatedAdminContractsRoute
+  AuthenticatedAdminDashboardRoute: typeof AuthenticatedAdminDashboardRoute
+  AuthenticatedAdminDevicesRoute: typeof AuthenticatedAdminDevicesRoute
+  AuthenticatedAdminImportsRoute: typeof AuthenticatedAdminImportsRoute
+  AuthenticatedAdminInstallationsRoute: typeof AuthenticatedAdminInstallationsRoute
+  AuthenticatedAdminComplianceBalanceRoute: typeof AuthenticatedAdminComplianceBalanceRoute
+  AuthenticatedAdminComplianceFindingsRoute: typeof AuthenticatedAdminComplianceFindingsRoute
+}
+
+const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminAgreementsRoute: AuthenticatedAdminAgreementsRoute,
+  AuthenticatedAdminAuditRoute: AuthenticatedAdminAuditRoute,
+  AuthenticatedAdminContractsRoute: AuthenticatedAdminContractsRoute,
+  AuthenticatedAdminDashboardRoute: AuthenticatedAdminDashboardRoute,
+  AuthenticatedAdminDevicesRoute: AuthenticatedAdminDevicesRoute,
+  AuthenticatedAdminImportsRoute: AuthenticatedAdminImportsRoute,
+  AuthenticatedAdminInstallationsRoute: AuthenticatedAdminInstallationsRoute,
+  AuthenticatedAdminComplianceBalanceRoute:
+    AuthenticatedAdminComplianceBalanceRoute,
+  AuthenticatedAdminComplianceFindingsRoute:
+    AuthenticatedAdminComplianceFindingsRoute,
+}
+
+const AuthenticatedAdminRouteWithChildren =
+  AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
+
+interface AuthenticatedRouteChildren {
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
+  AuthenticatedMeRoute: typeof AuthenticatedMeRoute
+  AuthenticatedSoftwareRoute: typeof AuthenticatedSoftwareRoute
+}
+
+const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
+  AuthenticatedMeRoute: AuthenticatedMeRoute,
+  AuthenticatedSoftwareRoute: AuthenticatedSoftwareRoute,
+}
+
+const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
+  AuthenticatedRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  AccessDeniedRoute: AccessDeniedRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

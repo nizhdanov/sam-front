@@ -3,23 +3,9 @@ import assert from 'node:assert/strict';
 import { Buffer } from 'node:buffer';
 import { once } from 'node:events';
 import { createServer } from 'node:http';
-import { registerHooks } from 'node:module';
 import { after, beforeEach, test } from 'node:test';
 
-// Node запускает исходные TS и generated-импорты с алиасами и Windows-разделителями.
-registerHooks({
-  resolve(specifier, context, nextResolve) {
-    if (specifier.startsWith('@/')) {
-      const root = specifier.startsWith('@/generated/') ? '../' : '../src/';
-      return nextResolve(new URL(`${root}${specifier.slice(2)}.ts`, import.meta.url).href, context);
-    }
-    if (specifier.startsWith('.')) {
-      const path = specifier.replaceAll('\\', '/');
-      return nextResolve(/\.(?:[cm]?js|tsx?)$/.test(path) ? path : `${path}.ts`, context);
-    }
-    return nextResolve(specifier, context);
-  }
-});
+import './register.mjs';
 
 const { ApiError, normalizeApiError, readApiError } = await import('../src/utils/api/errors.ts');
 const { downloadFile, getDownloadFilename } = await import('../src/utils/api/files.ts');

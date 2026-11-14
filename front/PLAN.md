@@ -1,6 +1,6 @@
 # План разработки интерфейса SAM «Сургутнефтегаз»
 
-Дата исследования: **15 ноября 2026 года**. Состояние: **этап 1 выполнен (TASK-001, TASK-002); этап 2 не начат**.
+Дата исследования: **15 ноября 2026 года**. Состояние: **этапы 1–2 выполнены (TASK-001–TASK-006); этап 3 не начат**.
 
 ## 1. Цель проекта и ожидаемый результат
 
@@ -274,7 +274,7 @@ SSE — `fetch` с POST, Bearer из текущего `localStorage.token`, Abor
 
 Это окончательный контракт поведения frontend, выбранный заказчиком; отдельного проектирования входа перед TASK-004 не требуется.
 
-- В `src/app/auth/demo-accounts.ts` сосредоточить одну таблицу `USER`/`ADMIN`: русская подпись и фиксированный демонстрационный токен для каждой роли. Значения разные и принимаются тестовым backend. В `instance.ts` их сейчас нет; конкретные строки нужно получить у владельца стенда (B-01). Строки `USER`/`ADMIN` сами по себе не объявляются валидными JWT.
+- В `src/app/auth/demo-accounts.ts` сосредоточена одна таблица `USER`/`ADMIN`: русская подпись и фиксированный демонстрационный токен для каждой роли. Значения разные, переиспользуют существующий `TOKENS` без дублирования строк и проверены тестовым backend в этапе 2. Актуальность токенов и данные своего устройства учитываются в B-01. Строки `USER`/`ADMIN` сами по себе не объявляются валидными JWT.
 - В оболочке всегда доступен существующий **Select**, подпись «Роль», варианты **«Пользователь» | «Администратор»** через SelectGroup/SelectItem. `onValueChange` вызывает один обработчик смены роли и `localStorage.setItem('token', выбранныйТокен)`. Ключ именно `token`; второй сохранённый ключ role не нужен.
 - До первых loaders/preload/Query прочитать сохранённый token и найти точное совпадение в таблице. Известный токен восстанавливает роль. При первом запуске без token или при неизвестном значении выбрать **USER**, записать его демонстрационный токен и лишь затем разрешить запросы. Повторный reload не должен переключать сохранённый ADMIN на USER. Недоступный localStorage или незаданные токены дают понятную ошибку и блокируют запросы, а не `Bearer null`.
 - При смене роли сначала скрыть прежние защищённые данные и приостановить новые запросы; отменить Query-запросы, polling и SSE, очистить кеш/активные мутации UI/черновики прежнего контекста. Увеличить номер контекста: поздние ответы и callbacks старого номера не должны менять новые экраны. Уже принятый сервером POST нельзя считать отменённым.
@@ -393,7 +393,7 @@ SSE — `fetch` с POST, Bearer из текущего `localStorage.token`, Abor
 - При первой проверке OpenAPI совпал с исследованным SHA-256 `478A051261D5446D3754525F63E01B3363314131A3771A1CF343C0862A679D24`. Во время проверки proxy сервер обновил спецификацию до SHA-256 `2E4C8800F4E022EA4E093E44339CD88BC26E520E1D8E0541C404AF9CD15235B5`: появились операции matching и уточнение исключаемых строк CSV. Повторное сравнение подтвердило неизменность параметров, тел и ответов imports/agreement file/data/export и всех component schemas. Эти операции совместимы с текущим generated; посторонняя регенерация matching в этап не включена.
 - Оставшиеся ограничения проверки: полный ESLint исходной UI-библиотеки имеет **52 ранее существовавшие ошибки и 3 предупреждения** в bubble/message/message-scroller/select/field; эти файлы не менялись. Docker daemon недоступен, поэтому `nginx -t` и контейнерный сетевой smoke не выполнены; production proxy требует проверки при deployment. Реальные USER/ADMIN токены и приёмка загрузок относятся к следующим этапам (B-01, TASK-007, TASK-013).
 
-**Следующий этап:** этап 2, начиная с TASK-003. Его реализация в этой работе не начиналась.
+**Передача к этапу 2:** TASK-003–TASK-006; результаты их реализации приведены ниже.
 
 ### Этап 2. Общая оболочка, доступ и представление данных
 
@@ -401,7 +401,7 @@ SSE — `fetch` с POST, Bearer из текущего `localStorage.token`, Abor
 
 **Зависимости:** этап 1. Переключатель и guards не зависят от IdP; два принимаемых стендом токена (B-01) нужны для проверки реальных ролевых API-запросов.
 
-- [ ] **TASK-003 — Создать layout и общие состояния интерфейса**
+- [x] **TASK-003 — Создать layout и общие состояния интерфейса**
   - Источник: US-01 и состояния всех экранов.
   - Зависимости: TASK-001.
   - Реализация: оболочка с боковым меню/мобильной навигацией, заголовком, main и постоянным местом для Select «Роль»; общие loading/empty/error/success; переиспользовать готовые UI и добавить только недостающие по правилам shadcn и текущей теме.
@@ -409,7 +409,7 @@ SSE — `fetch` с POST, Bearer из текущего `localStorage.token`, Abor
   - Проверка: клавиатура, focus, названия диалогов, возврат фокуса, 360/768/1440px; ошибка и пустой результат визуально различаются; build/typecheck.
   - Backend: не требуется для оболочки; Select с состоянием и токенами подключается в TASK-004.
 
-- [ ] **TASK-004 — Добавить MVP-переключатель «Пользователь | Администратор»**
+- [x] **TASK-004 — Добавить MVP-переключатель «Пользователь | Администратор»**
   - Источник: уточнение заказчика от 15 ноября 2026 года, US-01, US-21, US-22.
   - Зависимости: TASK-002, TASK-003.
   - Реализация: одна таблица двух ролей/фиксированных токенов в `src/app/auth/demo-accounts.ts`, имеющийся Select, `localStorage.setItem('token', token)`; bootstrap, дефолт USER, точное восстановление роли, смена контекста/отмена запросов/очистка кеша и storage sync по разделу 8.6. Подключить контекст к уже имеющемуся Axios interceptor; форму входа/IdP не создавать.
@@ -417,7 +417,7 @@ SSE — `fetch` с POST, Bearer из текущего `localStorage.token`, Abor
   - Проверка: нет/неизвестный token → USER; USER→ADMIN→USER записывает нужную строку; reload сохраняет ADMIN; запрос несёт новый Bearer; смена в двух вкладках синхронизируется; поздний ответ/401/submit старой роли не меняет новый UI; 401 и отказ localStorage видимы. Небольшой тест отображения токен→роль и жизненного цикла смены; сетевой smoke с двумя стендовыми токенами.
   - Backend: существующий Bearer transport; для сетевой приёмки — два фиксированных принимаемых стендом токена (B-01), USER с привязанным device_serial для сценария своего ПК. Создание переключателя/guards не заблокировано IdP; значения токенов не выдумывать.
 
-- [ ] **TASK-005 — Защитить маршруты и подключить меню по ролям**
+- [x] **TASK-005 — Защитить маршруты и подключить меню по ролям**
   - Источник: US-01, US-22.
   - Зависимости: TASK-003, TASK-004.
   - Реализация: router context с состоянием готовности демонстрационной роли, `_authenticated`/`_admin` beforeLoad guards, role landing, 403/404/errorComponent/pendingComponent; меню и действия по ролям. При bootstrap/смене не запускать защищённые loaders/preload; при ошибке token оставлять доступным селект, без login/callback маршрутов.
@@ -425,7 +425,7 @@ SSE — `fetch` с POST, Bearer из текущего `localStorage.token`, Abor
   - Проверка: USER открывает admin URL напрямую и через историю; нет административного запроса до guard; неизвестная роль закрыта по умолчанию; отсутствующий объект даёт 404. Добавить небольшой тест матрицы permissions.
   - Backend: авторизация всех API на сервере; конкретные business endpoints подключаются последующими задачами.
 
-- [ ] **TASK-006 — Реализовать общий вывод DataTable и серверный экспорт**
+- [x] **TASK-006 — Реализовать общий вывод DataTable и серверный экспорт**
   - Источник: US-07, US-09, US-11, US-12, US-19, US-22.
   - Зависимости: TASK-002, TASK-003.
   - Реализация: безопасно связать columns/rows по именам, вывести разрешённые колонки и `shown/total`; добавить whitelist документированных фильтров по dataset и ограниченную группировку; скачать csv/xlsx по тем же фильтрам. Без фиктивного paginator и без новой табличной библиотеки.
@@ -434,6 +434,73 @@ SSE — `fetch` с POST, Bearer из текущего `localStorage.token`, Abor
   - Backend: `GET /data/{dataset}?format=json/csv/xlsx`; параметры только из описанного dataset. B-03 ограничивает полный обход, но не сам компонент.
 
 **Критерии завершения этапа:** Select меняет localStorage.token, восстанавливает роль после reload и переоценивает guards; Axios-запросы обеих ролей подтверждены на стенде; прежние данные/поздние ответы не попадают в новый контекст; общие состояния и таблицы проверены; typecheck/build/целевой ESLint проходят. IdP не является критерием этапа; отсутствие рабочих токенов B-01 ограничивает только сетевую приёмку.
+
+**Протокол выполнения этапа 2 (15 ноября 2026 года):**
+
+- TASK-003: добавлена общая оболочка с desktop/mobile-навигацией, заголовком, main, skip-link и постоянным Select «Роль». Общие loading/empty/error/success используют существующую тему. Недостающие Sheet/Alert/Empty/Spinner добавлены установленным CLI из явного `@shadcn` registry; существующие UI-примитивы сохранены. Проверены 360/768/1440px, эквивалент 200% zoom, клавиатура, название мобильного диалога, удержание и возврат фокуса. Длинная таблица прокручивается внутри контейнера.
+- TASK-004: таблица ролей переиспользует **уже существующие** значения `TOKENS.USER`/`TOKENS.ADMIN`; новые токены не выдумывались. Проверены USER по умолчанию, неизвестный token, восстановление ADMIN после reload, USER→ADMIN→USER, две вкладки, ошибка localStorage и повторный выбор той же роли после 401. Смена скрывает старый UI, прерывает запросы общим AbortSignal, очищает Query/Mutation cache и увеличивает epoch. Тесты проверяют перекрывающиеся переключения, поздний success/401 и submit старого контекста. Актуальный 401 оставляет селект доступным, автоматического refresh нет.
+- TASK-005: router context содержит auth/QueryClient; `_authenticated`/`_admin` выполняют guards до loaders. Landing и меню соответствуют роли, 403/404/error/pending доступны в общей оболочке. Предметные маршруты показывают явные заглушки «Раздел готовится» без API-запросов. В браузере проверены прямые административные URL, preload с контрольным loader (0 вызовов от USER) и возврат через историю после смены роли без доступа к административному содержимому. Исправлена выявленная браузером последовательность перехода: сначала новый landing, затем `router.invalidate`, чтобы редирект старого административного URL не оставлял USER на промежуточном запрете. Исправлены также предупреждения Base UI для Button, отрисованного как Link.
+- TASK-006: адаптер `/data/*` проверяет форму ответа, счётчики, уникальность колонок и длины строк, связывает данные по именам и показывает только разрешённые колонки. Документированные фильтры/группировки ограничены whitelist по dataset; `false` сохраняется; page/offset/sort не добавлены. Серверный CSV/XLSX использует те же фильтры; total>shown явно обозначается. В браузере проверены перестановка колонок, ADMIN-поля в USER UI, nullable/неизвестные значения, безопасный HTML-текст, пустой результат/сброс и отдельная ошибка контракта.
+- Сетевой smoke: реальные Axios-запросы через Vite proxy — USER `GET /software` → 200, ADMIN `GET /dashboard` → 200. Прямой read-only smoke подтверждает USER `/dashboard` → 403 и ролевую проекцию `/data/installations`. Браузер скачал CSV/XLSX с `recognized=false`/`raw_name`; CSV содержит ожидаемые USER-заголовки без `license_status`, XLSX открывается как ZIP с workbook/styles/worksheet. Ответы стенда для проверенных data-выборок пустые (`shown=total=0`); непустые/усечённые таблицы и гонки проверены контролируемыми fixtures и локальным HTTP self-check. `GET /me/device` от USER → 404: данные своего устройства предстоит подготовить при импорте/этапе 5.
+- Актуальный [OpenAPI YAML](https://sam.v1sdev.ru/api/v1/docs/openapi.yaml) получен повторно, SHA-256: `2E4C8800F4E022EA4E093E44339CD88BC26E520E1D8E0541C404AF9CD15235B5`. `pnpm generate-api` выполнен штатным apicraft; затронутые `/data/*` схемы сохранены. Механическая регенерация добавила пять новых matching request-функций и соответствующие types/exports из обновлённого контракта; UI/сценарии matching не реализовывались. Route tree обновлён только генератором.
+- Проверки: `pnpm generate-routes`, `pnpm generate-api`, `pnpm typecheck`, `pnpm test` (**27 тестов**), `pnpm build`, Prettier и целевой ESLint изменённых исходников/тестов — успешно. Браузерные проверки Edge выполнялись через временный CDP self-check, новый runner/зависимости в проект не добавлялись. Рабочие сценарии после исправлений не дают ошибок console; Devtools скрываются при неготовом auth, включая отказ localStorage, и удаляются из production build.
+- Ограничения: общий полный обход `/data/*` остаётся B-03; backend-блокеры следующих этапов B-02/B-04 не закрывались. Полный ESLint исходной UI-библиотеки с известными ошибками этапа 1 и deployment-проверки nginx не повторялись. Постоянные демо-токены имеют ограниченный срок действия и при 401 требуют замены. Данные/формы соглашений, каталога, договоров и остальных предметных разделов пока не подключены.
+
+<details>
+<summary>Изменённые файлы этапа 2 (48)</summary>
+
+- [PLAN.md](./PLAN.md)
+- [README.md](./README.md)
+- [generated/api/index.ts](./generated/api/index.ts)
+- [generated/api/requests/matching/getMatchingSuggestions.gen.ts](./generated/api/requests/matching/getMatchingSuggestions.gen.ts)
+- [generated/api/requests/matching/postMatchingRematch.gen.ts](./generated/api/requests/matching/postMatchingRematch.gen.ts)
+- [generated/api/requests/matching/postMatchingSuggestionByIdReject.gen.ts](./generated/api/requests/matching/postMatchingSuggestionByIdReject.gen.ts)
+- [generated/api/requests/matching/postMatchingSuggestionsApprove.gen.ts](./generated/api/requests/matching/postMatchingSuggestionsApprove.gen.ts)
+- [generated/api/requests/matching/postMatchingSuggestionsGenerate.gen.ts](./generated/api/requests/matching/postMatchingSuggestionsGenerate.gen.ts)
+- [generated/api/types.gen.ts](./generated/api/types.gen.ts)
+- [generated/routeTree.gen.ts](./generated/routeTree.gen.ts)
+- [src/app/auth/context.ts](./src/app/auth/context.ts)
+- [src/app/auth/demo-accounts.ts](./src/app/auth/demo-accounts.ts)
+- [src/app/auth/permissions.ts](./src/app/auth/permissions.ts)
+- [src/app/auth/session.ts](./src/app/auth/session.ts)
+- [src/app/main.tsx](./src/app/main.tsx)
+- [src/app/router.tsx](./src/app/router.tsx)
+- [src/components/layout/app-shell.tsx](./src/components/layout/app-shell.tsx)
+- [src/components/shared/data-table.tsx](./src/components/shared/data-table.tsx)
+- [src/components/shared/route-states.tsx](./src/components/shared/route-states.tsx)
+- [src/components/shared/states.tsx](./src/components/shared/states.tsx)
+- [src/components/ui/alert.tsx](./src/components/ui/alert.tsx)
+- [src/components/ui/empty.tsx](./src/components/ui/empty.tsx)
+- [src/components/ui/sheet.tsx](./src/components/ui/sheet.tsx)
+- [src/components/ui/spinner.tsx](./src/components/ui/spinner.tsx)
+- [src/routes/__root.tsx](./src/routes/__root.tsx)
+- [src/routes/_authenticated.tsx](./src/routes/_authenticated.tsx)
+- [src/routes/_authenticated/_admin.tsx](./src/routes/_authenticated/_admin.tsx)
+- [src/routes/_authenticated/_admin/agreements.tsx](./src/routes/_authenticated/_admin/agreements.tsx)
+- [src/routes/_authenticated/_admin/audit.tsx](./src/routes/_authenticated/_admin/audit.tsx)
+- [src/routes/_authenticated/_admin/compliance/balance.tsx](./src/routes/_authenticated/_admin/compliance/balance.tsx)
+- [src/routes/_authenticated/_admin/compliance/findings.tsx](./src/routes/_authenticated/_admin/compliance/findings.tsx)
+- [src/routes/_authenticated/_admin/contracts.tsx](./src/routes/_authenticated/_admin/contracts.tsx)
+- [src/routes/_authenticated/_admin/dashboard.tsx](./src/routes/_authenticated/_admin/dashboard.tsx)
+- [src/routes/_authenticated/_admin/devices.tsx](./src/routes/_authenticated/_admin/devices.tsx)
+- [src/routes/_authenticated/_admin/imports.tsx](./src/routes/_authenticated/_admin/imports.tsx)
+- [src/routes/_authenticated/_admin/installations.tsx](./src/routes/_authenticated/_admin/installations.tsx)
+- [src/routes/_authenticated/me.tsx](./src/routes/_authenticated/me.tsx)
+- [src/routes/_authenticated/software.tsx](./src/routes/_authenticated/software.tsx)
+- [src/routes/access-denied.tsx](./src/routes/access-denied.tsx)
+- [src/routes/index.tsx](./src/routes/index.tsx)
+- [src/utils/api/data.ts](./src/utils/api/data.ts)
+- [src/utils/api/index.ts](./src/utils/api/index.ts)
+- [src/utils/lib/instance.ts](./src/utils/lib/instance.ts)
+- [src/utils/lib/queryClient.ts](./src/utils/lib/queryClient.ts)
+- [tests/api.test.mjs](./tests/api.test.mjs)
+- [tests/auth.test.mjs](./tests/auth.test.mjs)
+- [tests/data.test.mjs](./tests/data.test.mjs)
+- [tests/register.mjs](./tests/register.mjs)
+
+</details>
+
+**Следующий этап:** этап 3, начиная с TASK-007; для typed списка соглашений остаётся B-02a. Этап 3 не начинался.
 
 ### Этап 3. Соглашения, каталог и приобретённые права
 
@@ -805,7 +872,7 @@ SSE — `fetch` с POST, Bearer из текущего `localStorage.token`, Abor
 
 | Блокер                                              | Подтверждённый факт                                                                                                                                                           | Что требуется для закрытия                                                                                                                                                                                                                                  | Блокируемые задачи                                                                                                                               |
 | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **B-01 — значения демонстрационных токенов стенда** | Instance уже читает localStorage.token; конкретных USER/ADMIN значений в изученных файлах нет, API требует принимаемый сервером Bearer                                        | Получить и захардкодить два различных тестовых токена в таблице из раздела 8.6; подтвердить реальные роли, срок действия и device_serial USER. Значения — входные данные стенда; login/IdP/role claim/refresh/logout разрабатывать не требуется             | Только сетевые проверки TASK-004/005/023/025/037/039 при отсутствии токенов; создание Select, локального контекста и guards выполнимо независимо |
+| **B-01 — демонстрационные токены и своё устройство** | Значения USER/ADMIN найдены в `src/utils/constants/tokens.ts` и переиспользованы в auth-таблице. Ролевые Axios/API-проверки этапа 2 прошли; USER `/me/device` пока возвращает 404 | Поддерживать действительность фиксированных токенов; подготовить устройство USER через CSV для проверки своего ПК. IdP/login/refresh/logout не требуются | Сетевая часть TASK-004/005 закрыта. Данные своего ПК нужны для TASK-023/025/037/039; ограничения USER дополнительно проверяются в B-04 |
 | **B-02a — справочники и ошибки**                    | agreements list/versions/import errors используют Page/List с object items                                                                                                    | Привязать список соглашений к Agreement; описать фактически возвращаемую Version и ошибку CSV, их id/поля/required и nullable. Не считать input схемой ответа                                                                                               | TASK-007, TASK-010, TASK-015; через зависимости TASK-009/012/025                                                                                 |
 | **B-02b — договоры и баланс**                       | Contract/Balance/read findings/summary responses — generic Object/Page; purchase_reference vs contract_number и license_metric vs metric используются в разных представлениях | Подтвердить Contract read schema и соответствие полей; concrete envelope/строки commercial/free balance, ID продукта, полноту набора и семантику метрик. Для typed compliance API — Finding/summary schema; до этого список рисков допустим через DataTable | TASK-012, TASK-021, TASK-022, TASK-025; acknowledge может игнорировать generic response                                                          |
 | **B-02c — аудит**                                   | GET audit возвращает Page без AuditEvent                                                                                                                                      | Фактические имена/типы автора, даты, объекта, действия, описания, diff; связать item schema и required                                                                                                                                                      | TASK-024, TASK-025                                                                                                                               |

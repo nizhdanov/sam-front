@@ -3,18 +3,41 @@ import { RouterProvider } from '@tanstack/react-router';
 import ReactDOM from 'react-dom/client';
 
 import { queryClient } from '@/utils/lib';
+import { setApiSession } from '@/utils/lib/instance';
 
+import { DemoAuthContext } from './auth/context';
+import { getLanding } from './auth/demo-accounts';
+import { createDemoAuth } from './auth/session';
 import { getRouter } from './router';
 
-const router = getRouter();
+async function bootstrap() {
+  const auth = createDemoAuth(queryClient);
+  setApiSession(auth);
+  await auth.initialize();
+  const router = getRouter(auth);
 
-const rootElement = document.getElementById('app')!;
+  auth.subscribe(() => {
+    router.clearCache();
+    const snapshot = auth.getSnapshot();
+    if (snapshot.status !== 'ready' || !snapshot.role) return;
+    const landing = getLanding(snapshot.role);
+    void router.navigate({ to: landing, replace: true }).then(() => {
+      if (auth.isCurrent(snapshot.epoch)) void router.invalidate();
+    });
+  });
+  window.addEventListener('storage', (event) => {
+    if (event.key === 'token' || event.key === null) void auth.syncStorage();
+  });
 
-if (!rootElement.innerHTML) {
-  const root = ReactDOM.createRoot(rootElement);
-  root.render(
+  const rootElement = document.getElementById('app')!;
+  if (rootElement.innerHTML) return;
+  ReactDOM.createRoot(rootElement).render(
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <DemoAuthContext value={auth}>
+        <RouterProvider router={router} />
+      </DemoAuthContext>
     </QueryClientProvider>
   );
 }
+
+void bootstrap();

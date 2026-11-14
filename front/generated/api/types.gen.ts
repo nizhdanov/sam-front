@@ -1246,6 +1246,121 @@ export type GetApiV1MatchingPendingResponses = {
 
 export type GetApiV1MatchingPendingResponse = GetApiV1MatchingPendingResponses[keyof GetApiV1MatchingPendingResponses];
 
+export type PostApiV1MatchingRematchData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/matching/rematch';
+};
+
+export type PostApiV1MatchingRematchErrors = {
+    /**
+     * Ошибка
+     */
+    409: _Error;
+};
+
+export type PostApiV1MatchingRematchError = PostApiV1MatchingRematchErrors[keyof PostApiV1MatchingRematchErrors];
+
+export type PostApiV1MatchingRematchResponses = {
+    /**
+     * OK
+     */
+    202: {
+        [key: string]: unknown;
+    };
+};
+
+export type PostApiV1MatchingRematchResponse = PostApiV1MatchingRematchResponses[keyof PostApiV1MatchingRematchResponses];
+
+export type PostApiV1MatchingSuggestionsGenerateData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/matching/suggestions/generate';
+};
+
+export type PostApiV1MatchingSuggestionsGenerateErrors = {
+    /**
+     * Ошибка
+     */
+    409: _Error;
+};
+
+export type PostApiV1MatchingSuggestionsGenerateError = PostApiV1MatchingSuggestionsGenerateErrors[keyof PostApiV1MatchingSuggestionsGenerateErrors];
+
+export type PostApiV1MatchingSuggestionsGenerateResponses = {
+    /**
+     * OK
+     */
+    202: {
+        [key: string]: unknown;
+    };
+};
+
+export type PostApiV1MatchingSuggestionsGenerateResponse = PostApiV1MatchingSuggestionsGenerateResponses[keyof PostApiV1MatchingSuggestionsGenerateResponses];
+
+export type GetApiV1MatchingSuggestionsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        page?: number;
+        limit?: number;
+        status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+    };
+    url: '/api/v1/matching/suggestions';
+};
+
+export type GetApiV1MatchingSuggestionsResponses = {
+    /**
+     * OK
+     */
+    200: Page;
+};
+
+export type GetApiV1MatchingSuggestionsResponse = GetApiV1MatchingSuggestionsResponses[keyof GetApiV1MatchingSuggestionsResponses];
+
+export type PostApiV1MatchingSuggestionsApproveData = {
+    body: {
+        ids?: Array<string>;
+        all?: boolean;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/matching/suggestions/approve';
+};
+
+export type PostApiV1MatchingSuggestionsApproveResponses = {
+    /**
+     * OK
+     */
+    202: {
+        [key: string]: unknown;
+    };
+};
+
+export type PostApiV1MatchingSuggestionsApproveResponse = PostApiV1MatchingSuggestionsApproveResponses[keyof PostApiV1MatchingSuggestionsApproveResponses];
+
+export type PostApiV1MatchingSuggestionsByIdRejectData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/matching/suggestions/{id}/reject';
+};
+
+export type PostApiV1MatchingSuggestionsByIdRejectResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type PostApiV1MatchingSuggestionsByIdRejectResponse = PostApiV1MatchingSuggestionsByIdRejectResponses[keyof PostApiV1MatchingSuggestionsByIdRejectResponses];
+
 export type PostApiV1MatchingByIdApproveData = {
     body: {
         product_id: string;

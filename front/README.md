@@ -24,9 +24,23 @@ shadcn настроен на `src/routes/styles.css`, Base UI/base-luma и им�
 
 Единственный Axios instance — `src/utils/lib/instance.ts`, baseURL — `/api/v1`. Vite dev/preview и контейнерный nginx проксируют этот путь на `https://sam.v1sdev.ru`, сохраняя путь. Nginx проверяет TLS upstream; лимит 51 МиБ оставляет место для multipart вокруг CSV до 50 МБ, точный лимит файла проверяет backend. Для другого размещения необходимо сохранить такой же reverse proxy до SPA fallback. Origin backend взят из URL OpenAPI в плане; production deployment ещё требует сетевой проверки у владельца стенда.
 
-Токен читается из `localStorage.token` перед каждым запросом. Пустое значение не создаёт Authorization, недоступный localStorage блокирует отправку. Запись токенов и переключатель ролей относятся к этапу 2.
+Токен читается из `localStorage.token` перед каждым запросом. Пустое значение не создаёт Authorization, недоступный localStorage блокирует отправку. Переключатель «Роль» использует существующие демонстрационные значения из `src/utils/constants/tokens.ts` через таблицу `src/app/auth/demo-accounts.ts`. Первый запуск/неизвестный токен выбирает USER; известный ADMIN сохраняется после reload. Значения предназначены для MVP; истёкшие токены заменяются в исходной таблице, автоматического refresh нет.
 
-Generated-функции возвращают AxiosResponse; данные находятся в `.data`. В `config.signal` передаётся AbortSignal. HTTP/сетевые ошибки отклоняют Promise как `ApiError` с `status`, безопасным `message`, `code` и `requestId`. Отмена сохраняется как Axios cancellation (`isCancel`); UI-обработчик 401 подключается на этапе 2. Автоматического повтора мутаций нет.
+Generated-функции возвращают AxiosResponse; данные находятся в `.data`. В `config.signal` передаётся AbortSignal. HTTP/сетевые ошибки отклоняют Promise как `ApiError` с `status`, безопасным `message`, `code` и `requestId`. Отмена сохраняется как Axios cancellation (`isCancel`). Актуальный 401 очищает защищённые данные и оставляет доступным Select для явного повторного выбора; поздний 401 старого контекста игнорируется. Автоматического повтора мутаций нет; GET повторяется не более двух раз при сети/5xx, без повторов 4xx.
+
+## Оболочка, роли и общие таблицы (этап 2)
+
+`src/app/auth/session.ts` управляет текущей ролью и номером контекста. Смена роли сначала закрывает защищённое содержимое, отменяет Query/Axios-запросы и очищает Query/Mutation cache, затем записывает токен и открывает landing: ADMIN → `/dashboard`, USER → `/software`. Событие `storage` синхронизирует другие вкладки без повторной записи; удалённый/неизвестный токен другой вкладки блокирует данные до явного выбора. В localStorage хранится только `token`.
+
+Вложенные `_authenticated` и `_admin` выполняют guards до loaders/preload. Их предметные страницы пока показывают «Раздел готовится»; это маршруты оболочки, реализация данных начинается с этапа 3. Меню USER содержит каталог и «Мой компьютер». Права на объекты и фактическую проекцию ответа проверяет backend.
+
+Новые страницы получают `session` из route context. Ключ Query должен включать `session.role`, `session.epoch`, ресурс и все фильтры; для запроса используется `auth.requestConfig(session)` и Query AbortSignal (при необходимости через `AbortSignal.any`). Перед изменением UI в асинхронном callback проверяется `auth.isCurrent(session.epoch)`. Фоновая работа, включая будущий SSE, должна использовать `session.signal`; уже принятый сервером POST отмена браузера не откатывает.
+
+`src/components/shared/states.tsx` предоставляет loading/empty/error/success. `DataTable` из `src/components/shared/data-table.tsx` принимает `dataset`, исходный ответ `data`, `caption`, текущие `filters` и необязательный `onResetFilters`. Компонент связывает значения по имени колонки, проверяет длины строк/счётчики, скрывает административные и неизвестные колонки и показывает `shown/total`. При пустом фильтре и ошибке используются разные состояния; скролл остаётся внутри таблицы.
+
+`src/utils/api/data.ts` содержит `fetchDataTable`, `getDataParams`, `projectDataTable` и `exportDataTable`. Whitelist фильтров и группировок соответствует описанию `/data/{dataset}`, включая параметры, отсутствующие в generated query. `recognized=false` и `in_bpo=false` сохраняются. Весь нормализованный набор передаётся через `config.params`, поэтому экспорт CSV/XLSX использует те же фильтры и группировку. По умолчанию чтение ограничено 100 строками, экспорт — 10 000; явно заданный `limit` сохраняется. Пагинация для `/data/*` контрактом не предусмотрена (B-03).
+
+Проверки этапа 2 и полный список изменённых файлов записаны в [PLAN.md](./PLAN.md). Дополнительно к API self-check `pnpm test` проверяет permissions, lifecycle ролей, поздние ответы/401/submit, localStorage и таблицы/экспорт. Браузерные проверки выполнялись в Edge без установки нового тестового раннера.
 
 Загрузки CSV и EULA используют `multipartConfig` через `config.data`, без ручного Content-Type или boundary:
 
