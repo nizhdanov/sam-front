@@ -13,14 +13,14 @@ import (
 )
 
 func (s *Service) ListEntitlements(ctx context.Context, productID *uuid.UUID, activeOnly bool, page httpx.PageRequest) ([]domain.Entitlement, int, error) {
-	if _, err := requirePrivileged(ctx); err != nil {
+	if _, err := requireAdmin(ctx); err != nil {
 		return nil, 0, err
 	}
 	return s.entitlements.List(ctx, productID, activeOnly, page)
 }
 
 func (s *Service) GetEntitlement(ctx context.Context, id uuid.UUID) (domain.Entitlement, error) {
-	if _, err := requirePrivileged(ctx); err != nil {
+	if _, err := requireAdmin(ctx); err != nil {
 		return domain.Entitlement{}, err
 	}
 	return s.entitlements.Get(ctx, id)
@@ -32,10 +32,6 @@ func validateEntitlement(e domain.Entitlement) error {
 		return apperr.Invalid("unknown license_metric")
 	case e.Quantity < 0:
 		return apperr.Invalid("quantity must not be negative")
-	case e.UnitPrice != nil && *e.UnitPrice < 0:
-		return apperr.Invalid("unit_price must not be negative")
-	case e.Currency != nil && len(*e.Currency) != 3:
-		return apperr.Invalid("currency must be a 3-letter ISO code")
 	case e.ValidFrom != nil && e.ExpiresAt != nil && !e.ExpiresAt.After(*e.ValidFrom):
 		return apperr.Invalid("expires_at must be after valid_from")
 	}
@@ -47,7 +43,6 @@ func (s *Service) CreateEntitlement(ctx context.Context, e domain.Entitlement) (
 		return domain.Entitlement{}, err
 	}
 	e.ID = uuid.New()
-	e.Currency = upper(e.Currency)
 	if e.ProductID == uuid.Nil {
 		return domain.Entitlement{}, apperr.Invalid("product_id is required")
 	}
@@ -74,9 +69,6 @@ func (s *Service) UpdateEntitlement(ctx context.Context, id uuid.UUID, p domain.
 	if err != nil {
 		return domain.Entitlement{}, err
 	}
-	if p.Currency.Set {
-		p.Currency.Value = upper(p.Currency.Value)
-	}
 	if err := validateEntitlement(applyPatch(current, p)); err != nil {
 		return domain.Entitlement{}, err
 	}
@@ -102,12 +94,6 @@ func applyPatch(e domain.Entitlement, p domain.EntitlementPatch) domain.Entitlem
 	}
 	if p.Quantity != nil {
 		e.Quantity = *p.Quantity
-	}
-	if p.UnitPrice.Set {
-		e.UnitPrice = p.UnitPrice.Value
-	}
-	if p.Currency.Set {
-		e.Currency = p.Currency.Value
 	}
 	if p.ValidFrom.Set {
 		e.ValidFrom = p.ValidFrom.Value
@@ -139,7 +125,7 @@ func (s *Service) DeactivateEntitlement(ctx context.Context, id uuid.UUID) (doma
 }
 
 func (s *Service) Balances(ctx context.Context, productID *uuid.UUID) ([]domain.Balance, error) {
-	if _, err := requirePrivileged(ctx); err != nil {
+	if _, err := requireAdmin(ctx); err != nil {
 		return nil, err
 	}
 	sc := domain.Scope{All: true}

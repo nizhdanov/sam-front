@@ -54,8 +54,6 @@ type licenseRequest struct {
 	AgreementID       *uuid.UUID    `json:"agreement_id"`
 	Metric            domain.Metric `json:"license_metric"`
 	Quantity          int           `json:"quantity"`
-	UnitPrice         *float64      `json:"unit_price"`
-	Currency          *string       `json:"currency"`
 	ValidFrom         *timestamp    `json:"valid_from"`
 	ExpiresAt         *timestamp    `json:"expires_at"`
 	PurchaseReference *string       `json:"purchase_reference"`
@@ -69,7 +67,7 @@ func (h *handler) createLicense(w http.ResponseWriter, r *http.Request) {
 	}
 	e, err := h.svc.CreateEntitlement(r.Context(), domain.Entitlement{
 		ProductID: req.ProductID, AgreementID: req.AgreementID, Metric: req.Metric, Quantity: req.Quantity,
-		UnitPrice: req.UnitPrice, Currency: req.Currency, ValidFrom: req.ValidFrom.ptr(), ExpiresAt: req.ExpiresAt.ptr(),
+		ValidFrom: req.ValidFrom.ptr(), ExpiresAt: req.ExpiresAt.ptr(),
 		PurchaseReference: req.PurchaseReference,
 	})
 	if err != nil {
@@ -84,8 +82,6 @@ type licensePatchRequest struct {
 	AgreementID       opt.Field[uuid.UUID] `json:"agreement_id"`
 	Metric            *domain.Metric       `json:"license_metric"`
 	Quantity          *int                 `json:"quantity"`
-	UnitPrice         opt.Field[float64]   `json:"unit_price"`
-	Currency          opt.Field[string]    `json:"currency"`
 	ValidFrom         opt.Field[timestamp] `json:"valid_from"`
 	ExpiresAt         opt.Field[timestamp] `json:"expires_at"`
 	PurchaseReference opt.Field[string]    `json:"purchase_reference"`
@@ -108,7 +104,7 @@ func (h *handler) updateLicense(w http.ResponseWriter, r *http.Request) {
 	}
 	e, err := h.svc.UpdateEntitlement(r.Context(), id, domain.EntitlementPatch{
 		ProductID: req.ProductID, AgreementID: req.AgreementID, Metric: req.Metric, Quantity: req.Quantity,
-		UnitPrice: req.UnitPrice, Currency: req.Currency, ValidFrom: timeField(req.ValidFrom), ExpiresAt: timeField(req.ExpiresAt),
+		ValidFrom: timeField(req.ValidFrom), ExpiresAt: timeField(req.ExpiresAt),
 		PurchaseReference: req.PurchaseReference,
 	})
 	if err != nil {

@@ -56,8 +56,6 @@ type Entitlement struct {
 	AgreementID       *uuid.UUID `json:"agreement_id"`
 	Metric            Metric     `json:"license_metric"`
 	Quantity          int        `json:"quantity"`
-	UnitPrice         *float64   `json:"unit_price"`
-	Currency          *string    `json:"currency"`
 	ValidFrom         *time.Time `json:"valid_from"`
 	ExpiresAt         *time.Time `json:"expires_at"`
 	PurchaseReference *string    `json:"purchase_reference"`
@@ -85,8 +83,6 @@ type EntitlementPatch struct {
 	AgreementID       opt.Field[uuid.UUID]
 	Metric            *Metric
 	Quantity          *int
-	UnitPrice         opt.Field[float64]
-	Currency          opt.Field[string]
 	ValidFrom         opt.Field[time.Time]
 	ExpiresAt         opt.Field[time.Time]
 	PurchaseReference opt.Field[string]

@@ -18,15 +18,15 @@ type Entitlements struct{ pool *pgxpool.Pool }
 func NewEntitlements(pool *pgxpool.Pool) *Entitlements { return &Entitlements{pool: pool} }
 
 const entitlementSelect = `
-	SELECT e.id, e.product_id, p.canonical_name, e.agreement_id, e.license_metric, e.quantity, e.unit_price::float8,
-	       e.currency, e.valid_from, e.expires_at, e.purchase_reference, e.is_active, e.created_at, e.updated_at
+	SELECT e.id, e.product_id, p.canonical_name, e.agreement_id, e.license_metric, e.quantity,
+	       e.valid_from, e.expires_at, e.purchase_reference, e.is_active, e.created_at, e.updated_at
 	FROM license_entitlements e
 	JOIN software_products p ON p.id = e.product_id`
 
 func scanEntitlement(row scanner) (domain.Entitlement, error) {
 	var e domain.Entitlement
-	err := row.Scan(&e.ID, &e.ProductID, &e.ProductName, &e.AgreementID, &e.Metric, &e.Quantity, &e.UnitPrice,
-		&e.Currency, &e.ValidFrom, &e.ExpiresAt, &e.PurchaseReference, &e.IsActive, &e.CreatedAt, &e.UpdatedAt)
+	err := row.Scan(&e.ID, &e.ProductID, &e.ProductName, &e.AgreementID, &e.Metric, &e.Quantity,
+		&e.ValidFrom, &e.ExpiresAt, &e.PurchaseReference, &e.IsActive, &e.CreatedAt, &e.UpdatedAt)
 	return e, err
 }
 
@@ -81,10 +81,10 @@ func (r *Entitlements) Active(ctx context.Context, s domain.Scope) (map[uuid.UUI
 
 func (r *Entitlements) Create(ctx context.Context, e domain.Entitlement) error {
 	_, err := pg.DB(ctx, r.pool).Exec(ctx, `
-		INSERT INTO license_entitlements (id, product_id, agreement_id, license_metric, quantity, unit_price, currency,
+		INSERT INTO license_entitlements (id, product_id, agreement_id, license_metric, quantity,
 		                                  valid_from, expires_at, purchase_reference)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-		e.ID, e.ProductID, e.AgreementID, e.Metric, e.Quantity, e.UnitPrice, e.Currency, e.ValidFrom, e.ExpiresAt, e.PurchaseReference)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+		e.ID, e.ProductID, e.AgreementID, e.Metric, e.Quantity, e.ValidFrom, e.ExpiresAt, e.PurchaseReference)
 	if pg.IsForeignKeyViolation(err) {
 		return apperr.Invalid("product or agreement does not exist")
 	}
@@ -107,12 +107,6 @@ func (r *Entitlements) Update(ctx context.Context, id uuid.UUID, p domain.Entitl
 	}
 	if p.Quantity != nil {
 		s.add("quantity", *p.Quantity)
-	}
-	if p.UnitPrice.Set {
-		s.add("unit_price", p.UnitPrice.Value)
-	}
-	if p.Currency.Set {
-		s.add("currency", p.Currency.Value)
 	}
 	if p.ValidFrom.Set {
 		s.add("valid_from", p.ValidFrom.Value)
