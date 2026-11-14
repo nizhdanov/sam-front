@@ -1,0 +1,836 @@
+openapi: 3.1.0
+info:
+  title: SAM Platform API
+  version: 1.0.0
+  description: |
+    Публичный REST API за nginx. Все ручки, кроме health, требуют `Authorization: Bearer <JWT>`.
+    Роли: EMPLOYEE, ADMIN, IT_DIRECTOR. Доступ проверяется в сервисах; для EMPLOYEE данные
+    ограничены собственными устройствами, цены и лицензии скрыты.
+servers:
+  - url: http://localhost:8080
+security:
+  - bearer: []
+
+tags:
+  - name: imports
+  - name: devices
+  - name: employees
+  - name: software
+  - name: licenses
+  - name: agreements
+  - name: compliance
+  - name: analytics
+  - name: matching
+  - name: chat
+
+paths:
+  /api/v1/imports:
+    post:
+      tags: [imports]
+      summary: Загрузить CSV инвентаризации
+      description: "Роль: ADMIN, INVENTORY_AGENT. Колонки: COMPUTERS.SERIAL_NUMBER, SOFTWARE.DISPLAYNAME, SOFTWARE.PUBLISHER, SOFTWARE.VERSION; разделитель `,` или `;`."
+      parameters:
+        - name: collected_at
+          in: query
+          schema: { type: string, format: date-time }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+                collected_at: { type: string, format: date-time }
+      responses:
+        "202": { $ref: "#/components/responses/Accepted" }
+        "400": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/Error" }
+    get:
+      tags: [imports]
+      summary: Список импортов
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ImportPage" }
+  /api/v1/imports/{id}:
+    get:
+      tags: [imports]
+      summary: Статус и прогресс импорта
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Import" }
+        "404": { $ref: "#/components/responses/Error" }
+  /api/v1/imports/{id}/errors:
+    get:
+      tags: [imports]
+      summary: Ошибки строк импорта
+      parameters:
+        - $ref: "#/components/parameters/ID"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200": { $ref: "#/components/responses/Page" }
+  /api/v1/imports/{id}/retry:
+    post:
+      tags: [imports]
+      summary: Повторно опубликовать незавершённые снимки
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "202":
+          description: Accepted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Import" }
+  /api/v1/agent/inventory:
+    post:
+      tags: [imports]
+      summary: Отчёт агента об одном устройстве
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [serial_number, software]
+              properties:
+                serial_number: { type: string }
+                collected_at: { type: string, format: date-time }
+                snapshot_type: { type: string, enum: [FULL, PARTIAL] }
+                software:
+                  type: array
+                  items:
+                    type: object
+                    required: [display_name]
+                    properties:
+                      display_name: { type: string }
+                      publisher: { type: string }
+                      version: { type: string }
+      responses:
+        "202": { $ref: "#/components/responses/Accepted" }
+
+  /api/v1/me/devices:
+    get:
+      tags: [devices]
+      summary: Устройства текущего сотрудника
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200": { $ref: "#/components/responses/Page" }
+  /api/v1/devices:
+    get:
+      tags: [devices]
+      summary: Устройства (EMPLOYEE видит только свои)
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - { name: search, in: query, schema: { type: string } }
+        - { name: serial_number, in: query, schema: { type: string } }
+        - { name: department, in: query, schema: { type: string } }
+        - { name: employee_id, in: query, schema: { type: string, format: uuid } }
+        - { name: has_violations, in: query, schema: { type: boolean } }
+      responses:
+        "200": { $ref: "#/components/responses/Page" }
+  /api/v1/devices/{id}:
+    parameters: [{ $ref: "#/components/parameters/ID" }]
+    get:
+      tags: [devices]
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "404": { $ref: "#/components/responses/Error" }
+    patch:
+      tags: [devices]
+      description: "Роль: ADMIN"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                hostname: { type: string }
+                operating_system: { type: string }
+                employee_id: { type: [string, "null"], format: uuid }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+  /api/v1/devices/{id}/software:
+    get:
+      tags: [devices]
+      parameters:
+        - $ref: "#/components/parameters/ID"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - { name: include_removed, in: query, schema: { type: boolean } }
+      responses:
+        "200": { $ref: "#/components/responses/Page" }
+  /api/v1/devices/{id}/compliance:
+    get:
+      tags: [devices]
+      parameters:
+        - $ref: "#/components/parameters/ID"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200": { $ref: "#/components/responses/Page" }
+
+  /api/v1/employees:
+    get:
+      tags: [employees]
+      description: "Роль: ADMIN, IT_DIRECTOR"
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - { name: search, in: query, schema: { type: string } }
+        - { name: department, in: query, schema: { type: string } }
+      responses:
+        "200": { $ref: "#/components/responses/Page" }
+  /api/v1/employees/{id}:
+    parameters: [{ $ref: "#/components/parameters/ID" }]
+    get:
+      tags: [employees]
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+    patch:
+      tags: [employees]
+      description: "Роль: ADMIN"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                full_name: { type: string }
+                department: { type: string }
+                position: { type: string }
+                email: { type: string }
+                is_active: { type: boolean }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+  /api/v1/employees/{id}/devices:
+    get:
+      tags: [employees]
+      parameters:
+        - $ref: "#/components/parameters/ID"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200": { $ref: "#/components/responses/Page" }
+  /api/v1/employees/{id}/software:
+    get:
+      tags: [employees]
+      parameters:
+        - $ref: "#/components/parameters/ID"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200": { $ref: "#/components/responses/Page" }
+
+  /api/v1/software:
+    get:
+      tags: [software]
+      summary: Каталог ПО
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - { name: search, in: query, schema: { type: string } }
+        - { name: policy_status, in: query, schema: { $ref: "#/components/schemas/PolicyStatus" } }
+        - { name: include_archived, in: query, schema: { type: boolean } }
+      responses:
+        "200": { $ref: "#/components/responses/Page" }
+    post:
+      tags: [software]
+      description: "Роль: ADMIN"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [canonical_name]
+              properties:
+                canonical_name: { type: string }
+                publisher: { type: string }
+                edition: { type: string }
+                agreement_id: { type: string, format: uuid }
+                policy_status: { $ref: "#/components/schemas/PolicyStatus" }
+                description: { type: string }
+      responses:
+        "201": { $ref: "#/components/responses/Object" }
+        "409": { $ref: "#/components/responses/Error" }
+  /api/v1/software/{id}:
+    parameters: [{ $ref: "#/components/parameters/ID" }]
+    get:
+      tags: [software]
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+    patch:
+      tags: [software]
+      description: "Роль: ADMIN. `archived: true` архивирует продукт."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                canonical_name: { type: string }
+                publisher: { type: string }
+                edition: { type: string }
+                agreement_id: { type: [string, "null"], format: uuid }
+                policy_status: { $ref: "#/components/schemas/PolicyStatus" }
+                description: { type: string }
+                archived: { type: boolean }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+  /api/v1/software/{id}/policy:
+    patch:
+      tags: [software]
+      description: "Роль: ADMIN"
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [policy_status]
+              properties:
+                policy_status: { $ref: "#/components/schemas/PolicyStatus" }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+  /api/v1/software/{id}/versions:
+    parameters: [{ $ref: "#/components/parameters/ID" }]
+    get:
+      tags: [software]
+      responses:
+        "200": { $ref: "#/components/responses/List" }
+    post:
+      tags: [software]
+      description: "Роль: ADMIN"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version]
+              properties:
+                version: { type: string }
+                lifecycle_status: { $ref: "#/components/schemas/Lifecycle" }
+                release_date: { type: string, format: date }
+                end_of_support: { type: string, format: date }
+      responses:
+        "201": { $ref: "#/components/responses/Object" }
+  /api/v1/software/{id}/versions/{versionID}:
+    patch:
+      tags: [software]
+      description: "Роль: ADMIN"
+      parameters:
+        - $ref: "#/components/parameters/ID"
+        - { name: versionID, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lifecycle_status]
+              properties:
+                lifecycle_status: { $ref: "#/components/schemas/Lifecycle" }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+  /api/v1/software/{id}/aliases:
+    parameters: [{ $ref: "#/components/parameters/ID" }]
+    get:
+      tags: [software]
+      description: "Роль: ADMIN, IT_DIRECTOR"
+      responses:
+        "200": { $ref: "#/components/responses/List" }
+    post:
+      tags: [software]
+      description: "Роль: ADMIN. Привязывает сырое название к продукту и переназначает установки."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [raw_name]
+              properties:
+                raw_name: { type: string }
+                raw_publisher: { type: string }
+                raw_version: { type: string }
+                version_id: { type: string, format: uuid }
+      responses:
+        "201": { $ref: "#/components/responses/Object" }
+  /api/v1/software/{id}/aliases/{aliasID}:
+    delete:
+      tags: [software]
+      description: "Роль: ADMIN"
+      parameters:
+        - $ref: "#/components/parameters/ID"
+        - { name: aliasID, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Deleted }
+  /api/v1/software/{id}/installations:
+    get:
+      tags: [software]
+      parameters:
+        - $ref: "#/components/parameters/ID"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200": { $ref: "#/components/responses/Page" }
+  /api/v1/software/{id}/license-balance:
+    get:
+      tags: [software]
+      description: "Роль: ADMIN, IT_DIRECTOR"
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { $ref: "#/components/responses/List" }
+
+  /api/v1/licenses:
+    get:
+      tags: [licenses]
+      description: "Роль: ADMIN, IT_DIRECTOR"
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - { name: product_id, in: query, schema: { type: string, format: uuid } }
+        - { name: active, in: query, schema: { type: boolean } }
+      responses:
+        "200": { $ref: "#/components/responses/Page" }
+        "403": { $ref: "#/components/responses/Error" }
+    post:
+      tags: [licenses]
+      description: "Роль: ADMIN"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LicenseInput" }
+      responses:
+        "201": { $ref: "#/components/responses/Object" }
+  /api/v1/licenses/balance:
+    get:
+      tags: [licenses]
+      summary: Баланс лицензий по продуктам
+      description: "Роль: ADMIN, IT_DIRECTOR"
+      parameters:
+        - { name: product_id, in: query, schema: { type: string, format: uuid } }
+      responses:
+        "200": { $ref: "#/components/responses/List" }
+  /api/v1/licenses/{id}:
+    parameters: [{ $ref: "#/components/parameters/ID" }]
+    get:
+      tags: [licenses]
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+    patch:
+      tags: [licenses]
+      description: "Роль: ADMIN. Поля с `null` очищаются."
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LicenseInput" }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+  /api/v1/licenses/{id}/deactivate:
+    post:
+      tags: [licenses]
+      description: "Роль: ADMIN"
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+
+  /api/v1/agreements:
+    get:
+      tags: [agreements]
+      description: "Роль: ADMIN, IT_DIRECTOR"
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200": { $ref: "#/components/responses/Page" }
+    post:
+      tags: [agreements]
+      description: "Роль: ADMIN"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AgreementInput" }
+      responses:
+        "201": { $ref: "#/components/responses/Object" }
+  /api/v1/agreements/{id}:
+    parameters: [{ $ref: "#/components/parameters/ID" }]
+    get:
+      tags: [agreements]
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+    patch:
+      tags: [agreements]
+      description: "Роль: ADMIN"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/AgreementInput"
+                - type: object
+                  properties:
+                    review_status: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+  /api/v1/agreements/{id}/analyze:
+    post:
+      tags: [agreements]
+      summary: AI-анализ текста соглашения
+      description: "Роль: ADMIN. Результат кэшируется по хэшу текста и версии промпта; `force=true` — повторный анализ."
+      parameters:
+        - $ref: "#/components/parameters/ID"
+        - { name: force, in: query, schema: { type: boolean } }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "503": { $ref: "#/components/responses/Error" }
+  /api/v1/agreements/{id}/analysis:
+    get:
+      tags: [agreements]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+        "404": { $ref: "#/components/responses/Error" }
+  /api/v1/agreements/{id}/analysis/approve:
+    post:
+      tags: [agreements]
+      summary: Подтвердить анализ и применить к соглашению
+      description: "Роль: ADMIN"
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+
+  /api/v1/compliance/findings:
+    get:
+      tags: [compliance]
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - name: type
+          in: query
+          description: Один или несколько типов через запятую
+          schema: { type: string }
+        - { name: severity, in: query, schema: { type: string, enum: [LOW, MEDIUM, HIGH, CRITICAL] } }
+        - { name: status, in: query, schema: { type: string, enum: [OPEN, ACKNOWLEDGED, RESOLVED] } }
+        - { name: device_id, in: query, schema: { type: string, format: uuid } }
+        - { name: product_id, in: query, schema: { type: string, format: uuid } }
+      responses:
+        "200": { $ref: "#/components/responses/Page" }
+  /api/v1/compliance/findings/{id}:
+    get:
+      tags: [compliance]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+  /api/v1/compliance/findings/{id}/acknowledge:
+    post:
+      tags: [compliance]
+      description: "Роль: ADMIN"
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+  /api/v1/compliance/summary:
+    get:
+      tags: [compliance]
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+  /api/v1/compliance/recalculate:
+    post:
+      tags: [compliance]
+      description: "Роль: ADMIN"
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+
+  /api/v1/analytics/dashboard:
+    get:
+      tags: [analytics]
+      description: Для EMPLOYEE — только собственные устройства, без лицензий и стоимости.
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+  /api/v1/analytics/software:
+    get:
+      tags: [analytics]
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, default: 20, minimum: 1, maximum: 200 } }
+      responses:
+        "200": { $ref: "#/components/responses/List" }
+  /api/v1/analytics/licenses:
+    get:
+      tags: [analytics]
+      description: "Роль: ADMIN, IT_DIRECTOR"
+      responses:
+        "200": { $ref: "#/components/responses/List" }
+  /api/v1/analytics/compliance:
+    get:
+      tags: [analytics]
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+  /api/v1/analytics/departments:
+    get:
+      tags: [analytics]
+      description: "Роль: ADMIN, IT_DIRECTOR"
+      responses:
+        "200": { $ref: "#/components/responses/List" }
+
+  /api/v1/matching/pending:
+    get:
+      tags: [matching]
+      summary: Задачи ручного сопоставления
+      description: "Роль: ADMIN"
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - { name: status, in: query, schema: { type: string, enum: [PENDING, APPROVED, REJECTED], default: PENDING } }
+      responses:
+        "200": { $ref: "#/components/responses/Page" }
+  /api/v1/matching/{id}:
+    get:
+      tags: [matching]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+  /api/v1/matching/{id}/approve:
+    post:
+      tags: [matching]
+      description: "Роль: ADMIN. Создаёт alias, переназначает установки, пересчитывает комплаенс."
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [product_id]
+              properties:
+                product_id: { type: string, format: uuid }
+                version_id: { type: string, format: uuid }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+  /api/v1/matching/{id}/reject:
+    post:
+      tags: [matching]
+      description: "Роль: ADMIN"
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+
+  /api/v1/chat/conversations:
+    get:
+      tags: [chat]
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200": { $ref: "#/components/responses/Page" }
+    post:
+      tags: [chat]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: string }
+      responses:
+        "201": { $ref: "#/components/responses/Object" }
+  /api/v1/chat/conversations/{id}:
+    parameters: [{ $ref: "#/components/parameters/ID" }]
+    get:
+      tags: [chat]
+      responses:
+        "200": { $ref: "#/components/responses/Object" }
+    delete:
+      tags: [chat]
+      responses:
+        "204": { description: Deleted }
+  /api/v1/chat/conversations/{id}/messages:
+    parameters: [{ $ref: "#/components/parameters/ID" }]
+    get:
+      tags: [chat]
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200": { $ref: "#/components/responses/Page" }
+    post:
+      tags: [chat]
+      summary: Отправить сообщение, ответ стримится через SSE
+      description: |
+        События: `message_start` `{message_id}`, `delta` `{content}`, `message_end` `{message_id, status}`,
+        `error` `{code, message}`. Один активный запрос на пользователя, иначе 429.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content: { type: string, maxLength: 4000 }
+      responses:
+        "200":
+          description: SSE stream
+          content:
+            text/event-stream:
+              schema: { type: string }
+        "429": { $ref: "#/components/responses/Error" }
+
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    ID:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+
+  responses:
+    Object:
+      description: OK
+      content:
+        application/json:
+          schema: { type: object }
+    List:
+      description: OK
+      content:
+        application/json:
+          schema:
+            type: array
+            items: { type: object }
+    Page:
+      description: OK
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Page" }
+    Accepted:
+      description: Accepted
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              import_id: { type: string, format: uuid }
+              status: { type: string }
+              filename: { type: string }
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string, examples: [invalid_argument, not_found, forbidden] }
+            message: { type: string }
+            request_id: { type: string }
+    Pagination:
+      type: object
+      properties:
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+        total_pages: { type: integer }
+    Page:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { type: object }
+        pagination: { $ref: "#/components/schemas/Pagination" }
+    ImportPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Import" }
+        pagination: { $ref: "#/components/schemas/Pagination" }
+    Import:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        filename: { type: string }
+        source: { type: string, enum: [CSV, AGENT] }
+        status:
+          type: string
+          enum: [PENDING, PARSING, PROCESSING, COMPLETED, COMPLETED_WITH_ERRORS, FAILED]
+        file_size: { type: integer }
+        total_rows: { type: integer }
+        total_devices: { type: integer }
+        processed_devices: { type: integer }
+        failed_devices: { type: integer }
+        pending_devices: { type: integer }
+        progress_percent: { type: number }
+        created_by: { type: string }
+        collected_at: { type: string, format: date-time }
+        error_message: { type: [string, "null"] }
+        created_at: { type: string, format: date-time }
+        completed_at: { type: [string, "null"], format: date-time }
+    PolicyStatus:
+      type: string
+      enum: [ALLOWED, RESTRICTED, FORBIDDEN, UNKNOWN]
+    Lifecycle:
+      type: string
+      enum: [CURRENT, OUTDATED, UNSUPPORTED, UNKNOWN]
+    LicenseInput:
+      type: object
+      properties:
+        product_id: { type: string, format: uuid }
+        agreement_id: { type: [string, "null"], format: uuid }
+        license_metric: { type: string, enum: [PER_DEVICE, PER_USER, UNLIMITED, CONCURRENT, UNKNOWN] }
+        quantity: { type: integer, minimum: 0 }
+        unit_price: { type: [number, "null"] }
+        currency: { type: [string, "null"] }
+        valid_from: { type: [string, "null"], format: date }
+        expires_at: { type: [string, "null"], format: date }
+        purchase_reference: { type: [string, "null"] }
+    AgreementInput:
+      type: object
+      properties:
+        name: { type: string }
+        license_type: { type: string, enum: [COMMERCIAL, FREEWARE, OPEN_SOURCE, TRIAL, PROPRIETARY, UNKNOWN] }
+        agreement_text: { type: [string, "null"] }
+        source_url: { type: [string, "null"] }
+        commercial_allowed: { type: [boolean, "null"] }
