@@ -5,8 +5,9 @@ import (
 	"crypto/x509"
 	"fmt"
 	"net/http"
-	"os"
 	"time"
+
+	"sam/pkg/buildconfig"
 
 	"sam/services/llm/internal/config"
 	"sam/services/llm/internal/provider"
@@ -38,7 +39,7 @@ func newProvider(cfg config.Config) (provider.ModelProvider, error) {
 func gigaChatClient(cfg config.Config) (*http.Client, error) {
 	tlsCfg := &tls.Config{MinVersion: tls.VersionTLS12}
 	if path := cfg.GigaChat.CACertPath; path != "" {
-		pem, err := os.ReadFile(path)
+		pem, err := buildconfig.ReadFile(path)
 		if err != nil {
 			return nil, fmt.Errorf("read gigachat CA certificate: %w", err)
 		}

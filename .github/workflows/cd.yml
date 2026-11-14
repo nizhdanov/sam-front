@@ -1,0 +1,98 @@
+name: CD
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sam-production
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    uses: ./.github/workflows/ci.yml
+
+  build:
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    outputs:
+      release: ${{ steps.plan.outputs.release }}
+      root: ${{ steps.plan.outputs.root }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: .github/scripts/go.mod
+          cache: false
+      - name: Compile the standalone deployment tool
+        working-directory: .github/scripts
+        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags='-s -w' -o /tmp/sam-release-tool ./release
+      - uses: docker/setup-buildx-action@v3
+        with:
+          buildkitd-config-inline: |
+            [worker.oci]
+              max-parallelism = 2
+      - name: Discover services and prepare release
+        id: plan
+        env:
+          DEPLOY_ROOT: ${{ vars.DEPLOY_ROOT || '/opt/sam-backend' }}
+          BACKEND_CONFIG: ${{ secrets.BACKEND_CONFIG }}
+        run: |
+          release="${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          /tmp/sam-release-tool prepare --production \
+            --release "$release" --root "$DEPLOY_ROOT" --output /tmp/sam-release
+          cp /tmp/sam-release-tool /tmp/sam-release/release-tool
+          echo "release=$release" >> "$GITHUB_OUTPUT"
+          echo "root=$DEPLOY_ROOT" >> "$GITHUB_OUTPUT"
+      - name: Build all application images (no registry)
+        uses: docker/bake-action@v6
+        env:
+          BACKEND_CONFIG: ${{ secrets.BACKEND_CONFIG }}
+        with:
+          files: /tmp/sam-release/bake.json
+          load: true
+          push: false
+      - name: Package images and runtime configuration
+        run: /tmp/sam-release-tool pack --output /tmp/sam-release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: production-release
+          path: |
+            /tmp/sam-release/release.tar
+            /tmp/sam-release/release-tool
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: production-release
+          path: /tmp/sam-release
+      - name: Deliver, deploy, verify and retain two successful releases
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST || '45.10.219.212' }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER || 'root' }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+          DEPLOY_ROOT: ${{ needs.build.outputs.root }}
+          RELEASE_ID: ${{ needs.build.outputs.release }}
+          SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          RELEASE_ARCHIVE: /tmp/sam-release/release.tar
+        run: |
+          chmod 700 /tmp/sam-release/release-tool
+          /tmp/sam-release/release-tool deliver
