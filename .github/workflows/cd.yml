@@ -45,28 +45,49 @@ jobs:
           BACKEND_CONFIG: ${{ secrets.BACKEND_CONFIG }}
         run: |
           release="${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          release_dir="$RUNNER_TEMP/sam-release"
           /tmp/sam-release-tool prepare --production \
-            --release "$release" --root "$DEPLOY_ROOT" --output /tmp/sam-release
-          cp /tmp/sam-release-tool /tmp/sam-release/release-tool
+            --release "$release" --root "$DEPLOY_ROOT" --output "$release_dir"
+          cp /tmp/sam-release-tool "$release_dir/release-tool"
+          echo "RELEASE_DIR=$release_dir" >> "$GITHUB_ENV"
           echo "release=$release" >> "$GITHUB_OUTPUT"
           echo "root=$DEPLOY_ROOT" >> "$GITHUB_OUTPUT"
+      - name: Make GitHub cache runtime available to Buildx CLI
+        uses: actions/github-script@v7
+        with:
+          script: |
+            for (const name of [
+              'ACTIONS_RUNTIME_TOKEN',
+              'ACTIONS_RESULTS_URL',
+              'ACTIONS_CACHE_URL',
+              'ACTIONS_CACHE_SERVICE_V2'
+            ]) {
+              const value = process.env[name];
+              if (value) {
+                if (name === 'ACTIONS_RUNTIME_TOKEN') core.setSecret(value);
+                core.exportVariable(name, value);
+              }
+            }
       - name: Build all application images (no registry)
-        uses: docker/bake-action@v6
         env:
           BACKEND_CONFIG: ${{ secrets.BACKEND_CONFIG }}
-        with:
-          source: .
-          files: /tmp/sam-release/bake.json
-          load: true
-          push: false
+        run: |
+          printf 'Building commit %s\n' "$GITHUB_SHA"
+          bake_file="$RELEASE_DIR/bake.json"
+          if [ ! -s "$bake_file" ]; then
+            echo "::error::Generated Bake file is missing or empty: $bake_file"
+            exit 1
+          fi
+          printf 'Using local Bake file: %s\n' "$bake_file"
+          docker buildx bake --allow "fs.read=$GITHUB_WORKSPACE" --file "$bake_file" --load
       - name: Package images and runtime configuration
-        run: /tmp/sam-release-tool pack --output /tmp/sam-release
+        run: /tmp/sam-release-tool pack --output "$RELEASE_DIR"
       - uses: actions/upload-artifact@v4
         with:
           name: production-release
           path: |
-            /tmp/sam-release/release.tar
-            /tmp/sam-release/release-tool
+            ${{ runner.temp }}/sam-release/release.tar
+            ${{ runner.temp }}/sam-release/release-tool
           compression-level: 0
           retention-days: 3
           if-no-files-found: error
@@ -83,7 +104,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: production-release
-          path: /tmp/sam-release
+          path: ${{ runner.temp }}/sam-release
       - name: Deliver, deploy, verify and retain two successful releases
         env:
           DEPLOY_HOST: ${{ vars.DEPLOY_HOST || '45.10.219.212' }}
@@ -93,7 +114,7 @@ jobs:
           RELEASE_ID: ${{ needs.build.outputs.release }}
           SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
-          RELEASE_ARCHIVE: /tmp/sam-release/release.tar
+          RELEASE_ARCHIVE: ${{ runner.temp }}/sam-release/release.tar
         run: |
-          chmod 700 /tmp/sam-release/release-tool
-          /tmp/sam-release/release-tool deliver
+          chmod 700 "$RUNNER_TEMP/sam-release/release-tool"
+          "$RUNNER_TEMP/sam-release/release-tool" deliver
