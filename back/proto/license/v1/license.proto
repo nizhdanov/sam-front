@@ -1,0 +1,116 @@
+syntax = "proto3";
+
+package license.v1;
+
+option go_package = "sam/gen/go/license/v1;licensev1";
+
+import "google/protobuf/timestamp.proto";
+
+service CatalogService {
+  rpc ResolveSoftwareBatch(ResolveSoftwareBatchRequest) returns (ResolveSoftwareBatchResponse);
+  rpc SaveMatchingSuggestion(SaveMatchingSuggestionRequest) returns (SaveMatchingSuggestionResponse);
+}
+
+service InventoryService {
+  rpc SyncInventory(SyncInventoryRequest) returns (SyncInventoryResponse);
+}
+
+service AssistantDataService {
+  rpc RunQuery(RunQueryRequest) returns (RunQueryResponse);
+}
+
+message RawSoftware {
+  string source_key = 1;
+  string display_name = 2;
+  string publisher = 3;
+  string version = 4;
+}
+
+message Candidate {
+  string product_id = 1;
+  string name = 2;
+  string publisher = 3;
+  string edition = 4;
+  double similarity = 5;
+}
+
+enum ResolutionStatus {
+  RESOLUTION_STATUS_UNSPECIFIED = 0;
+  RESOLUTION_STATUS_MATCHED = 1;
+  RESOLUTION_STATUS_AMBIGUOUS = 2;
+  RESOLUTION_STATUS_UNKNOWN = 3;
+  RESOLUTION_STATUS_PENDING_REVIEW = 4;
+}
+
+message Resolution {
+  string source_key = 1;
+  ResolutionStatus status = 2;
+  string product_id = 3;
+  string version_id = 4;
+  string match_method = 5;
+  repeated Candidate candidates = 6;
+}
+
+message ResolveSoftwareBatchRequest {
+  repeated RawSoftware items = 1;
+}
+
+message ResolveSoftwareBatchResponse {
+  repeated Resolution resolutions = 1;
+}
+
+message SaveMatchingSuggestionRequest {
+  RawSoftware software = 1;
+  repeated Candidate candidates = 2;
+  string suggested_product_id = 3;
+  string match_method = 4;
+  double confidence = 5;
+  string reason = 6;
+}
+
+message SaveMatchingSuggestionResponse {
+  string product_id = 1;
+  string version_id = 2;
+  bool accepted = 3;
+}
+
+message InstallationInput {
+  string source_key = 1;
+  string raw_name = 2;
+  string raw_publisher = 3;
+  string raw_version = 4;
+  string product_id = 5;
+  string version_id = 6;
+  string match_status = 7;
+}
+
+message SyncInventoryRequest {
+  string inventory_id = 1;
+  string import_id = 2;
+  string serial_number = 3;
+  google.protobuf.Timestamp collected_at = 4;
+  repeated InstallationInput installations = 5;
+  bool full_snapshot = 6;
+}
+
+enum SyncResult {
+  SYNC_RESULT_UNSPECIFIED = 0;
+  SYNC_RESULT_APPLIED = 1;
+  SYNC_RESULT_ALREADY_PROCESSED = 2;
+  SYNC_RESULT_SUPERSEDED = 3;
+}
+
+message SyncInventoryResponse {
+  SyncResult result = 1;
+  string device_id = 2;
+  int32 active_installations = 3;
+}
+
+message RunQueryRequest {
+  string query = 1;
+  bytes params = 2;
+}
+
+message RunQueryResponse {
+  bytes result = 1;
+}

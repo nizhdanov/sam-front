@@ -1,0 +1,6 @@
+bin/
+secrets/
+.env
+services/*/.env
+compose.override.yaml
+coverage.out
