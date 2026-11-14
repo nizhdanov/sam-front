@@ -67,21 +67,3 @@ func (s *server) AnalyzeAgreement(ctx context.Context, req *llmv1.AnalyzeAgreeme
 	}
 	return &llmv1.AnalyzeAgreementResponse{AnalysisJson: res.JSON, Model: res.Model, PromptVersion: res.PromptVersion}, nil
 }
-
-func (s *server) NormalizeSoftware(ctx context.Context, req *llmv1.NormalizeSoftwareRequest) (*llmv1.NormalizeSoftwareResponse, error) {
-	items := make([]service.RawName, 0, len(req.GetItems()))
-	for _, it := range req.GetItems() {
-		items = append(items, service.RawName{Key: it.GetKey(), DisplayName: it.GetDisplayName(), Publisher: it.GetPublisher()})
-	}
-	res, model, err := s.svc.NormalizeSoftware(ctx, items)
-	if err != nil {
-		return nil, err
-	}
-	out := &llmv1.NormalizeSoftwareResponse{Model: model, Items: make([]*llmv1.NormalizedSoftware, 0, len(res))}
-	for _, n := range res {
-		out.Items = append(out.Items, &llmv1.NormalizedSoftware{
-			Key: n.Key, CanonicalName: n.CanonicalName, Publisher: n.Publisher, IsSoftware: n.IsSoftware,
-		})
-	}
-	return out, nil
-}

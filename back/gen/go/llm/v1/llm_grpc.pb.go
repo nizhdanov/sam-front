@@ -19,10 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	LLMService_MatchSoftware_FullMethodName     = "/llm.v1.LLMService/MatchSoftware"
-	LLMService_Chat_FullMethodName              = "/llm.v1.LLMService/Chat"
-	LLMService_AnalyzeAgreement_FullMethodName  = "/llm.v1.LLMService/AnalyzeAgreement"
-	LLMService_NormalizeSoftware_FullMethodName = "/llm.v1.LLMService/NormalizeSoftware"
+	LLMService_MatchSoftware_FullMethodName    = "/llm.v1.LLMService/MatchSoftware"
+	LLMService_Chat_FullMethodName             = "/llm.v1.LLMService/Chat"
+	LLMService_AnalyzeAgreement_FullMethodName = "/llm.v1.LLMService/AnalyzeAgreement"
 )
 
 // LLMServiceClient is the client API for LLMService service.
@@ -32,7 +31,6 @@ type LLMServiceClient interface {
 	MatchSoftware(ctx context.Context, in *MatchSoftwareRequest, opts ...grpc.CallOption) (*MatchSoftwareResponse, error)
 	Chat(ctx context.Context, in *ChatRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ChatResponse], error)
 	AnalyzeAgreement(ctx context.Context, in *AnalyzeAgreementRequest, opts ...grpc.CallOption) (*AnalyzeAgreementResponse, error)
-	NormalizeSoftware(ctx context.Context, in *NormalizeSoftwareRequest, opts ...grpc.CallOption) (*NormalizeSoftwareResponse, error)
 }
 
 type lLMServiceClient struct {
@@ -82,16 +80,6 @@ func (c *lLMServiceClient) AnalyzeAgreement(ctx context.Context, in *AnalyzeAgre
 	return out, nil
 }
 
-func (c *lLMServiceClient) NormalizeSoftware(ctx context.Context, in *NormalizeSoftwareRequest, opts ...grpc.CallOption) (*NormalizeSoftwareResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(NormalizeSoftwareResponse)
-	err := c.cc.Invoke(ctx, LLMService_NormalizeSoftware_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // LLMServiceServer is the server API for LLMService service.
 // All implementations must embed UnimplementedLLMServiceServer
 // for forward compatibility.
@@ -99,7 +87,6 @@ type LLMServiceServer interface {
 	MatchSoftware(context.Context, *MatchSoftwareRequest) (*MatchSoftwareResponse, error)
 	Chat(*ChatRequest, grpc.ServerStreamingServer[ChatResponse]) error
 	AnalyzeAgreement(context.Context, *AnalyzeAgreementRequest) (*AnalyzeAgreementResponse, error)
-	NormalizeSoftware(context.Context, *NormalizeSoftwareRequest) (*NormalizeSoftwareResponse, error)
 	mustEmbedUnimplementedLLMServiceServer()
 }
 
@@ -118,9 +105,6 @@ func (UnimplementedLLMServiceServer) Chat(*ChatRequest, grpc.ServerStreamingServ
 }
 func (UnimplementedLLMServiceServer) AnalyzeAgreement(context.Context, *AnalyzeAgreementRequest) (*AnalyzeAgreementResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AnalyzeAgreement not implemented")
-}
-func (UnimplementedLLMServiceServer) NormalizeSoftware(context.Context, *NormalizeSoftwareRequest) (*NormalizeSoftwareResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method NormalizeSoftware not implemented")
 }
 func (UnimplementedLLMServiceServer) mustEmbedUnimplementedLLMServiceServer() {}
 func (UnimplementedLLMServiceServer) testEmbeddedByValue()                    {}
@@ -190,24 +174,6 @@ func _LLMService_AnalyzeAgreement_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LLMService_NormalizeSoftware_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(NormalizeSoftwareRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(LLMServiceServer).NormalizeSoftware(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: LLMService_NormalizeSoftware_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LLMServiceServer).NormalizeSoftware(ctx, req.(*NormalizeSoftwareRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // LLMService_ServiceDesc is the grpc.ServiceDesc for LLMService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -222,10 +188,6 @@ var LLMService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AnalyzeAgreement",
 			Handler:    _LLMService_AnalyzeAgreement_Handler,
-		},
-		{
-			MethodName: "NormalizeSoftware",
-			Handler:    _LLMService_NormalizeSoftware_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

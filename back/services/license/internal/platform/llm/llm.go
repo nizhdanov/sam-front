@@ -10,7 +10,6 @@ import (
 	llmv1 "sam/gen/go/llm/v1"
 	"sam/pkg/auth"
 	"sam/pkg/grpcx"
-	"sam/services/license/internal/domain"
 )
 
 type Config struct {
@@ -34,20 +33,4 @@ func (c *Client) Analyze(ctx context.Context, agreementID uuid.UUID, text string
 		return nil, "", "", grpcx.FromStatus(err)
 	}
 	return resp.GetAnalysisJson(), resp.GetModel(), resp.GetPromptVersion(), nil
-}
-
-func (c *Client) Normalize(ctx context.Context, items []domain.NormalizeInput) ([]domain.Normalized, string, error) {
-	req := &llmv1.NormalizeSoftwareRequest{Items: make([]*llmv1.RawSoftwareName, 0, len(items))}
-	for _, it := range items {
-		req.Items = append(req.Items, &llmv1.RawSoftwareName{Key: it.Key, DisplayName: it.DisplayName, Publisher: it.Publisher})
-	}
-	resp, err := c.api.NormalizeSoftware(ctx, req)
-	if err != nil {
-		return nil, "", grpcx.FromStatus(err)
-	}
-	out := make([]domain.Normalized, 0, len(resp.GetItems()))
-	for _, n := range resp.GetItems() {
-		out = append(out, domain.Normalized{Key: n.GetKey(), CanonicalName: n.GetCanonicalName(), Publisher: n.GetPublisher(), IsSoftware: n.GetIsSoftware()})
-	}
-	return out, resp.GetModel(), nil
 }

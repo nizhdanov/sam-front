@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+
 	"sam/pkg/apperr"
 	"sam/pkg/httpx"
 	"sam/pkg/swfilter"
@@ -112,4 +114,17 @@ func text(s *string) string {
 		return ""
 	}
 	return *s
+}
+
+func (s *Service) dismissTask(ctx context.Context, taskID uuid.UUID, key, reason string) error {
+	return s.tx.InTx(ctx, func(ctx context.Context) error {
+		if err := s.matching.Reject(ctx, taskID, actor(ctx), reason); err != nil {
+			return err
+		}
+		devices, err := s.installations.DeactivateByKey(ctx, key, s.now())
+		if err != nil {
+			return err
+		}
+		return s.recalculate(ctx, domain.Scope{DeviceIDs: devices})
+	})
 }

@@ -615,230 +615,6 @@ func (x *AnalyzeAgreementResponse) GetPromptVersion() string {
 	return ""
 }
 
-type RawSoftwareName struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	DisplayName   string                 `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
-	Publisher     string                 `protobuf:"bytes,3,opt,name=publisher,proto3" json:"publisher,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *RawSoftwareName) Reset() {
-	*x = RawSoftwareName{}
-	mi := &file_llm_v1_llm_proto_msgTypes[9]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RawSoftwareName) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RawSoftwareName) ProtoMessage() {}
-
-func (x *RawSoftwareName) ProtoReflect() protoreflect.Message {
-	mi := &file_llm_v1_llm_proto_msgTypes[9]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use RawSoftwareName.ProtoReflect.Descriptor instead.
-func (*RawSoftwareName) Descriptor() ([]byte, []int) {
-	return file_llm_v1_llm_proto_rawDescGZIP(), []int{9}
-}
-
-func (x *RawSoftwareName) GetKey() string {
-	if x != nil {
-		return x.Key
-	}
-	return ""
-}
-
-func (x *RawSoftwareName) GetDisplayName() string {
-	if x != nil {
-		return x.DisplayName
-	}
-	return ""
-}
-
-func (x *RawSoftwareName) GetPublisher() string {
-	if x != nil {
-		return x.Publisher
-	}
-	return ""
-}
-
-type NormalizeSoftwareRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Items         []*RawSoftwareName     `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *NormalizeSoftwareRequest) Reset() {
-	*x = NormalizeSoftwareRequest{}
-	mi := &file_llm_v1_llm_proto_msgTypes[10]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *NormalizeSoftwareRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*NormalizeSoftwareRequest) ProtoMessage() {}
-
-func (x *NormalizeSoftwareRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_llm_v1_llm_proto_msgTypes[10]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use NormalizeSoftwareRequest.ProtoReflect.Descriptor instead.
-func (*NormalizeSoftwareRequest) Descriptor() ([]byte, []int) {
-	return file_llm_v1_llm_proto_rawDescGZIP(), []int{10}
-}
-
-func (x *NormalizeSoftwareRequest) GetItems() []*RawSoftwareName {
-	if x != nil {
-		return x.Items
-	}
-	return nil
-}
-
-type NormalizedSoftware struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	CanonicalName string                 `protobuf:"bytes,2,opt,name=canonical_name,json=canonicalName,proto3" json:"canonical_name,omitempty"`
-	Publisher     string                 `protobuf:"bytes,3,opt,name=publisher,proto3" json:"publisher,omitempty"`
-	IsSoftware    bool                   `protobuf:"varint,4,opt,name=is_software,json=isSoftware,proto3" json:"is_software,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *NormalizedSoftware) Reset() {
-	*x = NormalizedSoftware{}
-	mi := &file_llm_v1_llm_proto_msgTypes[11]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *NormalizedSoftware) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*NormalizedSoftware) ProtoMessage() {}
-
-func (x *NormalizedSoftware) ProtoReflect() protoreflect.Message {
-	mi := &file_llm_v1_llm_proto_msgTypes[11]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use NormalizedSoftware.ProtoReflect.Descriptor instead.
-func (*NormalizedSoftware) Descriptor() ([]byte, []int) {
-	return file_llm_v1_llm_proto_rawDescGZIP(), []int{11}
-}
-
-func (x *NormalizedSoftware) GetKey() string {
-	if x != nil {
-		return x.Key
-	}
-	return ""
-}
-
-func (x *NormalizedSoftware) GetCanonicalName() string {
-	if x != nil {
-		return x.CanonicalName
-	}
-	return ""
-}
-
-func (x *NormalizedSoftware) GetPublisher() string {
-	if x != nil {
-		return x.Publisher
-	}
-	return ""
-}
-
-func (x *NormalizedSoftware) GetIsSoftware() bool {
-	if x != nil {
-		return x.IsSoftware
-	}
-	return false
-}
-
-type NormalizeSoftwareResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Items         []*NormalizedSoftware  `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
-	Model         string                 `protobuf:"bytes,2,opt,name=model,proto3" json:"model,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *NormalizeSoftwareResponse) Reset() {
-	*x = NormalizeSoftwareResponse{}
-	mi := &file_llm_v1_llm_proto_msgTypes[12]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *NormalizeSoftwareResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*NormalizeSoftwareResponse) ProtoMessage() {}
-
-func (x *NormalizeSoftwareResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_llm_v1_llm_proto_msgTypes[12]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use NormalizeSoftwareResponse.ProtoReflect.Descriptor instead.
-func (*NormalizeSoftwareResponse) Descriptor() ([]byte, []int) {
-	return file_llm_v1_llm_proto_rawDescGZIP(), []int{12}
-}
-
-func (x *NormalizeSoftwareResponse) GetItems() []*NormalizedSoftware {
-	if x != nil {
-		return x.Items
-	}
-	return nil
-}
-
-func (x *NormalizeSoftwareResponse) GetModel() string {
-	if x != nil {
-		return x.Model
-	}
-	return ""
-}
-
 var File_llm_v1_llm_proto protoreflect.FileDescriptor
 
 const file_llm_v1_llm_proto_rawDesc = "" +
@@ -887,28 +663,12 @@ const file_llm_v1_llm_proto_rawDesc = "" +
 	"\x18AnalyzeAgreementResponse\x12#\n" +
 	"\ranalysis_json\x18\x01 \x01(\fR\fanalysisJson\x12\x14\n" +
 	"\x05model\x18\x02 \x01(\tR\x05model\x12%\n" +
-	"\x0eprompt_version\x18\x03 \x01(\tR\rpromptVersion\"d\n" +
-	"\x0fRawSoftwareName\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12!\n" +
-	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12\x1c\n" +
-	"\tpublisher\x18\x03 \x01(\tR\tpublisher\"I\n" +
-	"\x18NormalizeSoftwareRequest\x12-\n" +
-	"\x05items\x18\x01 \x03(\v2\x17.llm.v1.RawSoftwareNameR\x05items\"\x8c\x01\n" +
-	"\x12NormalizedSoftware\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12%\n" +
-	"\x0ecanonical_name\x18\x02 \x01(\tR\rcanonicalName\x12\x1c\n" +
-	"\tpublisher\x18\x03 \x01(\tR\tpublisher\x12\x1f\n" +
-	"\vis_software\x18\x04 \x01(\bR\n" +
-	"isSoftware\"c\n" +
-	"\x19NormalizeSoftwareResponse\x120\n" +
-	"\x05items\x18\x01 \x03(\v2\x1a.llm.v1.NormalizedSoftwareR\x05items\x12\x14\n" +
-	"\x05model\x18\x02 \x01(\tR\x05model2\xc0\x02\n" +
+	"\x0eprompt_version\x18\x03 \x01(\tR\rpromptVersion2\xe6\x01\n" +
 	"\n" +
 	"LLMService\x12L\n" +
 	"\rMatchSoftware\x12\x1c.llm.v1.MatchSoftwareRequest\x1a\x1d.llm.v1.MatchSoftwareResponse\x123\n" +
 	"\x04Chat\x12\x13.llm.v1.ChatRequest\x1a\x14.llm.v1.ChatResponse0\x01\x12U\n" +
-	"\x10AnalyzeAgreement\x12\x1f.llm.v1.AnalyzeAgreementRequest\x1a .llm.v1.AnalyzeAgreementResponse\x12X\n" +
-	"\x11NormalizeSoftware\x12 .llm.v1.NormalizeSoftwareRequest\x1a!.llm.v1.NormalizeSoftwareResponseB\x19Z\x17sam/gen/go/llm/v1;llmv1b\x06proto3"
+	"\x10AnalyzeAgreement\x12\x1f.llm.v1.AnalyzeAgreementRequest\x1a .llm.v1.AnalyzeAgreementResponseB\x19Z\x17sam/gen/go/llm/v1;llmv1b\x06proto3"
 
 var (
 	file_llm_v1_llm_proto_rawDescOnce sync.Once
@@ -922,41 +682,33 @@ func file_llm_v1_llm_proto_rawDescGZIP() []byte {
 	return file_llm_v1_llm_proto_rawDescData
 }
 
-var file_llm_v1_llm_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_llm_v1_llm_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_llm_v1_llm_proto_goTypes = []any{
-	(*SoftwareCandidate)(nil),         // 0: llm.v1.SoftwareCandidate
-	(*MatchSoftwareRequest)(nil),      // 1: llm.v1.MatchSoftwareRequest
-	(*MatchSoftwareResponse)(nil),     // 2: llm.v1.MatchSoftwareResponse
-	(*ChatMessage)(nil),               // 3: llm.v1.ChatMessage
-	(*ChatRequest)(nil),               // 4: llm.v1.ChatRequest
-	(*ChatResponse)(nil),              // 5: llm.v1.ChatResponse
-	(*ChatDone)(nil),                  // 6: llm.v1.ChatDone
-	(*AnalyzeAgreementRequest)(nil),   // 7: llm.v1.AnalyzeAgreementRequest
-	(*AnalyzeAgreementResponse)(nil),  // 8: llm.v1.AnalyzeAgreementResponse
-	(*RawSoftwareName)(nil),           // 9: llm.v1.RawSoftwareName
-	(*NormalizeSoftwareRequest)(nil),  // 10: llm.v1.NormalizeSoftwareRequest
-	(*NormalizedSoftware)(nil),        // 11: llm.v1.NormalizedSoftware
-	(*NormalizeSoftwareResponse)(nil), // 12: llm.v1.NormalizeSoftwareResponse
+	(*SoftwareCandidate)(nil),        // 0: llm.v1.SoftwareCandidate
+	(*MatchSoftwareRequest)(nil),     // 1: llm.v1.MatchSoftwareRequest
+	(*MatchSoftwareResponse)(nil),    // 2: llm.v1.MatchSoftwareResponse
+	(*ChatMessage)(nil),              // 3: llm.v1.ChatMessage
+	(*ChatRequest)(nil),              // 4: llm.v1.ChatRequest
+	(*ChatResponse)(nil),             // 5: llm.v1.ChatResponse
+	(*ChatDone)(nil),                 // 6: llm.v1.ChatDone
+	(*AnalyzeAgreementRequest)(nil),  // 7: llm.v1.AnalyzeAgreementRequest
+	(*AnalyzeAgreementResponse)(nil), // 8: llm.v1.AnalyzeAgreementResponse
 }
 var file_llm_v1_llm_proto_depIdxs = []int32{
-	0,  // 0: llm.v1.MatchSoftwareRequest.candidates:type_name -> llm.v1.SoftwareCandidate
-	3,  // 1: llm.v1.ChatRequest.history:type_name -> llm.v1.ChatMessage
-	6,  // 2: llm.v1.ChatResponse.done:type_name -> llm.v1.ChatDone
-	9,  // 3: llm.v1.NormalizeSoftwareRequest.items:type_name -> llm.v1.RawSoftwareName
-	11, // 4: llm.v1.NormalizeSoftwareResponse.items:type_name -> llm.v1.NormalizedSoftware
-	1,  // 5: llm.v1.LLMService.MatchSoftware:input_type -> llm.v1.MatchSoftwareRequest
-	4,  // 6: llm.v1.LLMService.Chat:input_type -> llm.v1.ChatRequest
-	7,  // 7: llm.v1.LLMService.AnalyzeAgreement:input_type -> llm.v1.AnalyzeAgreementRequest
-	10, // 8: llm.v1.LLMService.NormalizeSoftware:input_type -> llm.v1.NormalizeSoftwareRequest
-	2,  // 9: llm.v1.LLMService.MatchSoftware:output_type -> llm.v1.MatchSoftwareResponse
-	5,  // 10: llm.v1.LLMService.Chat:output_type -> llm.v1.ChatResponse
-	8,  // 11: llm.v1.LLMService.AnalyzeAgreement:output_type -> llm.v1.AnalyzeAgreementResponse
-	12, // 12: llm.v1.LLMService.NormalizeSoftware:output_type -> llm.v1.NormalizeSoftwareResponse
-	9,  // [9:13] is the sub-list for method output_type
-	5,  // [5:9] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	0, // 0: llm.v1.MatchSoftwareRequest.candidates:type_name -> llm.v1.SoftwareCandidate
+	3, // 1: llm.v1.ChatRequest.history:type_name -> llm.v1.ChatMessage
+	6, // 2: llm.v1.ChatResponse.done:type_name -> llm.v1.ChatDone
+	1, // 3: llm.v1.LLMService.MatchSoftware:input_type -> llm.v1.MatchSoftwareRequest
+	4, // 4: llm.v1.LLMService.Chat:input_type -> llm.v1.ChatRequest
+	7, // 5: llm.v1.LLMService.AnalyzeAgreement:input_type -> llm.v1.AnalyzeAgreementRequest
+	2, // 6: llm.v1.LLMService.MatchSoftware:output_type -> llm.v1.MatchSoftwareResponse
+	5, // 7: llm.v1.LLMService.Chat:output_type -> llm.v1.ChatResponse
+	8, // 8: llm.v1.LLMService.AnalyzeAgreement:output_type -> llm.v1.AnalyzeAgreementResponse
+	6, // [6:9] is the sub-list for method output_type
+	3, // [3:6] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_llm_v1_llm_proto_init() }
@@ -975,7 +727,7 @@ func file_llm_v1_llm_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_llm_v1_llm_proto_rawDesc), len(file_llm_v1_llm_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

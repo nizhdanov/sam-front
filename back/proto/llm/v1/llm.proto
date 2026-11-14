@@ -8,7 +8,6 @@ service LLMService {
   rpc MatchSoftware(MatchSoftwareRequest) returns (MatchSoftwareResponse);
   rpc Chat(ChatRequest) returns (stream ChatResponse);
   rpc AnalyzeAgreement(AnalyzeAgreementRequest) returns (AnalyzeAgreementResponse);
-  rpc NormalizeSoftware(NormalizeSoftwareRequest) returns (NormalizeSoftwareResponse);
 }
 
 message SoftwareCandidate {
@@ -69,24 +68,3 @@ message AnalyzeAgreementResponse {
   string prompt_version = 3;
 }
 
-message RawSoftwareName {
-  string key = 1;
-  string display_name = 2;
-  string publisher = 3;
-}
-
-message NormalizeSoftwareRequest {
-  repeated RawSoftwareName items = 1;
-}
-
-message NormalizedSoftware {
-  string key = 1;
-  string canonical_name = 2;
-  string publisher = 3;
-  bool is_software = 4;
-}
-
-message NormalizeSoftwareResponse {
-  repeated NormalizedSoftware items = 1;
-  string model = 2;
-}

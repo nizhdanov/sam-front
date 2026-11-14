@@ -594,49 +594,6 @@ paths:
       responses:
         "202": { $ref: "#/components/responses/Object" }
         "409": { $ref: "#/components/responses/Error" }
-  /api/v1/matching/suggestions/generate:
-    post:
-      tags: [matching]
-      summary: AI-предложения продуктов каталога по очереди
-      description: "Фоново отправляет нераспознанные названия в GigaChat пачками по 40 (4 параллельно), группирует варианты одного продукта и сохраняет предложения: каноническое название, издатель, признак «это ПО», исходные названия. Итог — в журнале (`entity=catalog_suggestion`). Доступ: ADMIN."
-      responses:
-        "202": { $ref: "#/components/responses/Object" }
-        "409": { $ref: "#/components/responses/Error" }
-  /api/v1/matching/suggestions:
-    get:
-      tags: [matching]
-      summary: Предложения каталога
-      description: "Сортировка по числу исходных названий. Доступ: ADMIN."
-      parameters:
-        - $ref: "#/components/parameters/Page"
-        - $ref: "#/components/parameters/Limit"
-        - { name: status, in: query, schema: { type: string, enum: [PENDING, APPROVED, REJECTED], default: PENDING } }
-      responses:
-        "200": { $ref: "#/components/responses/Page" }
-  /api/v1/matching/suggestions/approve:
-    post:
-      tags: [matching]
-      summary: Применить предложения
-      description: "Создаёт продукт (или берёт существующий с тем же названием), правила соответствия и пересчитывает нарушения; для предложений «не ПО» снимает задачи и установки из учёта. Фоново. Доступ: ADMIN."
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                ids: { type: array, items: { type: string, format: uuid } }
-                all: { type: boolean }
-      responses:
-        "202": { $ref: "#/components/responses/Object" }
-  /api/v1/matching/suggestions/{id}/reject:
-    post:
-      tags: [matching]
-      summary: Отклонить предложение
-      description: "Доступ: ADMIN."
-      parameters: [{ $ref: "#/components/parameters/ID" }]
-      responses:
-        "200": { $ref: "#/components/responses/Object" }
   /api/v1/matching/{id}/approve:
     post:
       tags: [matching]
