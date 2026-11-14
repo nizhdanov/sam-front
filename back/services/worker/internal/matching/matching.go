@@ -9,10 +9,14 @@ import (
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"golang.org/x/sync/singleflight"
 
+	"sam/pkg/apperr"
 	"sam/services/worker/internal/domain"
 )
 
-const batchSize = 500
+const (
+	batchSize    = 500
+	modelRetries = 5
+)
 
 type Catalog interface {
 	Resolve(ctx context.Context, items []domain.Item) ([]domain.Resolution, error)
@@ -107,10 +111,24 @@ func (m *Matcher) askModel(ctx context.Context, item domain.Item, candidates []d
 	if m.model == nil {
 		return m.catalog.SaveSuggestion(ctx, item, candidates, domain.Suggestion{Reason: "ambiguous match, AI matching is disabled"}, "")
 	}
-	suggestion, err := m.model.Match(ctx, item, candidates)
+	suggestion, err := m.matchWithRetry(ctx, item, candidates)
 	if err != nil {
 		m.log.WarnContext(ctx, "llm matching unavailable, leaving software for review", "software", item.DisplayName, "err", err)
 		return m.catalog.SaveSuggestion(ctx, item, candidates, domain.Suggestion{Reason: "ambiguous match, AI matching is unavailable"}, "")
 	}
 	return m.catalog.SaveSuggestion(ctx, item, candidates, suggestion, "LLM")
+}
+
+func (m *Matcher) matchWithRetry(ctx context.Context, item domain.Item, candidates []domain.Candidate) (domain.Suggestion, error) {
+	for attempt := 1; ; attempt++ {
+		suggestion, err := m.model.Match(ctx, item, candidates)
+		if err == nil || apperr.KindOf(err) != apperr.KindRateLimited || attempt == modelRetries {
+			return suggestion, err
+		}
+		select {
+		case <-time.After(time.Duration(attempt) * 3 * time.Second):
+		case <-ctx.Done():
+			return domain.Suggestion{}, ctx.Err()
+		}
+	}
 }

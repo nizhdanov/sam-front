@@ -37,7 +37,7 @@ type LLM struct {
 	MatchingModel    string        `env:"MATCHING_MODEL" envDefault:"GigaChat"`
 	EULAModel        string        `env:"EULA_MODEL" envDefault:"GigaChat"`
 	Timeout          time.Duration `env:"TIMEOUT_SECONDS" envDefault:"45s"`
-	MaxConcurrent    int           `env:"MAX_CONCURRENT_REQUESTS" envDefault:"2"`
+	MaxConcurrent    int           `env:"MAX_CONCURRENT_REQUESTS" envDefault:"1"`
 	MaxToolCalls     int           `env:"MAX_TOOL_CALLS" envDefault:"5"`
 	MaxOutputTokens  int           `env:"MAX_OUTPUT_TOKENS" envDefault:"1500"`
 	MaxContextTokens int           `env:"MAX_CONTEXT_TOKENS" envDefault:"8000"`

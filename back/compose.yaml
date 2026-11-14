@@ -113,7 +113,7 @@ services:
       LLM_GRPC_ADDR: llm:9095
       WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-4}
     deploy:
-      replicas: ${WORKER_REPLICAS:-3}
+      replicas: ${WORKER_REPLICAS:-1}
     depends_on:
       processor:
         condition: service_healthy
