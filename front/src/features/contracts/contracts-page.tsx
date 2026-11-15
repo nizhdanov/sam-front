@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useDemoAuth } from '@/app/auth/context';
 import { DataTable } from '@/components/shared/data-table';
 import { FilterSelect } from '@/components/shared/filter-select';
+import { PageHeader } from '@/components/shared/page-header';
 import { ErrorState, LoadingState } from '@/components/shared/states';
 import { Button } from '@/components/ui/button';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
@@ -126,7 +127,7 @@ export function ContractsPage() {
   );
   return (
     <section aria-label='Договоры' className='flex min-w-0 flex-col gap-6'>
-      <h1 className='text-2xl font-semibold'>Договоры</h1>
+      <PageHeader description='Закупленные лицензии и сроки их действия.' title='Договоры' />
       <ContractFilters key={JSON.stringify(search)} search={search} />
       {query.isPending ? (
         <LoadingState />

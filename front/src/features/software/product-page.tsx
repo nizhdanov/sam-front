@@ -62,9 +62,7 @@ export function ProductPage() {
       >
         Каталог ПО
       </Button>
-      <h1 className='text-2xl font-semibold wrap-break-word'>
-        {formatDataValue(product.canonical_name)}
-      </h1>
+      <h1 className='wrap-break-word'>{formatDataValue(product.canonical_name)}</h1>
       {query.isFetching && <p role='status'>Обновление карточки…</p>}
       <dl className='grid min-w-0 gap-4 sm:grid-cols-2'>
         <div className='min-w-0'>

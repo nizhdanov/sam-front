@@ -4,6 +4,7 @@ import { getRouteApi, Link } from '@tanstack/react-router';
 import type { Column } from '@/components/shared/simple-table';
 
 import { useDemoAuth } from '@/app/auth/context';
+import { PageHeader } from '@/components/shared/page-header';
 import { Pager } from '@/components/shared/pager';
 import { SimpleTable } from '@/components/shared/simple-table';
 import { EmptyState, ErrorState, LoadingState } from '@/components/shared/states';
@@ -170,13 +171,10 @@ export function MatchingPage() {
   const navigate = route.useNavigate();
   return (
     <section aria-label='Smart Matching' className='flex min-w-0 flex-col gap-6'>
-      <div className='flex flex-col gap-1'>
-        <h1 className='text-2xl font-semibold'>Smart Matching</h1>
-        <p className='text-sm text-muted-foreground'>
-          ИИ предлагает продукт каталога для нераспознанных имён ПО. Подтверждённое решение
-          становится правилом и применяется к следующим выгрузкам.
-        </p>
-      </div>
+      <PageHeader
+        description='ИИ предлагает продукт каталога для нераспознанных имён ПО. Подтверждённое решение становится правилом для следующих выгрузок.'
+        title='Smart Matching'
+      />
       <Tabs
         value={search.tab}
         onValueChange={(tab) =>

@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 
 import { useDemoAuth } from '@/app/auth/context';
 import { FormLeaveGuard } from '@/components/shared/form-leave-guard';
+import { PageHeader } from '@/components/shared/page-header';
 import { EmptyState, ErrorState, LoadingState } from '@/components/shared/states';
 import { Button } from '@/components/ui/button';
 import {
@@ -142,7 +143,10 @@ export function ImportsPage() {
   const query = useQuery(importsListOptions(auth, search));
   return (
     <section aria-label='Импорт CSV' className='flex min-w-0 flex-col gap-6'>
-      <h1 className='text-2xl font-semibold'>Импорт CSV</h1>
+      <PageHeader
+        description='Загрузка выгрузок инвентаризации: установки поступают только отсюда.'
+        title='Импорт CSV'
+      />
       <CsvUpload />
       <h2 className='text-lg font-semibold'>История импортов</h2>
       <form

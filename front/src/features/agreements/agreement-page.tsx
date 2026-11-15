@@ -3,6 +3,7 @@ import { getRouteApi, Link, useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
 
 import { useDemoAuth } from '@/app/auth/context';
+import { PageHeader } from '@/components/shared/page-header';
 import { AccessDenied, NotFoundState } from '@/components/shared/route-states';
 import { EmptyState, ErrorState, LoadingState, SuccessState } from '@/components/shared/states';
 import { Button } from '@/components/ui/button';
@@ -33,7 +34,7 @@ const route = getRouteApi('/_authenticated/_admin/agreements_/$agreementId');
 export function AgreementsPage() {
   return (
     <section aria-label='Соглашения' className='flex min-w-0 flex-col gap-6'>
-      <h1 className='text-2xl font-semibold'>Соглашения</h1>
+      <PageHeader title='Соглашения' />
       <AgreementEditor />
       <EmptyState
         description='Можно создать соглашение и работать с ним в отдельной карточке.'
@@ -88,7 +89,7 @@ export function AgreementPage() {
       >
         Соглашения
       </Button>
-      <h1 className='text-2xl font-semibold wrap-break-word'>{formatDataValue(agreement.name)}</h1>
+      <h1 className='wrap-break-word'>{formatDataValue(agreement.name)}</h1>
       {query.isFetching && <p role='status'>Обновление карточки…</p>}
       {query.isError && <ErrorState error={query.error} onRetry={() => void query.refetch()} />}
       <AgreementEditor agreement={agreement} disabled={pending !== null} />

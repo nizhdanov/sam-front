@@ -4,6 +4,7 @@ import { getRouteApi, Link } from '@tanstack/react-router';
 import type { Column } from '@/components/shared/simple-table';
 
 import { useDemoAuth } from '@/app/auth/context';
+import { PageHeader } from '@/components/shared/page-header';
 import { SimpleTable } from '@/components/shared/simple-table';
 import { EmptyState, ErrorState, LoadingState } from '@/components/shared/states';
 import { Button } from '@/components/ui/button';
@@ -36,14 +37,16 @@ function installationsLink(productId: string, text: string) {
 const commercialColumns: Column<CommercialBalance>[] = [
   { header: 'Продукт', cell: (row) => installationsLink(row.product_id, row.product_name) },
   { header: 'Модель оплаты', cell: (row) => label(COST_MODELS, row.cost_model) },
-  { header: 'Метрика', cell: (row) => label(METRICS, row.metric) },
+  { header: 'Метрика', cell: (row) => label(METRICS, row.metric), className: 'whitespace-nowrap' },
   { header: 'Куплено', cell: (row) => row.purchased ?? 'Без лимита' },
   { header: 'Установлено', cell: (row) => row.consumed },
   {
     header: 'Дефицит',
     cell: (row) =>
       row.deficit > 0 ? (
-        <span className='font-semibold text-destructive'>Не хватает {row.deficit}</span>
+        <span className='font-semibold whitespace-nowrap text-destructive'>
+          Не хватает {row.deficit}
+        </span>
       ) : (
         '—'
       )
@@ -54,7 +57,7 @@ const commercialColumns: Column<CommercialBalance>[] = [
       row.available === null ? (
         '—'
       ) : row.available > 0 ? (
-        <span className='font-semibold text-amber-600 dark:text-amber-400'>
+        <span className='font-semibold whitespace-nowrap text-warning'>
           Простаивает {row.available}
         </span>
       ) : (
@@ -82,9 +85,7 @@ const freeColumns: Column<FreeBalance>[] = [
     header: 'С устаревшей версией',
     cell: (row) =>
       row.outdated_devices > 0 ? (
-        <span className='font-semibold text-amber-600 dark:text-amber-400'>
-          {row.outdated_devices}
-        </span>
+        <span className='font-semibold whitespace-nowrap text-warning'>{row.outdated_devices}</span>
       ) : (
         0
       )
@@ -155,7 +156,10 @@ export function BalancePage() {
 
   return (
     <section aria-label='Баланс лицензий' className='flex min-w-0 flex-col gap-6'>
-      <h1 className='text-2xl font-semibold'>Баланс лицензий</h1>
+      <PageHeader
+        description='Сколько мест куплено по действующим договорам и сколько занято установками.'
+        title='Баланс лицензий'
+      />
       <Tabs
         value={search.view}
         onValueChange={(view) => void navigate({ search: { view: view as typeof search.view } })}

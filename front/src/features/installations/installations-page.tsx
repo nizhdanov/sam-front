@@ -2,6 +2,7 @@ import { getRouteApi, Link } from '@tanstack/react-router';
 import { useState } from 'react';
 
 import { FilterSelect } from '@/components/shared/filter-select';
+import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -41,7 +42,7 @@ export function InstallationsPage() {
   );
   return (
     <section aria-label='Установки' className='flex min-w-0 flex-col gap-6'>
-      <h1 className='text-2xl font-semibold'>Установки</h1>
+      <PageHeader description='Факты установки ПО на устройствах из выгрузок.' title='Установки' />
       <form
         key={JSON.stringify(search)}
         aria-label='Фильтры установок'

@@ -30,10 +30,10 @@ export function SimpleTable<T>({
   rowClassName?: (row: T) => string | undefined;
 }) {
   return (
-    <div className='min-w-0 overflow-x-auto rounded-xl border'>
+    <div className='min-w-0 overflow-x-auto rounded-xl border bg-card'>
       <Table>
         <TableCaption className='sr-only'>{caption}</TableCaption>
-        <TableHeader>
+        <TableHeader className='bg-muted/60 [&_th]:text-muted-foreground'>
           <TableRow>
             {columns.map((column) => (
               <TableHead key={column.header} className={column.className}>

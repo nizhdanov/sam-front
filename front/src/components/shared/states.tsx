@@ -80,7 +80,7 @@ export function SuccessState({ children }: { children: ReactNode }) {
 export function SectionPlaceholder({ title }: { title: string }) {
   return (
     <section aria-label={title} className='flex flex-col gap-6'>
-      <h1 className='text-2xl font-semibold'>{title}</h1>
+      <h1>{title}</h1>
       <EmptyState
         description='Данные и действия появятся на следующем этапе разработки этого раздела.'
         title='Раздел готовится'

@@ -1,6 +1,7 @@
 import { getRouteApi, Link } from '@tanstack/react-router';
 
 import { FilterSelect } from '@/components/shared/filter-select';
+import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -24,7 +25,10 @@ export function DevicesPage() {
   );
   return (
     <section aria-label='Устройства' className='flex min-w-0 flex-col gap-6'>
-      <h1 className='text-2xl font-semibold'>Устройства</h1>
+      <PageHeader
+        description='Компьютеры и серверы, попавшие в инвентаризацию.'
+        title='Устройства'
+      />
       <p className='text-muted-foreground'>
         Устройства создаются из CSV. Серийный номер виртуальной машины сохраняется целиком, включая
         пробелы.

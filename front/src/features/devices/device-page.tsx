@@ -57,7 +57,7 @@ export function DevicePage() {
           <ChevronLeftIcon className='mr-2 size-4' /> Вернуться к списку устройств
         </Button>
       )}
-      <h1 className='text-2xl font-semibold wrap-break-word'>Устройство {device.serial_number}</h1>
+      <h1 className='wrap-break-word'>Устройство {device.serial_number}</h1>
       {query.isFetching && <p role='status'>Обновление карточки…</p>}
       {query.isError && <ErrorState error={query.error} onRetry={() => void query.refetch()} />}
       <DeviceDetails device={device} />

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 
 import { useDemoAuth } from '@/app/auth/context';
+import { PageHeader } from '@/components/shared/page-header';
 import { EmptyState, ErrorState, LoadingState } from '@/components/shared/states';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FindingsTable } from '@/features/compliance/findings-table';
@@ -46,7 +47,10 @@ export function MyDevicePage() {
   const filters = { serial_number: device.serial_number };
   return (
     <section aria-label='Мой компьютер' className='flex min-w-0 flex-col gap-6'>
-      <h1 className='text-2xl font-semibold'>Мой компьютер</h1>
+      <PageHeader
+        description='Установленные программы и найденные на них риски.'
+        title='Мой компьютер'
+      />
       {query.isFetching && <p role='status'>Обновление карточки…</p>}
       {query.isError && <ErrorState error={query.error} onRetry={() => void query.refetch()} />}
       <DeviceDetails device={device} />

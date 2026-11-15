@@ -106,7 +106,7 @@ export function ImportPage() {
       >
         История импортов
       </Button>
-      <h1 className='text-2xl font-semibold wrap-break-word'>{item.filename ?? 'Импорт CSV'}</h1>
+      <h1 className='wrap-break-word'>{item.filename ?? 'Импорт CSV'}</h1>
       <p className='wrap-break-word'>ID импорта: {item.id}</p>
       <p role='status'>Статус: {IMPORT_STATUSES[item.status]}</p>
       {query.isFetching && <p role='status'>Обновление отчёта…</p>}

@@ -4,6 +4,7 @@ import { cn } from 'cn';
 
 import { useDemoAuth } from '@/app/auth/context';
 import { FilterSelect } from '@/components/shared/filter-select';
+import { PageHeader } from '@/components/shared/page-header';
 import { EmptyState, ErrorState, LoadingState } from '@/components/shared/states';
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
@@ -126,7 +127,7 @@ export function CatalogPage() {
   );
   return (
     <section aria-label='Каталог ПО' className='flex min-w-0 flex-col gap-6'>
-      <h1 className='text-2xl font-semibold'>Каталог ПО</h1>
+      <PageHeader title='Каталог ПО' />
       <CatalogFilters key={JSON.stringify(search)} search={search} />
       {query.isPending ? (
         <LoadingState />

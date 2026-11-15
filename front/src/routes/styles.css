@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
-@import '@fontsource-variable/inter';
+@import '@fontsource-variable/golos-text';
 
 @source '../../node_modules/streamdown/dist/*.js';
 
@@ -9,7 +9,7 @@
 
 @theme inline {
   --font-heading: var(--font-sans);
-  --font-sans: 'Inter Variable', sans-serif;
+  --font-sans: 'Golos Text Variable', 'Golos Text', system-ui, sans-serif;
 
   /* Base */
   --color-background: var(--background);
@@ -43,6 +43,7 @@
   /* Status */
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
 
   /* Charts */
   --color-chart-1: var(--chart-1);
@@ -127,18 +128,21 @@
   /* Radius */
   --radius: 0.625rem;
 
-  /* Sidebar */
-  --sidebar: oklch(1 0 0);
-  --sidebar-foreground: oklch(0.284 0.028 248.8);
+  /* Sidebar — deep navy frame */
+  --sidebar: oklch(0.3 0.05 254);
+  --sidebar-foreground: oklch(0.9 0.015 245);
 
-  --sidebar-primary: oklch(0.478 0.081 253.7);
-  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-primary: oklch(0.78 0.11 80);
+  --sidebar-primary-foreground: oklch(0.25 0.04 254);
 
-  --sidebar-accent: oklch(0.965 0.014 219.6);
-  --sidebar-accent-foreground: oklch(0.478 0.081 253.7);
+  --sidebar-accent: oklch(0.37 0.055 254);
+  --sidebar-accent-foreground: oklch(1 0 0);
 
-  --sidebar-border: oklch(0.918 0.011 243.7);
-  --sidebar-ring: oklch(0.604 0.118 228.4);
+  --sidebar-border: oklch(0.36 0.05 254);
+  --sidebar-ring: oklch(0.78 0.11 80);
+
+  /* Risk */
+  --warning: oklch(0.62 0.13 70);
 }
 
 .dark {
@@ -206,6 +210,8 @@
 
   --sidebar-border: oklch(0.38 0.034 248.7);
   --sidebar-ring: oklch(0.767 0.074 227.6);
+
+  --warning: oklch(0.8 0.12 75);
 }
 
 @layer base {
@@ -219,5 +225,10 @@
 
   html {
     @apply font-sans;
+    font-feature-settings: 'tnum' 1;
+  }
+
+  h1 {
+    @apply text-[1.75rem] leading-tight font-semibold tracking-[-0.01em];
   }
 }

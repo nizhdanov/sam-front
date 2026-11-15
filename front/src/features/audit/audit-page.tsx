@@ -4,6 +4,7 @@ import { getRouteApi, Link } from '@tanstack/react-router';
 import type { Column } from '@/components/shared/simple-table';
 
 import { useDemoAuth } from '@/app/auth/context';
+import { PageHeader } from '@/components/shared/page-header';
 import { Pager } from '@/components/shared/pager';
 import { SimpleTable } from '@/components/shared/simple-table';
 import { EmptyState, ErrorState, LoadingState } from '@/components/shared/states';
@@ -68,7 +69,10 @@ export function AuditPage() {
 
   return (
     <section aria-label='Журнал изменений' className='flex min-w-0 flex-col gap-6'>
-      <h1 className='text-2xl font-semibold'>Журнал изменений</h1>
+      <PageHeader
+        description='Кто, когда и что изменил в справочниках, договорах и решениях.'
+        title='Журнал изменений'
+      />
       <form
         key={JSON.stringify(search)}
         aria-label='Фильтры журнала'

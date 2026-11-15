@@ -2,6 +2,7 @@ import { getRouteApi, Link } from '@tanstack/react-router';
 import { useState } from 'react';
 
 import { FilterSelect } from '@/components/shared/filter-select';
+import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -21,7 +22,10 @@ export function FindingsPage() {
   );
   return (
     <section aria-label='Нарушения' className='flex min-w-0 flex-col gap-6'>
-      <h1 className='text-2xl font-semibold'>Нарушения</h1>
+      <PageHeader
+        description='Запрещённое и устаревшее ПО, дефицит лицензий — с точностью до устройства.'
+        title='Нарушения'
+      />
       <Tabs
         className='min-w-0'
         value={search.finding_type ?? 'all'}

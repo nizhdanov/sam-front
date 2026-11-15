@@ -5,6 +5,7 @@ import { ArrowUpIcon, PlusIcon, SquareIcon, Trash2Icon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { useDemoAuth } from '@/app/auth/context';
+import { PageHeader } from '@/components/shared/page-header';
 import { ErrorState, LoadingState } from '@/components/shared/states';
 import { Bubble, BubbleContent } from '@/components/ui/bubble';
 import { Button } from '@/components/ui/button';
@@ -221,14 +222,14 @@ export function ChatPage() {
 
   return (
     <section aria-label='ИИ-ассистент' className='flex min-h-0 min-w-0 flex-1 flex-col gap-4'>
-      <div className='flex flex-col gap-1'>
-        <h1 className='text-2xl font-semibold'>ИИ-ассистент</h1>
-        <p className='text-sm text-muted-foreground'>
-          {snapshot.role === 'ADMIN'
-            ? 'Вопросы о лицензиях, устройствах, договорах и нарушениях. Таблицы ответа можно выгрузить в XLSX.'
-            : 'Вопросы о разрешённом ПО и вашем компьютере.'}
-        </p>
-      </div>
+      <PageHeader
+        description={
+          snapshot.role === 'ADMIN'
+            ? 'Вопросы о лицензиях, устройствах, договорах и нарушениях. Таблицу из ответа можно выгрузить в XLSX.'
+            : 'Вопросы о разрешённом ПО и вашем компьютере.'
+        }
+        title='ИИ-ассистент'
+      />
       <div className='flex min-h-0 flex-1 flex-col gap-4 lg:flex-row'>
         <Conversations key={snapshot.epoch} active={conversationId} disabled={busy} />
         <div className='flex h-[70svh] min-h-96 min-w-0 flex-1 flex-col gap-3 rounded-2xl border p-3'>
