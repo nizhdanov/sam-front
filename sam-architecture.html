@@ -1,0 +1,1493 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SAM Platform — архитектурный разбор (nizhdanov/sam-hackathon)</title>
+<style>
+  :root{
+    --bg:#f5f6f8; --card:#ffffff; --ink:#15181e; --muted:#5b6472; --line:#e2e6ea;
+    --blue:#2563eb; --blue-bg:#eff6ff; --teal:#0f766e; --teal-bg:#f0fdfa;
+    --amber:#b45309; --amber-bg:#fffbeb; --violet:#7c3aed; --violet-bg:#f5f3ff;
+    --red:#b91c1c; --red-bg:#fef2f2; --green:#15803d; --green-bg:#f0fdf4;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1220px;margin:0 auto;padding:28px 20px 80px}
+  header.hero{background:linear-gradient(135deg,#111827,#1f2937 55%,#0f766e);color:#fff;
+    border-radius:18px;padding:30px 32px;margin-bottom:22px}
+  header.hero h1{margin:0 0 8px;font-size:28px;letter-spacing:-.3px}
+  header.hero p{margin:0;color:#cbd5e1;max-width:900px}
+  .hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+  .hero-meta span{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);
+    padding:5px 11px;border-radius:999px;font-size:12.5px;color:#e5e7eb}
+  section{background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:24px 26px;margin-bottom:20px}
+  h2{font-size:21px;margin:0 0 6px;letter-spacing:-.2px}
+  h2 .num{display:inline-block;min-width:30px;height:30px;line-height:30px;text-align:center;
+    background:var(--ink);color:#fff;border-radius:9px;font-size:14px;margin-right:10px}
+  h3{font-size:16.5px;margin:26px 0 8px}
+  h4{font-size:14.5px;margin:18px 0 6px;color:#374151}
+  p{margin:8px 0}
+  .lead{color:var(--muted);margin:0 0 14px}
+  ul,ol{margin:8px 0;padding-left:22px}
+  li{margin:4px 0}
+  code{background:#f1f3f5;border:1px solid #e5e7eb;border-radius:5px;padding:1px 5px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.3px}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:#f8fafc;font-weight:650;font-size:12.8px}
+  tbody tr:nth-child(even){background:#fbfcfd}
+  figure{margin:16px 0 6px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 8px 4px;overflow-x:auto}
+  figcaption{font-size:12.5px;color:var(--muted);padding:6px 10px 8px}
+  svg{display:block;width:100%;height:auto;min-width:760px}
+  svg text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+  .box{fill:#fff;stroke:#cbd5e1;stroke-width:1.4}
+  .svc{fill:var(--blue-bg);stroke:var(--blue)}
+  .data{fill:var(--teal-bg);stroke:var(--teal)}
+  .ai{fill:var(--amber-bg);stroke:var(--amber)}
+  .infra{fill:var(--violet-bg);stroke:var(--violet)}
+  .ext{fill:#f8fafc;stroke:#94a3b8;stroke-dasharray:6 4}
+  .note{fill:#fffdf5;stroke:#e0c98a}
+  .band{fill:#fbfcfd;stroke:#cbd5e1;stroke-dasharray:5 4}
+  .t{font-size:13.5px;font-weight:650;fill:var(--ink)}
+  .t-sm{font-size:12.5px;font-weight:650;fill:var(--ink)}
+  .s{font-size:11.3px;fill:var(--muted)}
+  .s2{font-size:10.4px;fill:#64748b}
+  .lbl{font-size:11px;fill:#334155;paint-order:stroke;stroke:#fff;stroke-width:3.2px;stroke-linejoin:round}
+  .lbl-b{font-size:11px;fill:#1d4ed8;font-weight:600;paint-order:stroke;stroke:#fff;stroke-width:3.2px}
+  .lbl-v{font-size:11px;fill:#6d28d9;font-weight:600;paint-order:stroke;stroke:#fff;stroke-width:3.2px}
+  .lbl-t{font-size:11px;fill:#0f766e;font-weight:600;paint-order:stroke;stroke:#fff;stroke-width:3.2px}
+  .e{stroke:#475569;stroke-width:1.6;fill:none}
+  .e-b{stroke:var(--blue);stroke-width:1.7;fill:none}
+  .e-v{stroke:var(--violet);stroke-width:1.7;fill:none}
+  .e-t{stroke:var(--teal);stroke-width:1.7;fill:none}
+  .e-g{stroke:#94a3b8;stroke-width:1.5;fill:none;stroke-dasharray:5 4}
+  .life{stroke:#cbd5e1;stroke-width:1.3;stroke-dasharray:4 5}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12.3px;color:var(--muted);padding:4px 10px 10px}
+  .legend i{display:inline-block;width:22px;height:0;border-top-width:2px;border-top-style:solid;
+    vertical-align:middle;margin-right:6px}
+  .chip{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:600;border:1px solid}
+  .c-blue{background:var(--blue-bg);color:#1d4ed8;border-color:#bfdbfe}
+  .c-teal{background:var(--teal-bg);color:#0f766e;border-color:#99f6e4}
+  .c-amber{background:var(--amber-bg);color:#b45309;border-color:#fde68a}
+  .c-violet{background:var(--violet-bg);color:#6d28d9;border-color:#ddd6fe}
+  .c-red{background:var(--red-bg);color:#b91c1c;border-color:#fecaca}
+  .c-green{background:var(--green-bg);color:#15803d;border-color:#bbf7d0}
+  .c-gray{background:#f1f5f9;color:#475569;border-color:#e2e8f0}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin:14px 0}
+  .cardlet{border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:#fcfdfe}
+  .cardlet h4{margin:0 0 6px;font-size:14px}
+  .cardlet p{margin:4px 0;font-size:13.2px;color:#374151}
+  .callout{border-left:4px solid var(--blue);background:#f8fafc;border-radius:0 10px 10px 0;
+    padding:12px 16px;margin:14px 0;font-size:13.6px}
+  .callout.warn{border-color:var(--amber);background:var(--amber-bg)}
+  .callout.good{border-color:var(--green);background:var(--green-bg)}
+  .callout.bad{border-color:var(--red);background:var(--red-bg)}
+  .kbd{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.4px}
+  footer{color:var(--muted);font-size:12.5px;text-align:center;padding:10px}
+  .toc{columns:2;column-gap:28px;font-size:13.6px}
+  .toc a{color:#1d4ed8;text-decoration:none}
+  .toc a:hover{text-decoration:underline}
+  @media (max-width:760px){.toc{columns:1}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker>
+  <marker id="ar-b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M0,0 L10,5 L0,10 z" fill="#2563eb"/></marker>
+  <marker id="ar-v" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M0,0 L10,5 L0,10 z" fill="#7c3aed"/></marker>
+  <marker id="ar-t" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M0,0 L10,5 L0,10 z" fill="#0f766e"/></marker>
+  <marker id="ar-g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/></marker>
+</defs></svg>
+
+<div class="wrap">
+
+<header class="hero">
+  <h1>SAM Platform — архитектурный разбор</h1>
+  <p>Software Asset Management: инвентаризация парка ПК, нормализация «грязных» имён ПО, учёт лицензий,
+     детерминированный комплаенс и AI-ассистент с ролевой моделью. Разбор по исходному коду репозитория
+     <strong>nizhdanov/sam-hackathon</strong> (ветка <code style="background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.2);color:#e5e7eb">main</code>, commit 4c52965).</p>
+  <div class="hero-meta">
+    <span>5 Go-сервисов + nginx-шлюз</span>
+    <span>Go 1.26 · ~14 700 строк</span>
+    <span>React 19 + TS · ~6 200 строк</span>
+    <span>42 пути / 59 REST-операций</span>
+    <span>7 gRPC-методов</span>
+    <span>PostgreSQL 17 · NATS JetStream</span>
+    <span>GigaChat / OpenAI-compatible / mock</span>
+  </div>
+</header>
+
+<section>
+  <h2>Содержание</h2>
+  <div class="toc">
+    <p><a href="#s1">1. Резюме архитектора: что это за система</a></p>
+    <p><a href="#s2">2. Карта контейнеров (схема) и зоны ответственности</a></p>
+    <p><a href="#s3">3. Конвейер инвентаризации: приём → события → синхронизация</a></p>
+    <p><a href="#s4">4. Smart Matching: каскад дешёвых шагов перед LLM</a></p>
+    <p><a href="#s5">5. AI-ассистент и границы доверия (RBAC)</a></p>
+    <p><a href="#s6">6. AI-анализ лицензионных соглашений (EULA)</a></p>
+    <p><a href="#s7">7. Compliance Engine — детерминированное ядро</a></p>
+    <p><a href="#s8">8. Деплой, CI/CD и сетевая топология</a></p>
+    <p><a href="#s9">9. Почему выбран именно этот стек (разбор решений)</a></p>
+    <p><a href="#s10">10. Фронтенд: архитектура и обоснование</a></p>
+    <p><a href="#s11">11. Сильные стороны, риски и техдолг</a></p>
+    <p><a href="#s12">12. Расхождения документации и кода · карта репозитория</a></p>
+  </div>
+</section>
+
+<section id="s1">
+  <h2><span class="num">1</span>Резюме архитектора</h2>
+  <p class="lead">Короткий вердикт до деталей.</p>
+  <p>Перед нами <strong>не «CRUD с прикрученным ChatGPT»</strong>, а вполне зрелый для хакатона
+  <strong>событийно-ориентированный микросервисный стек</strong> с чётким владением данными. Система решает
+  задачу учёта ПО: из CSV/агента приходят «грязные» имена процессов, конвейер нормализует их и связывает с
+  каталогом, детерминированный движок считает нарушения и лицензионный баланс, а LLM применяется точечно —
+  там, где детерминированная логика бессильна (неоднозначные имена, разбор текста EULA, вопросы на естественном языке).</p>
+
+  <div class="grid">
+    <div class="cardlet">
+      <h4>Стиль архитектуры</h4>
+      <p>Микросервисы в монорепозитории, «database per service» (логически), событийная шина для тяжёлого
+      импорта, gRPC для синхронных вызовов, nginx как API Gateway, SPA-фронт.</p>
+    </div>
+    <div class="cardlet">
+      <h4>Главная идея</h4>
+      <p><strong>LLM — не источник истины.</strong> Модель выбирает из готовых кандидатов, вызывает
+      разрешённые инструменты и оформляет ответ. Считает — SQL, права режет — сервис license,
+      нарушения определяет — код.</p>
+    </div>
+    <div class="cardlet">
+      <h4>Ключевой компромисс</h4>
+      <p>Один инстанс PostgreSQL/NATS и по одной реплике сервисов: изоляция данных есть,
+      высокой доступности нет. Это осознанно зафиксировано в <code>docs/decisions.md</code>.</p>
+    </div>
+    <div class="cardlet">
+      <h4>Инженерная культура</h4>
+      <p>Идемпотентность на трёх уровнях (dedup-окно NATS, lease + attempt_token, processed_snapshots),
+      единый формат ошибок, сквозной request-id, distroless-образы, откатываемый CD без реестра.</p>
+    </div>
+  </div>
+
+  <h3>Шесть решений, которые определяют всю систему</h3>
+  <table>
+    <thead><tr><th style="width:26%">Решение</th><th>Смысл и следствие</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Асинхронный импорт</strong><br><span class="chip c-teal">NATS JetStream</span></td>
+        <td>Загрузка CSV на 50 МБ не держит HTTP-соединение: файл принимается потоково, отвечает <code>202</code>,
+        дальше работа идёт снимками (по одному на ПК) через брокер с повторами и backpressure.</td></tr>
+      <tr><td><strong>Каскад сопоставления</strong><br><span class="chip c-amber">alias → exact → pg_trgm → LLM → человек</span></td>
+        <td>Дорогая LLM вызывается только для неоднозначных строк и только выбирает из кандидатов, найденных БД.
+        Дёшево, воспроизводимо, модель не может «придумать» продукт.</td></tr>
+      <tr><td><strong>RBAC на данных, а не в промпте</strong><br><span class="chip c-blue">JWT passthrough</span></td>
+        <td>Пользовательский токен проходит цепочку chat → llm → license. Даже при обходе промпта инструмент
+        вернёт только то, что разрешено роли: проверки в сервисном слое и в SQL.</td></tr>
+      <tr><td><strong>Детерминированный комплаенс</strong><br><span class="chip c-green">finding_key + upsert</span></td>
+        <td>Нарушения считает код по правилам, находки адресуются стабильным ключом: повторный расчёт обновляет,
+        исчезнувшее закрывает, подтверждённое админом сохраняет статус.</td></tr>
+      <tr><td><strong>Шлюз без бизнес-логики</strong><br><span class="chip c-violet">nginx</span></td>
+        <td>Маршрутизация, лимиты, CORS, request-id — конфигурацией. JWT проверяет <em>каждый</em> сервис,
+        поэтому обход шлюза внутри сети не даёт доступа к данным.</td></tr>
+      <tr><td><strong>Провайдер LLM — конфигурация</strong><br><span class="chip c-gray">mock по умолчанию</span></td>
+        <td>Стек поднимается без ключей и детерминированно демонстрируется; GigaChat/OpenAI-compatible
+        подключаются переменными окружения без изменения кода.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="s2">
+  <h2><span class="num">2</span>Карта контейнеров и зоны ответственности</h2>
+  <p class="lead">Кто с кем говорит, по какому протоколу и кто владеет данными.</p>
+
+  <figure>
+  <svg viewBox="0 0 1160 900" role="img" aria-label="Контейнерная схема SAM">
+    <!-- IdP token issue -->
+    <path class="e-g" d="M 970 50 V 26 H 200 V 46" marker-end="url(#ar-g)"/>
+    <text class="lbl" x="585" y="20" text-anchor="middle">выдаёт JWT RS256 (sub, role, device_serial) — IdP вне стека, сервисы проверяют подпись публичным ключом</text>
+
+    <!-- actors -->
+    <rect class="box" x="60" y="50" width="280" height="70" rx="10"/>
+    <text class="t" x="76" y="76">Браузер — SPA</text>
+    <text class="s" x="76" y="95">React 19 · Vite · TanStack Router/Query</text>
+    <text class="s" x="76" y="111">axios + SSE-клиент ассистента</text>
+
+    <rect class="box" x="380" y="50" width="230" height="70" rx="10"/>
+    <text class="t" x="396" y="76">Агент / CSV-выгрузка</text>
+    <text class="s" x="396" y="95">inventory.csv ≤ 50 МБ</text>
+    <text class="s" x="396" y="111">serial_number + список ПО</text>
+
+    <rect class="box ext" x="830" y="50" width="280" height="70" rx="10"/>
+    <text class="t" x="846" y="76">Внешний IdP</text>
+    <text class="s" x="846" y="95">iss = sam-auth · aud = sam-backend</text>
+    <text class="s" x="846" y="111">в репозитории только проверка токена</text>
+
+    <!-- gateway -->
+    <rect class="box infra" x="60" y="170" width="1050" height="100" rx="12"/>
+    <text class="t" x="80" y="196">nginx — API Gateway · единственная точка входа</text>
+    <text class="s" x="80" y="217">маршрутизация по префиксам · CORS · X-Request-Id · JSON access-log · rate limit: api 20 r/s (burst 40), chat 30 r/min</text>
+    <text class="s" x="80" y="235">лимиты тела: 1 МБ по умолчанию · 50 МБ /imports · 12 МБ /agreements/{id}/file · proxy_buffering off для SSE · Swagger UI /api/v1/docs</text>
+    <text class="s" x="80" y="253">локально :8080 (HTTP) · на сервере 127.0.0.1:8443 (TLS) за хостовым nginx · upstream resolve через Docker DNS + keepalive</text>
+
+    <!-- row 1 -->
+    <rect class="box svc" x="60" y="320" width="250" height="100" rx="11"/>
+    <text class="t" x="76" y="346">processor · :8081</text>
+    <text class="s" x="76" y="366">приём CSV, парсинг, группировка</text>
+    <text class="s" x="76" y="383">по ПК, публикация событий</text>
+    <text class="s2" x="76" y="404">владелец inventory_db · ~1 900 строк</text>
+
+    <rect class="box svc" x="400" y="320" width="230" height="100" rx="11"/>
+    <text class="t" x="416" y="346">chat · :8084</text>
+    <text class="s" x="416" y="366">диалоги, история, SSE-ответ</text>
+    <text class="s" x="416" y="383">1 активный запрос на пользователя</text>
+    <text class="s2" x="416" y="404">владелец chat_db · ~900 строк</text>
+
+    <text class="s" x="700" y="345">остальные /api/v1/* — 42 пути / 59 операций:</text>
+    <text class="s" x="700" y="363">каталог, версии, устройства, установки, договоры,</text>
+    <text class="s" x="700" y="381">соглашения и EULA-анализ, комплаенс, matching,</text>
+    <text class="s" x="700" y="399">data/export, дашборд, баланс, журнал аудита</text>
+
+    <!-- row 2 -->
+    <rect class="box data" x="60" y="470" width="250" height="80" rx="11"/>
+    <text class="t" x="76" y="496">NATS JetStream</text>
+    <text class="s" x="76" y="515">поток INVENTORY · WorkQueue · file</text>
+    <text class="s2" x="76" y="533">subject inventory.snapshot.created.v1</text>
+
+    <rect class="box ai" x="400" y="470" width="230" height="120" rx="11"/>
+    <text class="t" x="416" y="496">llm · :8085 / gRPC :9095</text>
+    <text class="s" x="416" y="516">AI-оркестратор без своей БД</text>
+    <text class="s" x="416" y="533">промпты по ролям (embed, v1)</text>
+    <text class="s" x="416" y="550">allowlist инструментов роли</text>
+    <text class="s2" x="416" y="571">GigaChat / OpenAI-compatible / mock</text>
+
+    <rect class="box svc" x="760" y="460" width="350" height="140" rx="11"/>
+    <text class="t" x="776" y="486">license · :8083 / gRPC :9093</text>
+    <text class="s" x="776" y="506">каталог ПО · версии · alias · устройства · установки</text>
+    <text class="s" x="776" y="523">соглашения (EULA) · договоры · лицензии · настройки</text>
+    <text class="s" x="776" y="540">Compliance Engine · аналитика · журнал аудита</text>
+    <text class="s" x="776" y="557">data explorer: SQL только по белым спискам</text>
+    <text class="s2" x="776" y="580">владелец license_db · ~7 200 строк · ядро домена</text>
+
+    <!-- worker -->
+    <rect class="box svc" x="60" y="620" width="250" height="100" rx="11"/>
+    <text class="t" x="76" y="646">worker · :8082 (health)</text>
+    <text class="s" x="76" y="666">обработка снимков, Smart Matching,</text>
+    <text class="s" x="76" y="683">синхронизация установок и комплаенса</text>
+    <text class="s2" x="76" y="704">статусы в inventory_db · ~1 100 строк</text>
+
+    <rect class="box ext" x="400" y="620" width="230" height="60" rx="10"/>
+    <text class="t-sm" x="416" y="644">GigaChat / OpenAI-compatible</text>
+    <text class="s" x="416" y="663">внешний HTTPS · OAuth · CA Минцифры</text>
+
+    <!-- edges -->
+    <path class="e-b" d="M 200 120 V 166" marker-end="url(#ar-b)"/>
+    <text class="lbl-b" x="210" y="148">HTTPS /api/v1</text>
+    <path class="e-b" d="M 495 120 V 166" marker-end="url(#ar-b)"/>
+    <text class="lbl-b" x="505" y="148">multipart</text>
+
+    <path class="e" d="M 185 270 V 316" marker-end="url(#ar)"/>
+    <text class="lbl" x="195" y="300">/imports*</text>
+    <path class="e" d="M 515 270 V 316" marker-end="url(#ar)"/>
+    <text class="lbl" x="525" y="300">/chat/* (SSE, без буфера)</text>
+    <path class="e" d="M 1080 270 V 456" marker-end="url(#ar)"/>
+
+    <path class="e-t" d="M 185 420 V 466" marker-end="url(#ar-t)"/>
+    <text class="lbl-t" x="195" y="450">publish</text>
+    <path class="e-t" d="M 185 550 V 616" marker-end="url(#ar-t)"/>
+    <text class="lbl-t" x="195" y="590">pull consumer</text>
+
+    <path class="e-v" d="M 515 420 V 466" marker-end="url(#ar-v)"/>
+    <text class="lbl-v" x="525" y="450">gRPC Chat (stream)</text>
+    <path class="e-g" d="M 515 590 V 616" marker-end="url(#ar-g)"/>
+    <text class="lbl" x="525" y="610">HTTPS</text>
+
+    <path class="e-v" d="M 310 660 H 355 V 530 H 396" marker-end="url(#ar-v)"/>
+    <text class="lbl-v" x="348" y="620" transform="rotate(-90 348 620)" text-anchor="middle">gRPC MatchSoftware</text>
+
+    <path class="e-v" d="M 634 530 H 756" marker-end="url(#ar-v)" marker-start="url(#ar-v)"/>
+    <text class="lbl-v" x="695" y="512" text-anchor="middle">RunQuery →</text>
+    <text class="lbl-v" x="695" y="556" text-anchor="middle">← AnalyzeAgreement</text>
+
+    <path class="e-v" d="M 310 700 H 340 V 740 H 900 V 604" marker-end="url(#ar-v)"/>
+    <text class="lbl-v" x="360" y="733">gRPC: ResolveSoftwareBatch · SaveMatchingSuggestion · SyncInventory</text>
+
+    <!-- postgres band -->
+    <rect class="box data" x="60" y="780" width="1050" height="100" rx="12"/>
+    <text class="t" x="80" y="804">PostgreSQL 17 — один инстанс, три базы, три пользователя</text>
+    <rect class="box" x="80" y="814" width="310" height="52" rx="8"/>
+    <text class="t-sm" x="94" y="833">inventory_db</text>
+    <text class="s2" x="94" y="848">владелец processor, пишет worker</text>
+    <text class="s2" x="94" y="861">imports · inventory_snapshots · import_errors</text>
+    <rect class="box" x="410" y="814" width="250" height="52" rx="8"/>
+    <text class="t-sm" x="424" y="833">chat_db</text>
+    <text class="s2" x="424" y="848">владелец chat</text>
+    <text class="s2" x="424" y="861">conversations · messages</text>
+    <rect class="box" x="680" y="814" width="410" height="52" rx="8"/>
+    <text class="t-sm" x="694" y="833">license_db</text>
+    <text class="s2" x="694" y="848">владелец license · devices · software_products / versions / aliases</text>
+    <text class="s2" x="694" y="861">installations · agreements · entitlements · findings · analyses · audit_log</text>
+  </svg>
+  <figcaption>Схема 1. Контейнеры и протоколы. Каждый сервис подключается только к своей БД своим пользователем
+  и применяет свои миграции goose при старте (embed + advisory-лок). Сервис llm состояния не имеет.</figcaption>
+  <div class="legend">
+    <span><i style="border-color:#2563eb"></i>HTTP/REST через шлюз</span>
+    <span><i style="border-color:#7c3aed"></i>gRPC (внутренний)</span>
+    <span><i style="border-color:#0f766e"></i>события NATS</span>
+    <span><i style="border-color:#94a3b8;border-top-style:dashed"></i>внешний мир / доверие по токену</span>
+  </div>
+  </figure>
+
+  <h3>Кто за что отвечает</h3>
+  <table>
+    <thead><tr>
+      <th style="width:12%">Сервис</th><th style="width:30%">Ответственность (что делает)</th>
+      <th style="width:26%">Чего сознательно НЕ делает</th><th style="width:16%">Данные</th><th style="width:16%">Интерфейсы</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>nginx</strong><br><span class="chip c-violet">gateway</span></td>
+        <td>Единая точка входа: маршрутизация по префиксам, лимиты тела и частоты, CORS, <code>X-Request-Id</code>,
+            JSON-логи, отключение буферизации для SSE, раздача Swagger UI и OpenAPI.</td>
+        <td>Не проверяет JWT, не знает домен, не агрегирует ответы. Авторизация целиком в сервисах.</td>
+        <td>—</td>
+        <td>:8080 локально<br>127.0.0.1:8443 TLS на сервере</td>
+      </tr>
+      <tr>
+        <td><strong>processor</strong><br><span class="chip c-blue">ingest</span></td>
+        <td>Приём CSV (потоково на диск, <code>.tmp</code> → rename), предпросмотр, подтверждение/отмена/повтор,
+            ограниченный пул парсеров, ошибки строк, группировка по <code>serial_number</code> в снимки,
+            публикация событий, восстановление незавершённых импортов, retention файлов.</td>
+        <td>Не знает каталог ПО и лицензии, не сопоставляет имена, не ходит в license. Его мир — строки и снимки.</td>
+        <td>inventory_db (владелец)<br>том <code>/data/imports</code></td>
+        <td>REST /api/v1/imports*<br>publisher в NATS</td>
+      </tr>
+      <tr>
+        <td><strong>worker</strong><br><span class="chip c-blue">pipeline</span></td>
+        <td>Durable pull-consumer снимков, захват через lease + <code>attempt_token</code>, heartbeat,
+            дедупликация строк по <code>source_key</code>, LRU-кэш и singleflight, батчи по 500 в license,
+            вызов LLM для неоднозначных, <code>SyncInventory</code>, корректные Ack/Nak/Term.</td>
+        <td>Не имеет публичного API (только health), не владеет каталогом, не пишет в license_db напрямую.</td>
+        <td>inventory_db (статусы снимков)</td>
+        <td>consumer NATS<br>gRPC → license, llm</td>
+      </tr>
+      <tr>
+        <td><strong>license</strong><br><span class="chip c-blue">domain core</span></td>
+        <td>Каталог и версии, alias и правила сопоставления, устройства и установки, соглашения и договоры,
+            лицензии и баланс, Compliance Engine и находки, аналитика/дашборд, аудит,
+            безопасный data explorer, очередь ручной проверки, EULA-анализ (оркестрация).</td>
+        <td>Не парсит CSV, не общается с провайдером LLM напрямую (только через llm), не хранит диалоги.</td>
+        <td>license_db (владелец)</td>
+        <td>REST (42 пути)<br>gRPC: Catalog / Inventory / AssistantData</td>
+      </tr>
+      <tr>
+        <td><strong>chat</strong><br><span class="chip c-blue">conversation</span></td>
+        <td>Диалоги и сообщения, привязка к владельцу и роли на момент создания, контекст (12 сообщений),
+            один активный запрос на пользователя, SSE-стрим (<code>message_start / delta / message_end / error</code>),
+            подсказки по роли.</td>
+        <td>Не знает промптов, моделей и инструментов, не ходит в license_db. Только транспорт диалога.</td>
+        <td>chat_db (владелец)</td>
+        <td>REST /api/v1/chat/*<br>gRPC Chat → llm</td>
+      </tr>
+      <tr>
+        <td><strong>llm</strong><br><span class="chip c-amber">AI orchestrator</span></td>
+        <td>Промпты по ролям (embed + версии), allowlist инструментов, цикл вызовов ≤ 5 итераций,
+            обрезка контекста и результата (12 000 байт), семафор параллелизма, дневной бюджет токенов,
+            провайдеры GigaChat / OpenAI-compatible / mock, OAuth-кэш GigaChat, разбор EULA, решение по сопоставлению.</td>
+        <td>Не имеет БД и не пишет SQL: любые данные получает вызовом <code>RunQuery</code> в license
+            с токеном пользователя. Не определяет права доступа.</td>
+        <td>нет (stateless)</td>
+        <td>gRPC :9095<br>HTTPS → провайдер</td>
+      </tr>
+      <tr>
+        <td><strong>postgres</strong><br><span class="chip c-teal">storage</span></td>
+        <td>Три БД с отдельными пользователями, <code>pg_trgm</code> для нечёткого поиска, транзакции и
+            advisory-локи для комплаенса, агрегаты для аналитики.</td>
+        <td>Не общий «монолитный» слой доступа: чужие таблицы сервис не читает.</td>
+        <td>inventory_db · license_db · chat_db</td><td>:5432</td>
+      </tr>
+      <tr>
+        <td><strong>nats</strong><br><span class="chip c-teal">broker</span></td>
+        <td>JetStream: поток <code>INVENTORY</code> (WorkQueue, file storage, MaxAge 168 ч, MaxBytes 256 МБ),
+            окно дедупликации 2 мин, durable consumer <code>inventory-worker</code>.</td>
+        <td>Не используется как шина доменных событий «на всё» — только конвейер снимков.</td>
+        <td>том <code>/data</code></td><td>:4222, мониторинг :8222</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Общие пакеты <code>back/pkg</code> — «платформа внутри монорепо»</h3>
+  <p>~1 700 строк кода, которые делают пять сервисов одинаковыми по поведению. Это то, что в микросервисах
+  обычно разводят копипастом, а здесь вынесено в общий модуль <code>sam</code>:</p>
+  <table>
+    <thead><tr><th style="width:18%">Пакет</th><th>Назначение</th></tr></thead>
+    <tbody>
+      <tr><td><code>apperr</code></td><td>Типизированные ошибки (invalid / not_found / forbidden / unauthenticated / rate_limited …) и их маппинг в HTTP-коды и gRPC-коды — единый контракт ошибок.</td></tr>
+      <tr><td><code>auth</code></td><td>Проверка RS256 (пользователь) и HS256 (сервис), роли, claims, HTTP-middleware и gRPC-интерсепторы, проброс пользовательского токена и request-id.</td></tr>
+      <tr><td><code>grpcx</code></td><td>Клиент/сервер gRPC: retry-политика (3 попытки на UNAVAILABLE, экспоненциальный backoff), лимит сообщения 32 МБ, интерсепторы ошибок, логов и recovery.</td></tr>
+      <tr><td><code>postgres</code></td><td>Пул pgx, транзакционный раннер, миграции goose из <code>embed</code> под session advisory-локом.</td></tr>
+      <tr><td><code>natsx</code></td><td>Подключение, создание/обновление потока INVENTORY, константы subject и consumer.</td></tr>
+      <tr><td><code>httpx</code></td><td>JSON-ответы и ошибки, пагинация <code>page/limit</code> (50 по умолчанию, максимум 200), request-logger.</td></tr>
+      <tr><td><code>health</code> / <code>healthcheck</code></td><td><code>/healthz</code> и <code>/readyz</code> (БД, NATS, зависимые gRPC) + подкоманда бинарника для Docker HEALTHCHECK в distroless-образе без shell.</td></tr>
+      <tr><td><code>buildconfig</code></td><td>Dev — переменные окружения; prod — конфигурация, «запечатанная» в бинарник на сборке (включая публичный PEM и CA).</td></tr>
+      <tr><td><code>swkey</code> / <code>swfilter</code></td><td>Нормализация имён (NFKC, регистр, ™/®, разделители, шум издателя) и стабильный <code>source_key</code> = sha256 с префиксами длины; отсев обновлений Windows (KB…).</td></tr>
+      <tr><td><code>doctext</code> / <code>xlsx</code></td><td>Извлечение текста из .txt/.pdf/.docx без внешних бинарников и минимальный генератор XLSX (zip + XML) для экспорта.</td></tr>
+      <tr><td><code>logger</code> / <code>opt</code></td><td>slog JSON с request-id; generic-тип <code>Field[T]</code> для PATCH-семантики «не передано / null / значение».</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="s3">
+  <h2><span class="num">3</span>Конвейер инвентаризации</h2>
+  <p class="lead">Самая интересная часть системы: как 50-мегабайтный CSV превращается в актуальное состояние парка
+  и не ломается при повторах, рестартах и параллельных попытках.</p>
+
+  <figure>
+  <svg viewBox="0 0 1160 900" role="img" aria-label="Диаграмма последовательности импорта CSV">
+    <!-- lifelines -->
+    <g>
+      <rect class="box svc" x="20" y="30" width="160" height="44" rx="9"/><text class="t-sm" x="100" y="57" text-anchor="middle">Клиент / агент</text>
+      <rect class="box svc" x="220" y="30" width="160" height="44" rx="9"/><text class="t-sm" x="300" y="57" text-anchor="middle">processor</text>
+      <rect class="box data" x="420" y="30" width="160" height="44" rx="9"/><text class="t-sm" x="500" y="57" text-anchor="middle">inventory_db</text>
+      <rect class="box data" x="600" y="30" width="160" height="44" rx="9"/><text class="t-sm" x="680" y="57" text-anchor="middle">NATS JetStream</text>
+      <rect class="box svc" x="780" y="30" width="160" height="44" rx="9"/><text class="t-sm" x="860" y="57" text-anchor="middle">worker</text>
+      <rect class="box svc" x="980" y="30" width="160" height="44" rx="9"/><text class="t-sm" x="1060" y="57" text-anchor="middle">license (+ llm)</text>
+      <line class="life" x1="100" y1="74" x2="100" y2="872"/>
+      <line class="life" x1="300" y1="74" x2="300" y2="872"/>
+      <line class="life" x1="500" y1="74" x2="500" y2="872"/>
+      <line class="life" x1="680" y1="74" x2="680" y2="872"/>
+      <line class="life" x1="860" y1="74" x2="860" y2="872"/>
+      <line class="life" x1="1060" y1="74" x2="1060" y2="872"/>
+    </g>
+
+    <path class="e-b" d="M 100 124 H 296" marker-end="url(#ar-b)"/>
+    <text class="lbl" x="106" y="117">1. POST /api/v1/imports — multipart, потоковая запись в .tmp → rename, ответ сразу</text>
+
+    <path class="e" d="M 300 170 H 496" marker-end="url(#ar)"/>
+    <text class="lbl" x="306" y="163">2. INSERT imports (status = PENDING)</text>
+
+    <path class="e-g" d="M 300 216 H 104" marker-end="url(#ar-g)"/>
+    <text class="lbl" x="110" y="209">3. 202 Accepted {import_id} — клиент опрашивает статус</text>
+
+    <path class="e-b" d="M 100 262 H 296" marker-end="url(#ar-b)"/>
+    <text class="lbl" x="106" y="255">4. GET /imports/{id}/preview → POST /imports/{id}/confirm (или cancel)</text>
+
+    <path class="e" d="M 300 300 H 380 V 320 H 304" marker-end="url(#ar)"/>
+    <text class="lbl" x="388" y="308">5. Пул парсеров (PARSE_CONCURRENCY): BOM, автоопределение «,» / «;», проверка заголовков, нормализация, дедуп строк</text>
+
+    <path class="e" d="M 300 366 H 496" marker-end="url(#ar)"/>
+    <text class="lbl" x="306" y="359">6. Снимки по serial_number + import_errors; критичная ошибка формата ⇒ FAILED без публикации</text>
+
+    <path class="e-t" d="M 300 412 H 676" marker-end="url(#ar-t)"/>
+    <text class="lbl-t" x="306" y="405">7. publish inventory.snapshot.created.v1 · Nats-Msg-Id = snapshot_id (дедуп 2 мин) · retry с backoff</text>
+
+    <path class="e-t" d="M 680 458 H 856" marker-end="url(#ar-t)"/>
+    <text class="lbl-t" x="686" y="451">8. pull: durable inventory-worker · AckWait 120 s · MaxDeliver 5</text>
+
+    <path class="e" d="M 860 504 H 504" marker-end="url(#ar)"/>
+    <text class="lbl" x="510" y="497">9. Claim: UPDATE … RETURNING attempt_token (lease 120 s) — защита от параллельной попытки</text>
+
+    <path class="e-v" d="M 860 550 H 1056" marker-end="url(#ar-v)"/>
+    <text class="lbl-v" x="700" y="543">10. ResolveSoftwareBatch — батчи по 500, известные строки берёт LRU-кэш</text>
+
+    <path class="e-g" d="M 1060 596 H 864" marker-end="url(#ar-g)"/>
+    <text class="lbl" x="700" y="589">11. MATCHED / AMBIGUOUS / UNKNOWN / PENDING_REVIEW (+ кандидаты pg_trgm)</text>
+
+    <rect class="box note" x="640" y="618" width="500" height="52" rx="9"/>
+    <text class="s" x="656" y="639">12. AMBIGUOUS → llm.MatchSoftware (схема 3). Проверка: id ∈ кандидатов,</text>
+    <text class="s" x="656" y="657">confidence ≥ 0.85 ⇒ alias; иначе / при ошибке LLM ⇒ REQUIRES_REVIEW</text>
+
+    <path class="e-v" d="M 860 704 H 1056" marker-end="url(#ar-v)"/>
+    <text class="lbl-v" x="640" y="684">13. SyncInventory — одна транзакция: processed_snapshots, отсев по collected_at,</text>
+    <text class="lbl-v" x="640" y="697">upsert установок, деактивация отсутствующих, advisory-локи, комплаенс</text>
+
+    <path class="e" d="M 860 750 H 504" marker-end="url(#ar)"/>
+    <text class="lbl" x="510" y="743">14. Finish(attempt_token) · во время работы — InProgress и Extend lease каждые ~40 с</text>
+
+    <path class="e-g" d="M 860 796 H 684" marker-end="url(#ar-g)"/>
+    <text class="lbl" x="690" y="789">15. Ack · Nak(10 s) при временной ошибке · Term после 5 доставок ⇒ FAILED</text>
+
+    <path class="e-b" d="M 100 848 H 296" marker-end="url(#ar-b)"/>
+    <text class="lbl" x="106" y="841">16. GET /imports/{id} — статус из агрегатов снимков: COMPLETED / COMPLETED_WITH_ERRORS / FAILED</text>
+  </svg>
+  <figcaption>Схема 2. Жизненный цикл импорта. Пунктиром — ответы и обратные сообщения.</figcaption>
+  </figure>
+
+  <h3>Почему это работает без «магии»: три уровня идемпотентности</h3>
+  <table>
+    <thead><tr><th style="width:22%">Уровень</th><th style="width:34%">Механизм</th><th>Какую аварию закрывает</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Публикация</strong></td>
+        <td><code>Nats-Msg-Id = snapshot_id</code> + окно дедупликации 2 минуты, WorkQueue retention (сообщение исчезает после Ack).</td>
+        <td>Повторная публикация после сбоя не создаёт вторую задачу; очередь не растёт бесконечно.</td></tr>
+      <tr><td><strong>Обработка</strong></td>
+        <td>Захват снимка <code>UPDATE … RETURNING attempt_token</code> с lease 120 с, heartbeat продлевает lease, финальный статус пишется только при совпадении токена.</td>
+        <td>Повторная доставка после <code>AckWait</code> не перезаписывает результат параллельной попытки («зомби-воркер»).</td></tr>
+      <tr><td><strong>Синхронизация</strong></td>
+        <td><code>processed_snapshots</code> + сравнение <code>collected_at</code> (устаревший снимок → <code>SUPERSEDED</code>), upsert устройства и установок, деактивация отсутствующих только для FULL-снимка.</td>
+        <td>Повтор импорта и «старый» снимок не откатывают текущее состояние ПК.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn">
+    <strong>Осознанная дыра.</strong> Между записью снимка в <code>inventory_db</code> и публикацией в NATS нет
+    транзакционного outbox: при падении processor в этом окне событие не уйдёт. Компенсация — авто-возобновление
+    незавершённых импортов при старте и <code>POST /imports/{id}/retry</code>. Для прода это первый кандидат на доработку.
+  </div>
+
+  <h3>Семантика ошибок</h3>
+  <ul>
+    <li><strong>Временные</strong> (сеть, недоступность license/llm, дедлок): <code>Nak</code> с задержкой 10 с, снимок возвращается в очередь.</li>
+    <li><strong>Постоянные</strong> (invalid / not_found / forbidden / unauthenticated, несовпадение serial): <code>Term</code> — сообщение не крутится вечно, снимок <code>FAILED</code>.</li>
+    <li><strong>Исчерпаны попытки</strong> (5 доставок): <code>GiveUp</code> помечает снимок статусом FAILED с причиной; импорт получает <code>COMPLETED_WITH_ERRORS</code>.</li>
+    <li><strong>Ошибка LLM не является ошибкой снимка</strong> — ПО уходит в ручную проверку. Это правильное продуктовое решение: доступность конвейера не зависит от доступности модели.</li>
+  </ul>
+</section>
+
+<section id="s4">
+  <h2><span class="num">4</span>Smart Matching: каскад дешёвых шагов перед LLM</h2>
+  <p class="lead">Кейс А хакатона — «грязные» имена из ОС (<code>studio_visual_2022.exe</code>, <code>Google_Chrome_v2</code>)
+  нужно связать с официальным каталогом. Решение — не «отправить всё в модель», а воронка.</p>
+
+  <figure>
+  <svg viewBox="0 0 1120 880" role="img" aria-label="Каскад сопоставления ПО">
+    <rect class="box" x="270" y="20" width="460" height="56" rx="10"/>
+    <text class="t" x="310" y="45">Сырая строка из ОС</text>
+    <text class="s" x="310" y="64">display_name · publisher · version (например «studio_visual_2022.exe»)</text>
+    <path class="e" d="M 500 76 V 100" marker-end="url(#ar)"/>
+
+    <rect class="box svc" x="270" y="104" width="460" height="70" rx="10"/>
+    <text class="t" x="310" y="128">swkey: Normalize + SourceKey</text>
+    <text class="s" x="310" y="147">NFKC, нижний регистр, ™/®/©, разделители, шум издателя (inc, llc, gmbh…)</text>
+    <text class="s" x="310" y="164">source_key = sha256 от полей с префиксами длины — без коллизий конкатенации</text>
+    <path class="e" d="M 500 174 V 198" marker-end="url(#ar)"/>
+
+    <rect class="box svc" x="270" y="202" width="460" height="56" rx="10"/>
+    <text class="t" x="310" y="226">LRU-кэш worker (10 000 записей, TTL 600 с)</text>
+    <text class="s" x="310" y="245">singleflight склеивает одинаковые запросы; повторы не идут в БД</text>
+    <path class="e-t" d="M 730 230 H 790" marker-end="url(#ar-t)"/>
+    <text class="lbl-t" x="736" y="222">попадание</text>
+    <rect class="box data" x="794" y="202" width="300" height="56" rx="10"/>
+    <text class="t-sm" x="812" y="226">готовый MATCHED</text>
+    <text class="s2" x="812" y="245">дешёвый путь: большинство строк парка</text>
+    <path class="e" d="M 500 258 V 282" marker-end="url(#ar)"/>
+    <text class="lbl" x="510" y="276">промах</text>
+
+    <rect class="box svc" x="270" y="286" width="460" height="86" rx="10"/>
+    <text class="t" x="310" y="310">license.ResolveSoftwareBatch (батч до 500)</text>
+    <text class="s" x="310" y="329">1) alias по source_key (подтверждённые человеком или LLM соответствия)</text>
+    <text class="s" x="310" y="346">2) точное совпадение нормализованного имени</text>
+    <text class="s" x="310" y="363">3) pg_trgm GIN-индекс: кандидаты с similarity ≥ 0.65, top-5</text>
+    <path class="e" d="M 500 372 V 396" marker-end="url(#ar)"/>
+
+    <polygon class="box" points="330,442 500,400 670,442 500,484"/>
+    <text class="t-sm" x="500" y="438" text-anchor="middle">DecideMatch</text>
+    <text class="s2" x="500" y="456" text-anchor="middle">сколько кандидатов и насколько они различимы</text>
+
+    <path class="e-t" d="M 670 430 H 790" marker-end="url(#ar-t)"/>
+    <text class="lbl-t" x="676" y="422">ровно одно точное</text>
+    <rect class="box data" x="794" y="392" width="300" height="46" rx="9"/>
+    <text class="t-sm" x="812" y="412">MATCHED · метод EXACT</text>
+    <text class="s2" x="812" y="429">детерминированно, без модели</text>
+
+    <path class="e-t" d="M 670 456 H 790" marker-end="url(#ar-t)"/>
+    <text class="lbl-t" x="676" y="472">top ≥ 0.95 и gap ≥ 0.10</text>
+    <rect class="box data" x="794" y="446" width="300" height="46" rx="9"/>
+    <text class="t-sm" x="812" y="466">MATCHED · метод FUZZY</text>
+    <text class="s2" x="812" y="483">уверенное нечёткое совпадение</text>
+
+    <path class="e" d="M 330 442 H 210 V 500" marker-end="url(#ar)"/>
+    <text class="lbl" x="120" y="434">нет кандидатов / уже в работе</text>
+    <rect class="box note" x="30" y="504" width="250" height="76" rx="10"/>
+    <text class="t-sm" x="48" y="527">UNKNOWN / PENDING_REVIEW</text>
+    <text class="s2" x="48" y="545">не нарушение, а задача в очереди</text>
+    <text class="s2" x="48" y="561">/matching/pending (US-14):</text>
+    <text class="s2" x="48" y="575">администратор сопоставляет вручную</text>
+
+    <path class="e-v" d="M 500 484 V 520" marker-end="url(#ar-v)"/>
+    <text class="lbl-v" x="510" y="508">AMBIGUOUS — детерминированно не решить</text>
+
+    <rect class="box ai" x="270" y="524" width="460" height="76" rx="10"/>
+    <text class="t" x="310" y="548">llm.MatchSoftware (gRPC)</text>
+    <text class="s" x="310" y="567">модель видит только сырое имя и список кандидатов из БД</text>
+    <text class="s" x="310" y="584">возвращает product_id, confidence, reason; retry при 429 (до 5 попыток)</text>
+
+    <path class="e-g" d="M 270 562 H 210 V 596" marker-end="url(#ar-g)"/>
+    <rect class="box note" x="30" y="600" width="250" height="70" rx="10"/>
+    <text class="t-sm" x="48" y="623">LLM недоступна / mock</text>
+    <text class="s2" x="48" y="641">REQUIRES_REVIEW, снимок не падает;</text>
+    <text class="s2" x="48" y="657">конвейер продолжает работу</text>
+
+    <path class="e" d="M 500 600 V 626" marker-end="url(#ar)"/>
+    <polygon class="box" points="310,672 500,630 690,672 500,714"/>
+    <text class="t-sm" x="500" y="668" text-anchor="middle">AcceptSuggestion</text>
+    <text class="s2" x="500" y="686" text-anchor="middle">id ∈ кандидатов и confidence ≥ 0.85?</text>
+
+    <path class="e-t" d="M 690 672 H 790" marker-end="url(#ar-t)"/>
+    <text class="lbl-t" x="696" y="664">да</text>
+    <rect class="box data" x="794" y="638" width="300" height="66" rx="10"/>
+    <text class="t-sm" x="812" y="661">SaveMatchingSuggestion → alias</text>
+    <text class="s2" x="812" y="679">метод LLM, MATCHED; следующая такая же</text>
+    <text class="s2" x="812" y="694">строка решается без модели навсегда</text>
+
+    <path class="e" d="M 500 714 V 742" marker-end="url(#ar)"/>
+    <text class="lbl" x="510" y="736">нет</text>
+    <rect class="box note" x="270" y="746" width="460" height="56" rx="10"/>
+    <text class="t-sm" x="310" y="770">REQUIRES_REVIEW — задача администратору</text>
+    <text class="s2" x="310" y="789">ручное подтверждение создаёт alias и «обучает» каскад</text>
+
+    <rect class="box band" x="270" y="820" width="824" height="46" rx="9"/>
+    <text class="s" x="308" y="840">Результат пишется в installations.match_status (MATCHED / UNKNOWN / REQUIRES_REVIEW) и matching_candidates;</text>
+    <text class="s" x="308" y="857">пороги auto_apply_confidence и fuzzy_auto_threshold меняются администратором через /matching/settings и пишутся в аудит.</text>
+  </svg>
+  <figcaption>Схема 3. Воронка сопоставления: LLM — четвёртый шаг, а не первый, и всегда с ограниченным выбором.</figcaption>
+  </figure>
+
+  <div class="callout good">
+    <strong>Что здесь архитектурно правильно.</strong> Модель не генерирует сущность, а выбирает из множества,
+    построенного БД, и её ответ проходит валидацию (id из кандидатов + порог уверенности). Это убирает целый класс
+    галлюцинаций и делает результат воспроизводимым. Плюс каждый успешный ответ становится alias — то есть
+    система со временем перестаёт нуждаться в модели для тех же строк.
+  </div>
+
+  <h3>Цена решения</h3>
+  <ul>
+    <li><strong>Слабые кандидаты.</strong> Для <code>Microsoft Visual Studio 2022</code> pg_trgm может вернуть одного кандидата из-за похожести редакций — строка уйдёт на ручную проверку. Это зафиксировано в известных ограничениях.</li>
+    <li><strong>Локальный кэш.</strong> LRU живёт в процессе worker: после правки alias в license старое значение доживает до TTL (10 минут). При масштабировании worker'ов кэш надо выносить в Redis и инвалидировать событием.</li>
+    <li><strong>Пороги — компромисс.</strong> 0.95/0.10 для авто-fuzzy и 0.85 для LLM означают «лучше отправить человеку, чем ошибиться в учёте лицензий». Для SAM это правильная асимметрия: ложное совпадение искажает баланс и создаёт юридический риск.</li>
+  </ul>
+</section>
+
+<section id="s5">
+  <h2><span class="num">5</span>AI-ассистент и границы доверия</h2>
+  <p class="lead">Кейс В хакатона: «У кого стоит нелицензионный Photoshop?», «Сколько лицензий простаивает?».
+  Реализовано не как Text-to-SQL, а как <strong>набор разрешённых инструментов поверх обычного API</strong>.</p>
+
+  <figure>
+  <svg viewBox="0 0 1160 840" role="img" aria-label="Цепочка вызовов AI-ассистента">
+    <!-- trust boundary -->
+    <rect class="band" x="380" y="96" width="380" height="700" rx="14"/>
+    <text class="s" x="392" y="118" fill="#b45309">недоверенная зона: модель не видит БД и не определяет права</text>
+
+    <rect class="box svc" x="20" y="30" width="150" height="44" rx="9"/><text class="t-sm" x="95" y="57" text-anchor="middle">Браузер</text>
+    <rect class="box svc" x="210" y="30" width="150" height="44" rx="9"/><text class="t-sm" x="285" y="57" text-anchor="middle">chat</text>
+    <rect class="box ai" x="400" y="30" width="150" height="44" rx="9"/><text class="t-sm" x="475" y="57" text-anchor="middle">llm</text>
+    <rect class="box ext" x="590" y="30" width="150" height="44" rx="9"/><text class="t-sm" x="665" y="57" text-anchor="middle">GigaChat</text>
+    <rect class="box svc" x="790" y="30" width="150" height="44" rx="9"/><text class="t-sm" x="865" y="57" text-anchor="middle">license</text>
+    <rect class="box data" x="980" y="30" width="150" height="44" rx="9"/><text class="t-sm" x="1055" y="57" text-anchor="middle">license_db</text>
+    <line class="life" x1="95" y1="74" x2="95" y2="812"/>
+    <line class="life" x1="285" y1="74" x2="285" y2="812"/>
+    <line class="life" x1="475" y1="74" x2="475" y2="812"/>
+    <line class="life" x1="665" y1="74" x2="665" y2="812"/>
+    <line class="life" x1="865" y1="74" x2="865" y2="812"/>
+    <line class="life" x1="1055" y1="74" x2="1055" y2="812"/>
+
+    <path class="e-b" d="M 95 148 H 281" marker-end="url(#ar-b)"/>
+    <text class="lbl" x="101" y="141">1. POST /chat/conversations/{id}/messages · Bearer JWT пользователя</text>
+
+    <path class="e" d="M 285 186 H 355 V 206 H 289" marker-end="url(#ar)"/>
+    <text class="lbl" x="363" y="194">2. Владелец и роль диалога · 1 активный запрос на пользователя · контекст 12 сообщений · лимит 4000 символов</text>
+
+    <path class="e-v" d="M 285 244 H 471" marker-end="url(#ar-v)"/>
+    <text class="lbl-v" x="291" y="237">3. gRPC Chat (server stream) — исходный JWT пользователя пробрасывается в metadata</text>
+
+    <path class="e" d="M 475 282 H 545 V 302 H 479" marker-end="url(#ar)"/>
+    <text class="lbl" x="553" y="290">4. Промпт по роли · allowlist инструментов · семафор 1 · бюджет 500k токенов/сутки</text>
+
+    <path class="e-g" d="M 475 340 H 661" marker-end="url(#ar-g)"/>
+    <text class="lbl" x="481" y="333">5. HTTPS: OAuth-токен из кэша, functions, лимит вывода 4000 токенов</text>
+
+    <path class="e-g" d="M 665 386 H 479" marker-end="url(#ar-g)"/>
+    <text class="lbl" x="481" y="379">6. tool_call: query_data {dataset, filters, group_by, limit}</text>
+
+    <path class="e-v" d="M 475 432 H 861" marker-end="url(#ar-v)"/>
+    <text class="lbl-v" x="481" y="425">7. AssistantDataService.RunQuery — тот же пользовательский токен, не сервисный</text>
+
+    <path class="e" d="M 865 470 H 935 V 490 H 869" marker-end="url(#ar)"/>
+    <text class="lbl" x="640" y="478">8. RBAC в сервисном слое: USER → свой device_serial, бесплатное и запрещённое ПО</text>
+
+    <path class="e" d="M 865 528 H 1051" marker-end="url(#ar)"/>
+    <text class="lbl" x="700" y="521">9. Параметризованный SQL: колонки и фильтры только из белых списков</text>
+
+    <path class="e-g" d="M 1055 574 H 869" marker-end="url(#ar-g)"/>
+    <text class="lbl" x="700" y="567">10. Строки; COUNT/SUM считает PostgreSQL, а не модель</text>
+
+    <path class="e-g" d="M 865 620 H 479" marker-end="url(#ar-g)"/>
+    <text class="lbl" x="481" y="613">11. {columns, rows, total, shown} — результат обрезается до 12 000 байт; цикл ≤ 5 итераций</text>
+
+    <path class="e-g" d="M 475 666 H 661" marker-end="url(#ar-g)"/>
+    <text class="lbl" x="481" y="659">12. Финальный ответ: модель только оформляет Markdown (вывод, таблица, итог)</text>
+
+    <path class="e-v" d="M 475 712 H 289" marker-end="url(#ar-v)"/>
+    <text class="lbl-v" x="291" y="705">13. stream delta · usage (prompt/completion tokens) · model</text>
+
+    <path class="e-b" d="M 285 758 H 99" marker-end="url(#ar-b)"/>
+    <text class="lbl" x="101" y="751">14. SSE: message_start → delta… → message_end (или error)</text>
+
+    <path class="e" d="M 285 796 H 355 V 812 H 289" marker-end="url(#ar)"/>
+    <text class="lbl" x="363" y="804">15. Ответ сохранён в chat_db; ссылки sam://device|product|contract/&lt;id&gt; открывают карточки во фронте</text>
+  </svg>
+  <figcaption>Схема 4. Ассистент: LLM — «переводчик вопроса в разрешённый вызов API», а не владелец данных.</figcaption>
+  </figure>
+
+  <h3>Почему инструменты, а не генерация SQL</h3>
+  <div class="grid">
+    <div class="cardlet"><h4>Безопасность</h4><p>Модель физически не может обратиться к БД. Каждый инструмент — вызов
+      <code>RunQuery</code> в license с токеном пользователя. Инъекция в промпт не расширяет права: их режет сервис.</p></div>
+    <div class="cardlet"><h4>Детерминированность</h4><p>Считает SQL, а не токены модели. Ответ на «сколько лицензий простаивает»
+      совпадает с цифрой на дашборде — потому что это один и тот же код.</p></div>
+    <div class="cardlet"><h4>Переиспользование</h4><p>Тот же механизм обслуживает UI (<code>GET /api/v1/data/{dataset}</code>)
+      и экспорт (<code>POST /api/v1/export</code> → XLSX). Одна реализация — три потребителя.</p></div>
+    <div class="cardlet"><h4>Управляемость</h4><p>Набор датасетов, колонок и фильтров — это код, его можно ревьюить и тестировать.
+      Промпт может врать, whitelist — нет.</p></div>
+  </div>
+
+  <h3>Ролевая модель: где именно она применяется</h3>
+  <table>
+    <thead><tr><th style="width:16%">Слой</th><th style="width:42%">USER</th><th>ADMIN</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Шлюз</strong></td><td colspan="2">Не различает роли: только маршрутизация и лимиты (chat — 30 запросов/мин).</td></tr>
+      <tr><td><strong>Сервисы (JWT)</strong></td><td colspan="2">Каждый сервис проверяет RS256-подпись, issuer <code>sam-auth</code>, audience <code>sam-backend</code>, срок действия. Заголовкам с ролью никто не доверяет.</td></tr>
+      <tr><td><strong>llm: инструменты</strong></td>
+        <td><code>query_data</code> (datasets: products, installations, findings), <code>get_my_device</code>, <code>get_data_capabilities</code></td>
+        <td><code>query_data</code> (5 датасетов, включая devices и contracts), <code>get_license_balance</code>, <code>get_summary</code>, <code>get_data_capabilities</code></td></tr>
+      <tr><td><strong>license: данные</strong></td>
+        <td>Справочник БПО, бесплатное и запрещённое ПО, свой компьютер из claim <code>device_serial</code>: установки и нарушения на нём. Договоры, баланс, соглашения и журнал недоступны.</td>
+        <td>Полный доступ: каталог, соглашения, договоры, импорты, сопоставление, нарушения, аудит.</td></tr>
+      <tr><td><strong>SQL</strong></td>
+        <td>К выборке добавляется scope по серийному номеру и фильтр по модели оплаты; административные колонки не отдаются.</td>
+        <td>Все колонки датасета, включая вычисляемый <code>license_status</code>.</td></tr>
+      <tr><td><strong>Фронтенд</strong></td>
+        <td>Меню: каталог + «Мой компьютер». Guard-маршруты <code>_authenticated</code>/<code>_admin</code>.</td>
+        <td>Все разделы. <em>Но это UX, а не защита</em> — права проверяет бэкенд.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <strong>Межсервисная аутентификация.</strong> Служебные вызовы подписываются HS256-токенами с отдельным issuer
+    <code>sam-internal</code> и сервисными ролями (<code>INVENTORY_WORKER</code>, <code>CHAT_SERVICE</code>,
+    <code>LLM_SERVICE</code>, <code>LICENSE_SERVICE</code>). Пользовательским токеном сервисную роль получить нельзя.
+    Когда вызов идёт «от имени пользователя», пробрасывается именно пользовательский токен — и license применяет его роль.
+  </div>
+
+  <h3>Ограничители, которые защищают бюджет и стенд</h3>
+  <ul>
+    <li><strong>Семафор</strong> <code>LLM_MAX_CONCURRENT_REQUESTS=1</code> — по одному запросу к провайдеру (GigaChat лимитирует).</li>
+    <li><strong>Дневной бюджет</strong> 500 000 токенов, <strong>таймаут</strong> 45 с, <strong>≤ 5 итераций</strong> инструментов, обрезка результата до 12 000 байт.</li>
+    <li><strong>Один активный запрос на пользователя</strong> в chat и rate limit 30 r/min на шлюзе.</li>
+    <li><strong>Честный отказ:</strong> инструмент <code>get_data_capabilities</code> прямо сообщает модели, что в системе нет перечня обязательного ПО по рабочим местам — это снимает целый класс галлюцинаций «недостающие программы».</li>
+  </ul>
+  <div class="callout warn">
+    Бюджет токенов и «один активный запрос» хранятся <strong>в памяти процесса</strong>. При двух репликах chat/llm
+    лимиты начнут считаться отдельно на каждую, а после рестарта обнулятся. Для прода — вынести в Redis или PostgreSQL.
+  </div>
+</section>
+
+<section id="s6">
+  <h2><span class="num">6</span>AI-анализ лицензионных соглашений (EULA)</h2>
+  <p class="lead">Кейс Б: загрузить длинный текст соглашения и получить ключевые риски — можно ли использовать
+  в коммерческих целях, есть ли скрытые подписки. Ключевое правило: <strong>AI предлагает, человек утверждает</strong>.</p>
+
+  <figure>
+  <svg viewBox="0 0 1160 380" role="img" aria-label="Поток анализа EULA">
+    <rect class="box" x="20" y="50" width="170" height="90" rx="10"/>
+    <text class="t-sm" x="36" y="76">ADMIN загружает файл</text>
+    <text class="s2" x="36" y="95">.txt / .pdf / .docx</text>
+    <text class="s2" x="36" y="111">лимит тела 12 МБ</text>
+    <text class="s2" x="36" y="127">POST /agreements/{id}/file</text>
+
+    <rect class="box svc" x="215" y="50" width="170" height="90" rx="10"/>
+    <text class="t-sm" x="231" y="76">license: doctext</text>
+    <text class="s2" x="231" y="95">PDF — ledongthuc/pdf</text>
+    <text class="s2" x="231" y="111">DOCX — zip + XML</text>
+    <text class="s2" x="231" y="127">без внешних бинарников</text>
+
+    <rect class="box data" x="410" y="50" width="170" height="90" rx="10"/>
+    <text class="t-sm" x="426" y="76">agreement_text</text>
+    <text class="s2" x="426" y="95">хранится в license_db</text>
+    <text class="s2" x="426" y="111">абзацы нумеруются</text>
+    <text class="s2" x="426" y="127">для ссылок на пункты</text>
+
+    <rect class="box svc" x="605" y="50" width="170" height="90" rx="10"/>
+    <text class="t-sm" x="621" y="76">POST /analyze</text>
+    <text class="s2" x="621" y="95">sha256(text) + версия</text>
+    <text class="s2" x="621" y="111">промпта = ключ кэша</text>
+    <text class="s2" x="621" y="127">force = пересчитать</text>
+
+    <rect class="box ai" x="800" y="50" width="170" height="90" rx="10"/>
+    <text class="t-sm" x="816" y="76">llm.AnalyzeAgreement</text>
+    <text class="s2" x="816" y="95">промпт eula-v1 (embed)</text>
+    <text class="s2" x="816" y="111">модель LLM_EULA_MODEL</text>
+    <text class="s2" x="816" y="127">gRPC от license</text>
+
+    <rect class="box data" x="985" y="50" width="155" height="90" rx="10"/>
+    <text class="t-sm" x="1001" y="76">agreement_analyses</text>
+    <text class="s2" x="1001" y="95">analysis_json</text>
+    <text class="s2" x="1001" y="111">model</text>
+    <text class="s2" x="1001" y="127">prompt_version</text>
+
+    <path class="e" d="M 190 95 H 211" marker-end="url(#ar)"/>
+    <path class="e" d="M 385 95 H 406" marker-end="url(#ar)"/>
+    <path class="e" d="M 580 95 H 601" marker-end="url(#ar)"/>
+    <path class="e-v" d="M 775 95 H 796" marker-end="url(#ar-v)"/>
+    <path class="e-v" d="M 970 95 H 981" marker-end="url(#ar-v)"/>
+
+    <rect class="box note" x="605" y="180" width="365" height="60" rx="10"/>
+    <text class="s" x="621" y="203">Кэш: тот же хэш текста и та же версия промпта —</text>
+    <text class="s" x="621" y="221">повторный вызов модели не нужен (экономия токенов)</text>
+    <path class="e-g" d="M 690 140 V 176" marker-end="url(#ar-g)"/>
+
+    <rect class="box svc" x="605" y="270" width="170" height="70" rx="10"/>
+    <text class="t-sm" x="621" y="294">ADMIN: approve</text>
+    <text class="s2" x="621" y="313">POST /analysis/approve</text>
+    <text class="s2" x="621" y="329">явное решение человека</text>
+
+    <rect class="box data" x="800" y="270" width="340" height="70" rx="10"/>
+    <text class="t-sm" x="816" y="294">Поля соглашения обновлены + audit_log</text>
+    <text class="s2" x="816" y="313">тип лицензии, модель оплаты, условия использования</text>
+    <text class="s2" x="816" y="329">кто и когда подтвердил — фиксируется в журнале</text>
+
+    <path class="e" d="M 1067 140 V 255 H 860 V 266" marker-end="url(#ar)"/>
+    <text class="lbl" x="760" y="248">GET /analysis → карточка с рисками и цитатами пунктов</text>
+    <path class="e" d="M 775 305 H 796" marker-end="url(#ar)"/>
+
+    <rect class="box band" x="20" y="180" width="540" height="160" rx="12"/>
+    <text class="t-sm" x="40" y="206">Почему так, а не «модель сама меняет лицензию»</text>
+    <text class="s" x="40" y="228">1. Требование ТЗ: решения о лицензировании принимает человек.</text>
+    <text class="s" x="40" y="248">2. Юридическая цена ошибки: тип лицензии влияет на комплаенс и баланс.</text>
+    <text class="s" x="40" y="268">3. Версионирование промпта + хэш текста дают воспроизводимость:</text>
+    <text class="s" x="40" y="286">   видно, какая модель и какая версия промпта дали заключение.</text>
+    <text class="s" x="40" y="306">4. Похожие соглашения (/similar) ищутся pg_trgm по тексту —</text>
+    <text class="s" x="40" y="324">   можно опереться на уже проверенное соглашение.</text>
+  </svg>
+  <figcaption>Схема 5. EULA-конвейер: извлечение текста → анализ → кэш → подтверждение администратором → аудит.</figcaption>
+  </figure>
+</section>
+
+<section id="s7">
+  <h2><span class="num">7</span>Compliance Engine — детерминированное ядро</h2>
+  <p class="lead">Здесь LLM нет вообще, и это принципиально: нарушения должны быть воспроизводимыми и объяснимыми.</p>
+  <table>
+    <thead><tr><th style="width:22%">Тип находки</th><th style="width:44%">Условие</th><th>Комментарий</th></tr></thead>
+    <tbody>
+      <tr><td><code>FORBIDDEN_SOFTWARE</code></td><td>Установлен продукт со статусом «Запрещённое» (статус требует комментария — причины запрета).</td><td>Юридический/ИБ-риск, самый высокий severity.</td></tr>
+      <tr><td><code>OUTDATED_SOFTWARE</code></td><td>Установленная версия ниже актуальной в каталоге или продукт в статусе «Устаревшее».</td><td>Требует корректной версии в каталоге — данные ведёт администратор.</td></tr>
+      <tr><td><code>LICENSE_DEFICIT</code></td><td>Установлено на большем числе устройств, чем мест в действующих договорах. Для платного ПО без действующих договоров дефицит = число устройств.</td><td>Тот самый «штрафной риск: Office на 120 ПК при 100 лицензиях».</td></tr>
+    </tbody>
+  </table>
+  <h3>Инженерные свойства</h3>
+  <ul>
+    <li><strong>Стабильный <code>finding_key</code>:</strong> повторный расчёт делает upsert, исчезнувшее нарушение → <code>RESOLVED</code>, подтверждённое админом остаётся <code>ACKNOWLEDGED</code>. История не теряется и дублей нет.</li>
+    <li><strong>Advisory-локи по продуктам</strong> при пересчёте: параллельные синхронизации разных ПК не устраивают гонку в балансе лицензий.</li>
+    <li><strong>Триггеры пересчёта:</strong> синхронизация инвентаря, изменение каталога/лицензий/соглашений, ручной запуск и периодическая проверка раз в час (истечение сроков договоров).</li>
+    <li><strong>Нераспознанное ПО — не нарушение</strong>, а задача в очереди сопоставления. Продуктово верно: нельзя штрафовать пользователя за то, что система не смогла распознать строку.</li>
+    <li><strong>Честная метрика <code>CONCURRENT</code>:</strong> по данным установок нельзя узнать одновременное использование, поэтому такие балансы помечаются <code>UNSUPPORTED_METRIC</code>, а не выдумываются.</li>
+  </ul>
+</section>
+
+<section id="s8">
+  <h2><span class="num">8</span>Деплой, CI/CD и сетевая топология</h2>
+  <p class="lead">Отдельный предмет гордости проекта: доставка релиза <strong>без реестра образов</strong>,
+  с проверкой, автоматическим откатом и хранением двух успешных релизов. Инструмент доставки написан на Go
+  и лежит в <code>.github/scripts/release</code>.</p>
+
+  <figure>
+  <svg viewBox="0 0 1160 780" role="img" aria-label="CI/CD и топология развёртывания">
+    <!-- CI panel -->
+    <rect class="box infra" x="20" y="20" width="540" height="380" rx="12"/>
+    <text class="t" x="40" y="46">GitHub Actions</text>
+
+    <rect class="box" x="40" y="60" width="500" height="76" rx="9"/>
+    <text class="t-sm" x="56" y="82">CI · on push / pull_request</text>
+    <text class="s2" x="56" y="100">gofmt · go vet · go build · go test -race (бэкенд)</text>
+    <text class="s2" x="56" y="116">сборка и тесты release-инструмента · валидация реального Compose-плана</text>
+    <text class="s2" x="56" y="131">docker buildx bake --print — проверяется, что релиз вообще собирается</text>
+
+    <rect class="box" x="40" y="150" width="500" height="106" rx="9"/>
+    <text class="t-sm" x="56" y="172">CD · workflow_dispatch · environment production</text>
+    <text class="s2" x="56" y="190">раздельные пайплайны backend и frontend, concurrency-группа без отмены</text>
+    <text class="s2" x="56" y="206">release prepare → buildx bake (GHA-кэш, max-parallelism 2) → pack</text>
+    <text class="s2" x="56" y="222">в образ на сборке «запечатывается» прод-конфиг (секрет BACKEND_CONFIG)</text>
+    <text class="s2" x="56" y="238">артефакт release.tar = образы + compose + manifest + release-tool (3 дня)</text>
+
+    <rect class="box" x="40" y="270" width="500" height="110" rx="9"/>
+    <text class="t-sm" x="56" y="292">deliver · SSH на сервер</text>
+    <text class="s2" x="56" y="310">ключ и known_hosts из secrets · проверка checksum архива</text>
+    <text class="s2" x="56" y="326">preflight: свободное место (2× архив + образы), валидация compose</text>
+    <text class="s2" x="56" y="342">никакого registry: образы грузятся прямо в docker на хосте</text>
+    <text class="s2" x="56" y="362">релиз = sha + run_id + attempt → идемпотентная повторная попытка</text>
+
+    <!-- Server panel -->
+    <rect class="box svc" x="600" y="20" width="540" height="380" rx="12"/>
+    <text class="t" x="620" y="46">Сервер · /opt/sam-backend</text>
+
+    <rect class="box" x="620" y="60" width="500" height="94" rx="9"/>
+    <text class="t-sm" x="636" y="82">Состояние развёртывания</text>
+    <text class="s2" x="636" y="100">releases/&lt;id&gt; · current · state.json · pending.json · файловый lock</text>
+    <text class="s2" x="636" y="116">recoverPending: незавершённый деплой восстанавливается при следующем запуске</text>
+    <text class="s2" x="636" y="132">docker image load → сверка отпечатков образов с манифестом</text>
+    <text class="s2" x="636" y="148">инфраструктурные образы (postgres, nats, nginx) должны быть на хосте заранее</text>
+
+    <rect class="box" x="620" y="168" width="500" height="94" rx="9"/>
+    <text class="t-sm" x="636" y="190">Активация и проверка</text>
+    <text class="s2" x="636" y="208">compose up -d --no-build --pull never --wait --wait-timeout 180</text>
+    <text class="s2" x="636" y="224">verify: HTTPS https://sam.v1sdev.ru/api/v1/docs (6 попыток по 2 с)</text>
+    <text class="s2" x="636" y="240">для фронтенда — http://127.0.0.1:5173/</text>
+    <text class="s2" x="636" y="256">успех ⇒ маркер success и запись в state.json</text>
+
+    <rect class="box note" x="620" y="276" width="500" height="104" rx="9"/>
+    <text class="t-sm" x="636" y="298">Откат</text>
+    <text class="s2" x="636" y="316">любая ошибка ⇒ activate(previous) + повторная проверка</text>
+    <text class="s2" x="636" y="332">хранятся два успешных релиза, старые образы собираются сборщиком мусора</text>
+    <text class="s2" x="636" y="348">важно: SQL-миграции не откатываются — DDL должен быть обратно совместимым</text>
+    <text class="s2" x="636" y="366">первый деплой требует существующий .env сервера как точку возврата</text>
+
+    <path class="e-v" d="M 560 210 H 596" marker-end="url(#ar-v)"/>
+    <text class="lbl-v" x="578" y="200" text-anchor="middle">SSH</text>
+
+    <!-- network topology -->
+    <rect class="box band" x="20" y="420" width="1120" height="340" rx="12"/>
+    <text class="t" x="40" y="446">Сетевая топология на сервере (вариант compose.server.yaml — за уже существующим nginx)</text>
+
+    <rect class="box infra" x="50" y="466" width="290" height="86" rx="10"/>
+    <text class="t-sm" x="66" y="490">Хостовый nginx :80 / :443</text>
+    <text class="s2" x="66" y="508">TLS Let's Encrypt, HTTP/2, security-заголовки</text>
+    <text class="s2" x="66" y="524">сертификаты перечитываются deploy-hook certbot</text>
+    <text class="s2" x="66" y="540">порты 80/443 контейнеры не занимают</text>
+
+    <rect class="box" x="400" y="466" width="300" height="86" rx="10"/>
+    <text class="t-sm" x="416" y="490">frontend container · 127.0.0.1:5173</text>
+    <text class="s2" x="416" y="508">nginx:stable-alpine + статика SPA</text>
+    <text class="s2" x="416" y="524">try_files → index.html (SPA fallback)</text>
+    <text class="s2" x="416" y="540">свой compose и свой CD-пайплайн</text>
+
+    <rect class="box infra" x="760" y="466" width="350" height="86" rx="10"/>
+    <text class="t-sm" x="776" y="490">backend gateway · 127.0.0.1:8443 (TLS)</text>
+    <text class="s2" x="776" y="508">location ^~ /api/ → proxy_pass https://127.0.0.1:8443</text>
+    <text class="s2" x="776" y="524">proxy_ssl_verify on, SNI, buffering off, таймауты 600 с</text>
+    <text class="s2" x="776" y="540">внутри — маршрутизация processor / chat / license</text>
+
+    <path class="e" d="M 340 500 H 396" marker-end="url(#ar)"/>
+    <text class="lbl" x="346" y="492">location /</text>
+    <path class="e" d="M 340 530 H 700 V 530 H 756" marker-end="url(#ar)"/>
+    <text class="lbl" x="470" y="524">location ^~ /api/</text>
+
+    <rect class="box svc" x="50" y="590" width="1060" height="110" rx="10"/>
+    <text class="t-sm" x="66" y="614">Изолированная docker-сеть (подсеть задаётся DOCKER_SUBNET)</text>
+    <g>
+      <rect class="box" x="66" y="626" width="130" height="30" rx="7"/><text class="s" x="131" y="646" text-anchor="middle">processor :8081</text>
+      <rect class="box" x="206" y="626" width="130" height="30" rx="7"/><text class="s" x="271" y="646" text-anchor="middle">worker :8082</text>
+      <rect class="box" x="346" y="626" width="150" height="30" rx="7"/><text class="s" x="421" y="646" text-anchor="middle">license :8083 / :9093</text>
+      <rect class="box" x="506" y="626" width="120" height="30" rx="7"/><text class="s" x="566" y="646" text-anchor="middle">chat :8084</text>
+      <rect class="box" x="636" y="626" width="150" height="30" rx="7"/><text class="s" x="711" y="646" text-anchor="middle">llm :8085 / :9095</text>
+      <rect class="box data" x="796" y="626" width="140" height="30" rx="7"/><text class="s" x="866" y="646" text-anchor="middle">postgres :5432</text>
+      <rect class="box data" x="946" y="626" width="148" height="30" rx="7"/><text class="s" x="1020" y="646" text-anchor="middle">nats :4222 / :8222</text>
+    </g>
+    <text class="s2" x="66" y="676">наружу не публикуется ничего, кроме gateway на loopback · образы сервисов distroless nonroot · HEALTHCHECK — подкоманда того же бинарника</text>
+    <text class="s2" x="66" y="692">тома: postgres_data · nats_data · inventory_uploads · секреты и конфигурация запечатаны в бинарник, .env на сервере не нужен</text>
+
+    <path class="e" d="M 935 552 V 586" marker-end="url(#ar)"/>
+    <path class="e-g" d="M 550 552 V 570 H 420 V 586" marker-end="url(#ar-g)"/>
+    <text class="lbl" x="424" y="566">фронт также проксирует /api/v1 на бэкенд-домен (TLS verify)</text>
+  </svg>
+  <figcaption>Схема 6. Поставка и топология. Три варианта развёртывания: локальный compose, автономный prod с certbot,
+  и «за существующим nginx» — последний используется на стенде sam.v1sdev.ru.</figcaption>
+  </figure>
+
+  <h3>Три топологии в репозитории</h3>
+  <table>
+    <thead><tr><th style="width:22%">Файл</th><th style="width:26%">Сценарий</th><th>Особенности</th></tr></thead>
+    <tbody>
+      <tr><td><code>compose.yaml</code></td><td>Локальная разработка / демо</td><td>Шлюз на <code>:8080</code> HTTP, <code>make up</code> создаёт .env и RSA-ключи, <code>make seed</code> и <code>make smoke</code> для сквозного сценария.</td></tr>
+      <tr><td><code>+ compose.prod.yaml</code></td><td>Автономный прод</td><td>Свой TLS на <code>:8080 → 443</code>, certbot в контейнере, статика фронта монтируется в шлюз — один nginx отдаёт и SPA, и API.</td></tr>
+      <tr><td><code>+ compose.server.yaml</code></td><td>Стенд за хостовым nginx</td><td>Шлюз только на <code>127.0.0.1:8443</code>, сертификаты хоста монтируются из <code>/etc/letsencrypt</code>, отдельный certbot не нужен, фронт развёрнут отдельным стеком на :5173.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <strong>Запечатанная конфигурация.</strong> На сборке <code>tools/embedconfig</code> кладёт прод-настройки
+    (включая публичный JWT-PEM и CA GigaChat) внутрь бинарника, а <code>pkg/buildconfig/defaults.json</code>
+    обнуляется. В dev-сборке конфиг пуст — сервис читает обычные переменные окружения.
+    Плюс: на сервере нет .env с секретами, конфигурация версионируется и откатывается вместе с образом.
+    Минус: любая правка настроек = пересборка, а секреты живут внутри образа.
+  </div>
+</section>
+
+<section id="s9">
+  <h2><span class="num">9</span>Почему выбран именно этот стек</h2>
+  <p class="lead">Разбор в формате «решение → зачем → альтернативы → чем платим». Часть обоснований зафиксирована
+  авторами в <code>back/docs/decisions.md</code> (21 решение), часть восстановлена по коду — ниже они сведены вместе.</p>
+
+  <h3>9.1. Платформа бэкенда</h3>
+  <table>
+    <thead><tr><th style="width:16%">Слой</th><th style="width:18%">Выбор</th><th style="width:36%">Почему именно так</th><th>Альтернативы и цена решения</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Язык и рантайм</td><td><strong>Go 1.26</strong>, CGO выключен, статический бинарник</td>
+        <td>Задача — I/O и конкурентность: приём 50 МБ файла, пул парсеров, pull-consumer с heartbeat, SSE-стримы,
+            параллельные gRPC. Горутины и <code>errgroup</code> дают это без фреймворков. Один бинарник без рантайма
+            идеально ложится в distroless, стартует за миллисекунды, ест десятки мегабайт.</td>
+        <td><em>Python/FastAPI</em> — быстрее писать AI-обвязку, но хуже с CPU-парсингом и памятью на большом CSV,
+            тяжелее образ. <em>Node/TS</em> — один язык с фронтом, но потоковый парсинг и типобезопасность домена слабее.
+            <em>Java/Spring</em> — избыточен по памяти для шести сервисов на одной ВМ.
+            Цена Go: больше кода вручную (~14,7 тыс. строк), нет ORM «из коробки».</td>
+      </tr>
+      <tr>
+        <td>Организация кода</td><td><strong>Монорепо, один модуль <code>sam</code></strong>, <code>services/&lt;name&gt;/internal/…</code></td>
+        <td>Общие <code>pkg/*</code> без версионирования и публикации, атомарная правка контракта и всех потребителей
+            одним коммитом, одна команда <code>go build ./...</code>. При этом каждый сервис имеет свой Dockerfile
+            и собирается независимо.</td>
+        <td><em>Полирепо</em> — независимые релизы, но версионирование общих библиотек и синхронизация proto на
+            хакатоне съели бы время. Цена монорепо: связанность (правка <code>pkg</code> требует пересборки всех) —
+            смягчено раздельными CD-пайплайнами.</td>
+      </tr>
+      <tr>
+        <td>Слои внутри сервиса</td><td><code>domain</code> · <code>service</code> · <code>repository</code> · <code>transport</code> · <code>platform</code> · <code>app</code></td>
+        <td>Домен без внешних зависимостей (правила комплаенса и сопоставления — чистые функции, их видно и можно
+            проверить), сервисный слой — сценарии и RBAC, транспорт — HTTP/gRPC, platform — клиенты соседних сервисов.
+            Зависимости направлены внутрь, замена адаптера не трогает правила.</td>
+        <td><em>Плоский «handler + SQL»</em> был бы быстрее на старте, но правила комплаенса расползлись бы по
+            HTTP-хендлерам. Цена: бойлерплейт и одинаковые скелеты в пяти сервисах.</td>
+      </tr>
+      <tr>
+        <td>HTTP</td><td><strong>chi v5</strong> поверх <code>net/http</code></td>
+        <td>Тонкий роутер: группы, middleware (timeout, recoverer, request-logger), совместимость со стандартным
+            <code>http.Handler</code> — SSE и потоковая загрузка пишутся руками без борьбы с фреймворком.</td>
+        <td><em>gin/echo/fiber</em> — свой контекст и больше магии; <em>stdlib ServeMux</em> — можно, но группы и
+            middleware пришлось бы писать самим. Цена: минимальная, chi почти не навязывает стиль.</td>
+      </tr>
+      <tr>
+        <td>Конфигурация</td><td><strong>caarlos0/env</strong> + <code>buildconfig</code> (запечатанный JSON)</td>
+        <td>Типизированный парсинг env со значениями по умолчанию; в проде — конфиг внутри бинарника, чтобы на
+            сервере не было файла с секретами и чтобы конфигурация откатывалась вместе с релизом.</td>
+        <td><em>Viper + файлы</em> — тяжёлая зависимость и «где мой конфиг» в контейнере; <em>Vault/секреты оркестратора</em> —
+            правильно для прода, но требует инфраструктуры. Цена: смена настройки = пересборка образа.</td>
+      </tr>
+      <tr>
+        <td>Логи и наблюдаемость</td><td><strong>slog</strong> (JSON) + сквозной <code>x-request-id</code>, <code>/healthz</code> и <code>/readyz</code></td>
+        <td>Стандартная библиотека вместо стороннего логгера, единый request-id проходит HTTP → gRPC metadata → логи.
+            Readiness проверяет реальные зависимости (БД, NATS, соседние gRPC), а не «процесс жив».</td>
+        <td><em>zap/zerolog</em> — быстрее, но лишняя зависимость. Цена текущего выбора: <strong>нет метрик Prometheus и
+            трассировки</strong> — это зафиксированный долг, а не забывчивость.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>9.2. Данные и транспорт</h3>
+  <table>
+    <thead><tr><th style="width:16%">Слой</th><th style="width:18%">Выбор</th><th style="width:36%">Почему именно так</th><th>Альтернативы и цена решения</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>СУБД</td><td><strong>PostgreSQL 17</strong> + <code>pg_trgm</code></td>
+        <td>Нужны одновременно: транзакции и advisory-локи (баланс лицензий), нечёткий поиск по именам ПО и текстам
+            соглашений (GIN + gin_trgm_ops), агрегаты для дашборда, JSONB для заключений EULA. Всё это — одна СУБД,
+            без отдельного поискового кластера.</td>
+        <td><em>Elasticsearch/OpenSearch</em> для мэтчинга — отдельный кластер, синхронизация, эксплуатация; для
+            десятков тысяч строк pg_trgm достаточно. <em>MySQL</em> — нет pg_trgm и advisory-локов в таком виде.
+            Цена: нечёткий поиск на триграммах слабее семантического (см. проблему редакций Visual Studio).</td>
+      </tr>
+      <tr>
+        <td>Доступ к БД</td><td><strong>pgx v5</strong> (пул) + <strong>goose</strong> с <code>embed</code></td>
+        <td>Нативный протокол и явный SQL — критично для data explorer с белыми списками и для транзакционной
+            синхронизации. Миграции внутри бинарника применяются при старте под session advisory-локом: нет отдельного
+            шага деплоя и безопасно при нескольких репликах.</td>
+        <td><em>GORM/sqlc</em> — ORM прячет SQL (а здесь SQL и есть продукт), sqlc подошёл бы, но добавил бы кодген.
+            Цена: SQL пишется руками, миграции необратимы при откате релиза — нужен обратно совместимый DDL.</td>
+      </tr>
+      <tr>
+        <td>Изоляция данных</td><td><strong>Три БД в одном инстансе</strong>, три пользователя</td>
+        <td>Логическое «database per service» без трёх кластеров: сервис не может прочитать чужие таблицы, у каждого
+            свои миграции и свой пользователь. Экономия памяти и эксплуатационных расходов на одной ВМ.</td>
+        <td><em>Одна схема на всех</em> — быстрее, но убивает границу владения; <em>три кластера</em> — правильная
+            изоляция, но неоправданно для MVP. Цена: общий инстанс = общая точка отказа и общий ресурс.</td>
+      </tr>
+      <tr>
+        <td>Асинхронный транспорт</td><td><strong>NATS JetStream</strong>, поток <code>INVENTORY</code> (WorkQueue, file)</td>
+        <td>Нужны: очередь задач с подтверждением, повторы с ограничением попыток, backpressure, дедупликация публикации
+            и переживание рестарта. JetStream даёт всё это одним бинарником: <code>AckWait</code>, <code>MaxDeliver</code>,
+            <code>MaxAckPending</code>, <code>Nats-Msg-Id</code>, WorkQueue-retention (сообщение уходит после Ack).</td>
+        <td><em>Kafka</em> — избыточен: партиции, retention-политики, отдельная эксплуатация ради одного потока;
+            <em>RabbitMQ</em> — сопоставим, но дедупликацию пришлось бы делать самим; <em>Redis Streams</em> — проще,
+            но слабее семантика повторов/дедупа. Цена: команда должна знать JetStream (нюансы Ack/Term/Nak).</td>
+      </tr>
+      <tr>
+        <td>Синхронный транспорт</td><td><strong>gRPC + protobuf</strong> (<code>buf</code>, пакеты <code>*.v1</code>)</td>
+        <td>Строгий контракт между сервисами, версионирование, кодогенерация для Go, server-streaming для ответов
+            ассистента, единый маппинг ошибок в <code>apperr</code>, retry-политика на UNAVAILABLE и проброс метаданных
+            (токен, request-id) — всё в одном механизме.</td>
+        <td><em>Внутренний REST</em> — проще на старте, но нетипизированный контракт и ручной стриминг.
+            Цена: нужен codegen (<code>make proto</code> через <code>go run</code>, локальная установка buf не нужна)
+            и <strong>внутри сети gRPC без TLS</strong> — доверие построено на изоляции docker-сети.</td>
+      </tr>
+      <tr>
+        <td>Шлюз</td><td><strong>nginx</strong>, а не собственный API-сервис</td>
+        <td>Маршрутизация, лимиты тела и частоты, CORS, request-id, статика Swagger — это конфигурация, а не код.
+            Отдельный сервис-шлюз добавил бы сетевой хоп, точку отказа и соблазн вынести туда авторизацию.</td>
+        <td><em>Kong/Traefik/Envoy</em> — динамика и сервис-дискавери, но тяжелее; <em>свой Go-gateway</em> — лишний код.
+            Цена: нет динамического роутинга, апстримы резолвятся через Docker DNS (<code>resolve</code> + keepalive).</td>
+      </tr>
+      <tr>
+        <td>Кэш</td><td><strong>hashicorp/golang-lru</strong> (expirable) + <strong>singleflight</strong></td>
+        <td>В парке тысячи одинаковых строк ПО: LRU на 10 000 ключей с TTL 600 с снимает основную нагрузку с license и
+            LLM, singleflight не даёт «стаду» одинаковых запросов к модели.</td>
+        <td><em>Redis</em> — общий кэш и инвалидирование по событию, но ещё один компонент. Цена локального кэша:
+            устаревшие alias до 10 минут и отсутствие общего кэша при масштабировании worker'ов.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>9.3. Безопасность и AI</h3>
+  <table>
+    <thead><tr><th style="width:16%">Слой</th><th style="width:18%">Выбор</th><th style="width:36%">Почему именно так</th><th>Альтернативы и цена решения</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Аутентификация</td><td>Внешний IdP + <strong>RS256</strong> в каждом сервисе; межсервисные <strong>HS256</strong></td>
+        <td>По ТЗ IdP внешний: сервисы не хранят пароли и только проверяют подпись публичным ключом. Асимметрия
+            позволяет раздавать ключ всем сервисам без риска подделки. Служебные токены — отдельный issuer и сервисные
+            роли, ротация одним секретом; пользовательским токеном сервисную роль не получить.</td>
+        <td><em>Сессии/куки</em> — сложнее для API и агента; <em>общий HS256 для всех</em> — любой сервис смог бы
+            выпустить пользовательский токен. Цена: два механизма и аккуратный проброс контекста.</td>
+      </tr>
+      <tr>
+        <td>Авторизация</td><td>RBAC в <strong>сервисном слое license</strong> + scope в SQL, allowlist инструментов в llm</td>
+        <td>Данные режутся там, где они живут. Промпт — не граница безопасности: даже успешная prompt-инъекция
+            упирается в роль токена. Один и тот же код обслуживает UI, экспорт и ассистента.</td>
+        <td><em>Авторизация на шлюзе</em> — обходится прямым вызовом внутри сети; <em>права в промпте</em> — обходится
+            формулировкой вопроса. Цена: дублирование проверок в HTTP- и gRPC-транспортах.</td>
+      </tr>
+      <tr>
+        <td>LLM-провайдер</td><td><strong>GigaChat</strong> (основной), OpenAI-compatible, <strong>mock</strong> по умолчанию</td>
+        <td>Российский контур: GigaChat доступен без зарубежных карт, поддерживает function calling и русский язык,
+            работает с сертификатом НУЦ Минцифры. Абстракция провайдера делает модель конфигурацией, а mock позволяет
+            поднять весь стек без ключей и получить детерминированное демо (<code>[DEMO]</code>).</td>
+        <td><em>OpenAI/Claude</em> — сильнее в рассуждениях, но недоступны в контуре заказчика; <em>локальная модель</em> —
+            нужен GPU. Цена GigaChat: OAuth с кэшем токена и повтором на 401, отдельный CA, жёсткие лимиты
+            (отсюда семафор = 1 и retry на 429), Ultra требует нового адреса API.</td>
+      </tr>
+      <tr>
+        <td>Данные для модели</td><td><strong>Инструменты + белые списки</strong> вместо Text-to-SQL</td>
+        <td>Модель выбирает датасет, фильтры и группировку из разрешённого набора; SQL собирает сервис, агрегацию
+            делает БД. Ответ детерминирован, объясним и совпадает с дашбордом.</td>
+        <td><em>Генерация SQL моделью</em> — гибче для произвольных вопросов, но инъекции, галлюцинации и обход RBAC;
+            <em>RAG по документам</em> — не отвечает на «сколько лицензий простаивает». Цена: набор датасетов фиксирован,
+            новый вопрос требует доработки кода.</td>
+      </tr>
+      <tr>
+        <td>Стриминг ответа</td><td><strong>SSE</strong> (chat → браузер) + gRPC-stream (llm → chat)</td>
+        <td>Поток односторонний, работает через обычные прокси, не требует отдельного протокола и состояния соединения;
+            в браузере — простой парсер событий. Достаточно для «печатается ответ».</td>
+        <td><em>WebSocket</em> — двунаправленность не нужна, а прокси-настройка и состояние сложнее; <em>long polling</em> —
+            задержки и лишние запросы. Цена: нужны <code>proxy_buffering off</code> и длинные таймауты (сделано в nginx).</td>
+      </tr>
+      <tr>
+        <td>Промпты</td><td><strong>embed + версии</strong> (<code>matching-v1</code>, <code>eula-v1</code>)</td>
+        <td>Промпт — часть контракта: он версионируется вместе с кодом, а заключение EULA кэшируется по хэшу текста и
+            версии промпта. Смена промпта автоматически инвалидирует кэш.</td>
+        <td><em>Промпты в БД/внешнем сервисе</em> — правки без релиза, но теряется воспроизводимость и ревью.
+            Цена: изменение промпта требует сборки.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>9.4. Эксплуатация и поставка</h3>
+  <table>
+    <thead><tr><th style="width:16%">Слой</th><th style="width:18%">Выбор</th><th style="width:36%">Почему именно так</th><th>Альтернативы и цена решения</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Оркестрация</td><td><strong>Docker Compose</strong>, а не Kubernetes</td>
+        <td>Один сервер, семь контейнеров, необходимости в автоскейлинге нет. Compose даёт детерминированный стек,
+            healthcheck-зависимости и простой откат. Kubernetes на хакатоне — недели инфраструктуры вместо продукта.</td>
+        <td><em>k8s/Nomad</em> — HA и rollout из коробки, но несоразмерная сложность. Цена: нет HA и автоскейлинга,
+            масштабирование worker'ов — вручную (<code>WORKER_REPLICAS</code>).</td>
+      </tr>
+      <tr>
+        <td>Образы</td><td><strong>multi-stage → distroless static nonroot</strong>, <code>-trimpath -ldflags="-s -w"</code></td>
+        <td>Минимальная поверхность атаки: нет shell, пакетного менеджера и лишних бинарников; процесс не root.
+            HEALTHCHECK сделан подкомандой того же бинарника — иначе в distroless нечем проверять здоровье.</td>
+        <td><em>alpine</em> — есть shell (удобно отлаживать), но больше CVE-поверхность; <em>scratch</em> — то же, что
+            distroless, но без CA-сертификатов и nonroot-пользователя. Цена: нельзя «зайти в контейнер и посмотреть».</td>
+      </tr>
+      <tr>
+        <td>Доставка</td><td><strong>CD без реестра</strong>: bake → tar-артефакт → SSH → docker load → compose up --wait</td>
+        <td>Нет приватного registry и бюджета на него; артефакт GitHub Actions — готовое хранилище релизов.
+            Релиз атомарен: образы + compose + манифест едут вместе, checksum проверяется, место на диске проверяется заранее.</td>
+        <td><em>GHCR/Docker Hub + pull на сервере</em> — стандартнее и легче по трафику, но нужен реестр и доступы.
+            Цена: большие артефакты, доставка только на один хост, инфраструктурные образы должны быть заранее.</td>
+      </tr>
+      <tr>
+        <td>Инструмент деплоя</td><td>Собственная <strong>Go-утилита</strong> в <code>.github/scripts/release</code> с тестами</td>
+        <td>Один статический бинарник и на runner, и на сервере — без bash-зоопарка и зависимостей. Логика (lock,
+            pending-состояние, откат, сборка мусора, хранение двух релизов) покрыта тестами и проверяется в CI.</td>
+        <td><em>Ansible/bash</em> — быстрее написать, но труднее сделать идемпотентно и протестировать.
+            Цена: ~1000 строк собственного кода, который тоже надо поддерживать.</td>
+      </tr>
+      <tr>
+        <td>Контракт API</td><td><strong>OpenAPI</strong> в репозитории + Swagger UI локально (вендор)</td>
+        <td>Единый источник правды для фронта и ревью; документация работает без интернета и без авторизации,
+            при этом сами ручки остаются защищёнными.</td>
+        <td><em>Генерация из кода</em> — меньше рассинхрона, но нужен инструмент; сейчас спецификация ведётся вручную,
+            и это риск дрейфа. Цена: спеку надо не забывать обновлять.</td>
+      </tr>
+      <tr>
+        <td>Прикладные утилиты</td><td>Свой <strong>XLSX- writer</strong> и <strong>doctext</strong> на stdlib</td>
+        <td>Экспорт — одна таблица (шапка + строки): 150 строк zip/XML вместо тяжёлой зависимости. Разбор PDF/DOCX —
+            библиотека + stdlib, без внешних бинарников, что критично для distroless.</td>
+        <td><em>excelize</em> — богаче (стили, формулы), но большая зависимость; <em>tika/pandoc</em> — не положить в
+            distroless. Цена: нет стилей и формул в экспорте, PDF со сложной вёрсткой может извлекаться плохо.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <strong>Общая логика выбора.</strong> Стек последовательно оптимизирован под три ограничения хакатона:
+    <em>один сервер</em>, <em>российский контур</em> и <em>демо без ключей</em>. Отсюда Go + Compose + один PostgreSQL +
+    NATS вместо Kafka + GigaChat с mock по умолчанию + доставка без реестра. Каждое «упрощение» зафиксировано
+    вместе с его ценой — это редкая и правильная инженерная дисциплина.
+  </div>
+</section>
+
+<section id="s10">
+  <h2><span class="num">10</span>Фронтенд: архитектура и обоснование</h2>
+  <p class="lead">SPA на React 19 + TypeScript, ~6 200 строк исходников и ~3 000 строк сгенерированного клиента.
+  Ключевая особенность — <strong>типизированный клиент генерируется из живого OpenAPI</strong>, а состояние
+  привязано к «эпохе сессии», чтобы переключение роли не показывало чужие данные.</p>
+
+  <figure>
+  <svg viewBox="0 0 1160 430" role="img" aria-label="Структура фронтенда">
+    <rect class="box svc" x="20" y="30" width="250" height="120" rx="11"/>
+    <text class="t" x="36" y="56">src/routes — файловый роутинг</text>
+    <text class="s" x="36" y="76">TanStack Router, авто-кодсплит</text>
+    <text class="s" x="36" y="93">__root → _authenticated → _admin</text>
+    <text class="s" x="36" y="110">guards выполняются до loaders</text>
+    <text class="s2" x="36" y="132">21 маршрут: каталог, устройства, импорты,</text>
+    <text class="s2" x="36" y="146">соглашения, договоры, баланс, аудит</text>
+
+    <rect class="box svc" x="300" y="30" width="250" height="120" rx="11"/>
+    <text class="t" x="316" y="56">src/features — модули</text>
+    <text class="s" x="316" y="76">software · devices · imports</text>
+    <text class="s" x="316" y="93">agreements · contracts · installations</text>
+    <text class="s" x="316" y="110">model.ts (типы) + queries.ts (хуки)</text>
+    <text class="s2" x="316" y="132">ключ кэша = роль + эпоха + фильтры,</text>
+    <text class="s2" x="316" y="146">смена роли не отдаёт данные прошлой роли</text>
+
+    <rect class="box" x="580" y="30" width="250" height="120" rx="11"/>
+    <text class="t" x="596" y="56">src/components</text>
+    <text class="s" x="596" y="76">ui — shadcn / Base UI (доступность)</text>
+    <text class="s" x="596" y="93">shared — DataTable, states, guards</text>
+    <text class="s" x="596" y="110">layout — app-shell с ролевым меню</text>
+    <text class="s2" x="596" y="132">DataTable берёт ответ data explorer:</text>
+    <text class="s2" x="596" y="146">columns / rows / total / shown</text>
+
+    <rect class="box ai" x="860" y="30" width="280" height="120" rx="11"/>
+    <text class="t" x="876" y="56">generated/api — кодген apicraft</text>
+    <text class="s" x="876" y="76">источник: /api/v1/docs/openapi.yaml стенда</text>
+    <text class="s" x="876" y="93">группировка по тегам, имя по пути</text>
+    <text class="s" x="876" y="110">59 типизированных функций + types.gen.ts</text>
+    <text class="s2" x="876" y="132">не правится руками; normalize-api-imports.mjs</text>
+    <text class="s2" x="876" y="146">чинит пути после генерации на Windows</text>
+
+    <rect class="box infra" x="300" y="200" width="530" height="110" rx="11"/>
+    <text class="t" x="316" y="226">src/utils/lib/instance.ts — единственный Axios-инстанс</text>
+    <text class="s" x="316" y="246">baseURL /api/v1 · токен из localStorage перед каждым запросом</text>
+    <text class="s" x="316" y="263">AbortSignal эпохи сессии · отмена «поздних» ответов прошлой роли</text>
+    <text class="s" x="316" y="280">нормализация ошибок в ApiError {status, code, message, requestId}</text>
+    <text class="s2" x="316" y="299">401 очищает защищённые данные; GET повторяется ≤ 2 раз на сеть/5xx, мутации не повторяются</text>
+
+    <rect class="box" x="20" y="200" width="250" height="110" rx="11"/>
+    <text class="t" x="36" y="226">src/app/auth — демо-сессия</text>
+    <text class="s" x="36" y="246">переключатель USER / ADMIN</text>
+    <text class="s" x="36" y="263">смена роли: abort → clear → токен</text>
+    <text class="s" x="36" y="280">синхронизация вкладок через storage</text>
+    <text class="s2" x="36" y="299">демо-JWT: src/utils/constants/tokens.ts</text>
+
+    <rect class="box data" x="860" y="200" width="280" height="110" rx="11"/>
+    <text class="t" x="876" y="226">Доставка</text>
+    <text class="s" x="876" y="246">Vite build → статика</text>
+    <text class="s" x="876" y="263">nginx:stable-alpine, SPA fallback</text>
+    <text class="s" x="876" y="280">/api/v1 → reverse proxy на бэкенд</text>
+    <text class="s2" x="876" y="299">тот же прокси в vite dev — CORS не нужен вообще</text>
+
+    <path class="e" d="M 270 90 H 296" marker-end="url(#ar)"/>
+    <path class="e" d="M 550 90 H 576" marker-end="url(#ar)"/>
+    <path class="e" d="M 830 90 H 856" marker-end="url(#ar)"/>
+    <path class="e-v" d="M 1000 150 V 175 H 700 V 196" marker-end="url(#ar-v)"/>
+    <path class="e" d="M 145 150 V 175 H 420 V 196" marker-end="url(#ar)"/>
+    <path class="e-b" d="M 565 310 V 340 H 1000 V 314" marker-end="url(#ar-b)"/>
+
+    <rect class="box band" x="20" y="350" width="1120" height="60" rx="10"/>
+    <text class="s" x="40" y="374">Проверки: pnpm typecheck · node --test (6 наборов тестов без тест-фреймворка) · eslint/prettier · сборка в CI.</text>
+    <text class="s" x="40" y="394">Контракт меняется → pnpm generate-api; маршруты → pnpm generate-routes. Сгенерированное не правится руками.</text>
+  </svg>
+  <figcaption>Схема 7. Слои фронтенда: маршруты → предметные модули → генерируемый клиент → единый транспорт.</figcaption>
+  </figure>
+
+  <table>
+    <thead><tr><th style="width:20%">Выбор</th><th style="width:42%">Почему</th><th>Цена / альтернатива</th></tr></thead>
+    <tbody>
+      <tr><td><strong>SPA (Vite), не SSR/Next.js</strong></td>
+        <td>Админка за авторизацией: SEO не нужен, серверный рендеринг не нужен, статика отдаётся nginx и кэшируется навечно.
+            Меньше инфраструктуры — нет Node-сервера в проде.</td>
+        <td>Первый рендер требует загрузки бандла; смягчено авто-кодсплитом маршрутов.</td></tr>
+      <tr><td><strong>TanStack Router</strong></td>
+        <td>Файловые маршруты с типизированными параметрами и поисковыми строками, loader-ы и guards до предзагрузки —
+            ролевые разделы закрыты на уровне маршрутизации (<code>_authenticated</code>, <code>_admin</code>).</td>
+        <td>Молодая экосистема и генерация routeTree; альтернатива React Router — меньше типобезопасности.</td></tr>
+      <tr><td><strong>TanStack Query</strong></td>
+        <td>Кэш, инвалидация, отмена и повторы из коробки. Ключ кэша включает роль и «эпоху» сессии — это решает
+            реальную проблему демо: переключил роль и не увидел данные предыдущей.</td>
+        <td>Требует дисциплины в ключах; альтернатива — ручной стор и гонки запросов.</td></tr>
+      <tr><td><strong>Кодогенерация клиента (apicraft)</strong></td>
+        <td>OpenAPI — единственный источник правды: типы ответов и параметры приходят из контракта, ручных fetch-обёрток нет,
+            рассинхрон с бэкендом ловится на <code>typecheck</code>.</td>
+        <td>Генерация зависит от доступности стенда; при изменении контракта нужна перегенерация.</td></tr>
+      <tr><td><strong>Tailwind 4 + shadcn / Base UI</strong></td>
+        <td>Скорость сборки интерфейсов и доступность «из коробки» (фокус, клавиатура, ARIA) без собственной дизайн-системы —
+            критично, когда UI делает один человек за дни.</td>
+        <td>Зависимость от версий компонент-библиотеки; альтернатива — MUI/AntD с более тяжёлым стилем.</td></tr>
+      <tr><td><strong>zod + react-hook-form</strong></td>
+        <td>Валидация форм каталога, договоров и устройств на клиенте с типами из схемы; сервер всё равно проверяет заново.</td>
+        <td>Двойная валидация (клиент + сервер) — осознанное дублирование ради UX.</td></tr>
+      <tr><td><strong>Один Axios-инстанс</strong></td>
+        <td>Токен, отмена, нормализованные ошибки и обработка 401 в одном месте; компоненты не знают про HTTP.</td>
+        <td>Собственная логика «эпох» нетривиальна; альтернатива fetch + обёртки — то же самое, но вручную.</td></tr>
+      <tr><td><strong>Reverse proxy вместо CORS</strong></td>
+        <td>И в dev (vite), и в проде (nginx) <code>/api/v1</code> проксируется на бэкенд: браузер видит один origin,
+            CORS-проблем нет, токен не уходит на сторонний домен.</td>
+        <td>Адрес бэкенда зашит в конфиг прокси — для другого стенда его надо параметризовать.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="s11">
+  <h2><span class="num">11</span>Сильные стороны, риски и техдолг</h2>
+
+  <h3>Что сделано заметно лучше среднего хакатон-проекта</h3>
+  <div class="grid">
+    <div class="cardlet"><h4>1. Идемпотентность сквозная</h4><p>Дедуп NATS + lease/attempt_token + processed_snapshots + finding_key. Это уровень продакшн-размышлений, а не демо.</p></div>
+    <div class="cardlet"><h4>2. LLM в клетке</h4><p>Выбор из кандидатов, валидация ответа, allowlist инструментов, лимиты токенов и итераций, деградация в ручную проверку.</p></div>
+    <div class="cardlet"><h4>3. RBAC там, где данные</h4><p>Проброс пользовательского JWT через два сервиса и фильтрация в SQL — обход промпта не даёт данных.</p></div>
+    <div class="cardlet"><h4>4. Единый контракт ошибок</h4><p><code>{error:{code,message,request_id}}</code>, маппинг kind → HTTP/gRPC, пагинация page/limit — фронт предсказуем.</p></div>
+    <div class="cardlet"><h4>5. Откатываемый деплой</h4><p>Атомарный релиз, checksum, preflight диска, --wait, verify по HTTPS, автоматический rollback, два успешных релиза.</p></div>
+    <div class="cardlet"><h4>6. Честность модели</h4><p><code>get_data_capabilities</code> и <code>UNSUPPORTED_METRIC</code> — система прямо говорит, чего она не знает, вместо галлюцинаций.</p></div>
+    <div class="cardlet"><h4>7. Документированные решения</h4><p><code>docs/decisions.md</code>: 21 решение с обоснованием и отдельный список известных ограничений. Редкость.</p></div>
+    <div class="cardlet"><h4>8. Наблюдаемость на минималках, но сквозная</h4><p>request-id из nginx проходит через HTTP и gRPC в логи всех сервисов; readiness проверяет зависимости.</p></div>
+  </div>
+
+  <h3>Риски и что бы я сделал в первую очередь</h3>
+  <table>
+    <thead><tr><th style="width:8%">Приоритет</th><th style="width:26%">Риск</th><th style="width:33%">Последствие</th><th>Рекомендация</th></tr></thead>
+    <tbody>
+      <tr><td><span class="chip c-red">P1</span></td><td>Нет transactional outbox между <code>inventory_db</code> и NATS</td>
+        <td>Падение processor в окне «записал снимок — не опубликовал» теряет задачу; сейчас спасает авто-возобновление и retry.</td>
+        <td>Таблица outbox в той же транзакции + отдельный publisher-луп (или Debezium/CDC). Это же снимает нагрузку на компенсационные механизмы.</td></tr>
+      <tr><td><span class="chip c-red">P1</span></td><td>По одному экземпляру PostgreSQL, NATS и сервисов</td>
+        <td>Любой сбой — полный простой; потеря тома postgres = потеря учёта.</td>
+        <td>Бэкапы PostgreSQL (WAL/PITR) прежде всего, затем реплики сервисов за nginx и NATS-кластер. Compose уже поддерживает <code>WORKER_REPLICAS</code>.</td></tr>
+      <tr><td><span class="chip c-red">P1</span></td><td>Секреты запечатаны в образ, один <code>JWT_SERVICE_SECRET</code> на все сервисы</td>
+        <td>Утечка образа = утечка конфигурации; ротация секрета требует пересборки всех сервисов.</td>
+        <td>Docker secrets / sops / Vault, отдельные секреты на сервис, короткоживущие сервисные токены. Публичный PEM внутри образа — нормально, секреты — нет.</td></tr>
+      <tr><td><span class="chip c-red">P1</span></td><td>Демо-JWT захардкожены во фронте, refresh отсутствует</td>
+        <td>Для стенда допустимо, для прода — фактически вечный публичный доступ.</td>
+        <td>Подключить внешний IdP (OIDC + PKCE), убрать токены из репозитория, оставить демо-режим только для локального стенда.</td></tr>
+      <tr><td><span class="chip c-amber">P2</span></td><td>Бюджет токенов и «один активный запрос» — в памяти процесса</td>
+        <td>При масштабировании лимиты обходятся, после рестарта обнуляются.</td>
+        <td>Redis или таблица в PostgreSQL со счётчиком на пользователя/сутки; распределённая блокировка активного запроса.</td></tr>
+      <tr><td><span class="chip c-amber">P2</span></td><td><code>QueryData</code> для ADMIN считает баланс по всему каталогу на каждый запрос</td>
+        <td>Каждая страница установок тянет полный расчёт балансов — рост стоимости с ростом парка.</td>
+        <td>Материализованное представление баланса с обновлением при пересчёте комплаенса либо кэш на короткий TTL.</td></tr>
+      <tr><td><span class="chip c-amber">P2</span></td><td>Локальный LRU-кэш сопоставлений (TTL 600 с)</td>
+        <td>После правки alias worker до 10 минут использует старое решение; при нескольких репликах кэши расходятся.</td>
+        <td>Общий кэш + инвалидирование по событию изменения alias (NATS уже есть).</td></tr>
+      <tr><td><span class="chip c-amber">P2</span></td><td>Нет метрик и трассировки</td>
+        <td>Инциденты разбираются по логам; узкие места (LLM, батчи, комплаенс) не видны численно.</td>
+        <td>Prometheus-метрики (латентность ручек, длина очереди, доля UNKNOWN, токены/сутки) + OpenTelemetry поверх уже существующего request-id.</td></tr>
+      <tr><td><span class="chip c-amber">P2</span></td><td>Группировка CSV в памяти</td>
+        <td>50 МБ укладываются, но лимит жёсткий: файл на порядок больше упрётся в память.</td>
+        <td>Потоковая группировка по отсортированному ключу или внешняя сортировка; лимит тела оставить как защиту.</td></tr>
+      <tr><td><span class="chip c-gray">P3</span></td><td>gRPC внутри сети без TLS</td>
+        <td>Доверие построено на изоляции docker-сети; при переезде на несколько хостов трафик пойдёт открытым.</td>
+        <td>mTLS или service mesh при выходе за пределы одного хоста.</td></tr>
+      <tr><td><span class="chip c-gray">P3</span></td><td>Адрес бэкенда зашит в прокси фронта и в apicraft-конфиг</td>
+        <td>Развернуть другой стенд без правки исходников нельзя.</td>
+        <td>Параметризовать через переменную окружения сборки/шаблон nginx.</td></tr>
+      <tr><td><span class="chip c-gray">P3</span></td><td>Метрика <code>CONCURRENT</code> не проверяется, агент не аутентифицируется отдельно</td>
+        <td>Часть лицензионных моделей остаётся вне контроля; роль <code>INVENTORY_AGENT</code> объявлена, но не используется.</td>
+        <td>Источник данных о сессиях (агент/терминальный сервер) и отдельный клиентский токен для агента.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="s12">
+  <h2><span class="num">12</span>Расхождения документации и кода · карта репозитория</h2>
+
+  <h3>Что стоит поправить в документации</h3>
+  <table>
+    <thead><tr><th style="width:34%">Утверждение в docs</th><th>Факт по коду</th></tr></thead>
+    <tbody>
+      <tr><td><code>README</code> и <code>architecture.md</code>: агент шлёт JSON на <code>POST /api/v1/agent/inventory</code></td>
+        <td>Такого маршрута нет ни в nginx (<code>snippets/api.conf</code>), ни в роутере processor — есть только <code>/api/v1/imports*</code>. Роль <code>INVENTORY_AGENT</code> в <code>pkg/auth</code> объявлена, но не задействована.</td></tr>
+      <tr><td><code>decisions.md</code>: «Тесты не входят в поставку по требованию»</td>
+        <td>В репозитории есть Go-тесты (<code>buildconfig</code>, <code>gigachat</code>, <code>tools</code>) и 6 наборов фронт-тестов на <code>node:test</code>; CI гоняет <code>go test -race</code>. Утверждение устарело.</td></tr>
+      <tr><td><code>decisions.md</code>: «devtoken подписывает токены для трёх демо-пользователей»</td>
+        <td>Демо-пользователей два: <code>user</code> (USER, PC-001) и <code>admin</code> (ADMIN) — так же и во фронте.</td></tr>
+      <tr><td><code>README</code>: базовый адрес GigaChat <code>gigachat.devices.sberbank.ru</code></td>
+        <td>Это значение по умолчанию в compose, но для <code>GigaChat-3-Ultra</code> нужен <code>api.giga.chat/v1</code> — в README предупреждение есть, а дефолт остался старым.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Карта репозитория: куда смотреть</h3>
+  <table>
+    <thead><tr><th style="width:34%">Путь</th><th>Что там и зачем открывать</th></tr></thead>
+    <tbody>
+      <tr><td><code>back/docs/architecture.md</code>, <code>back/docs/decisions.md</code></td><td>Первоисточник замысла: схема, владение данными, 21 решение и список ограничений. Читать первым.</td></tr>
+      <tr><td><code>back/api/openapi.yaml</code></td><td>Контракт REST: 42 пути, 59 операций. Из него генерируется клиент фронта.</td></tr>
+      <tr><td><code>back/proto/{license,llm}/v1/*.proto</code></td><td>Внутренние контракты: ResolveSoftwareBatch, SaveMatchingSuggestion, SyncInventory, RunQuery, MatchSoftware, Chat (stream), AnalyzeAgreement.</td></tr>
+      <tr><td><code>back/services/license/internal/domain/compliance.go</code></td><td>Правила нарушений — сердце продукта, чистая логика без БД.</td></tr>
+      <tr><td><code>back/services/license/internal/domain/matching.go</code></td><td>Пороги и решение DecideMatch / AcceptSuggestion — вся политика сопоставления в одном файле.</td></tr>
+      <tr><td><code>back/services/license/internal/repository/postgres/explorer.go</code></td><td>Белые списки датасетов, колонок, фильтров и группировок — как именно ограничен «Text-to-SQL».</td></tr>
+      <tr><td><code>back/services/processor/internal/service/service.go</code></td><td>Жизненный цикл импорта: приём, парсинг, публикация, повторы, retention.</td></tr>
+      <tr><td><code>back/services/worker/internal/{service,matching}</code></td><td>Lease, heartbeat, каскад сопоставления, кэш и singleflight.</td></tr>
+      <tr><td><code>back/services/llm/internal/{tools,prompts,provider}</code></td><td>Allowlist инструментов по ролям, тексты промптов, адаптеры GigaChat/OpenAI/mock.</td></tr>
+      <tr><td><code>back/deploy/nginx/snippets/api.conf</code></td><td>Реальная карта маршрутов шлюза — точнее любого описания.</td></tr>
+      <tr><td><code>.github/scripts/release/main.go</code></td><td>Логика доставки, проверки, отката и хранения релизов.</td></tr>
+      <tr><td><code>front/src/utils/lib/instance.ts</code>, <code>front/src/app/auth/session.ts</code></td><td>Транспорт и «эпохи» сессии — самая тонкая часть фронта.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Соответствие заданию хакатона</h3>
+  <table>
+    <thead><tr><th style="width:34%">Требование</th><th style="width:14%">Статус</th><th>Где реализовано</th></tr></thead>
+    <tbody>
+      <tr><td>Каталог разрешённого ПО с типами лицензий и количеством мест</td><td><span class="chip c-green">есть</span></td><td>license: software_products / versions / agreements, license_entitlements, договоры</td></tr>
+      <tr><td>База сотрудников и закреплённых устройств</td><td><span class="chip c-green">есть</span></td><td>license: devices (responsible, location, employee_id), карточка устройства и «Мой компьютер»</td></tr>
+      <tr><td>Коннектор сбора данных (имитация агента через CSV)</td><td><span class="chip c-green">есть</span></td><td>processor + worker: импорт с предпросмотром, подтверждением, ошибками строк и повтором</td></tr>
+      <tr><td>Панель администратора: формы, экран комплаенса, подсветка рисков</td><td><span class="chip c-green">есть</span></td><td>front: дашборд, баланс «куплено vs установлено», нарушения, каталог, договоры, импорты, аудит</td></tr>
+      <tr><td>Кейс А — умный мэтчинг имён</td><td><span class="chip c-green">есть</span></td><td>Каскад alias → exact → pg_trgm → LLM → ручная проверка, пороги настраиваются</td></tr>
+      <tr><td>Кейс Б — AI-анализ EULA</td><td><span class="chip c-green">есть</span></td><td>Загрузка .txt/.pdf/.docx, анализ с рисками и цитатами, кэш, подтверждение администратором</td></tr>
+      <tr><td>Кейс В — чат-ассистент ИТ-директора</td><td><span class="chip c-green">есть</span></td><td>chat + llm + license: инструменты поверх данных, SSE, ролевые ограничения, ссылки на карточки, экспорт таблиц</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout good">
+    <strong>Итог архитектора.</strong> Это цельная, объяснимая система с правильно расставленными границами:
+    дешёвая детерминированная логика впереди дорогой вероятностной, права — на стороне данных, надёжность — на стороне
+    конвейера. Основные долги (outbox, HA, внешние счётчики лимитов, метрики) лежат ровно там, где и должны лежать
+    у MVP, собранного за хакатон, и все они локализованы: их можно закрывать по одному, не переписывая архитектуру.
+  </div>
+</section>
+
+<footer>
+  Разбор построен по исходному коду репозитория nizhdanov/sam-hackathon (main, commit 4c52965) · дата разбора: 15 ноября 2026 ·
+  схемы нарисованы по фактическим маршрутам nginx, compose-файлам, proto-контрактам и коду сервисов.
+</footer>
+
+</div>
+</body>
+</html>
