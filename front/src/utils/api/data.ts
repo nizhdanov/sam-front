@@ -50,7 +50,14 @@ const DATASETS = {
   }
 } satisfies Record<Dataset, { columns: string; filters: string; groups: string }>;
 
-const ADMIN_COLUMNS = new Set(['license_status', 'purchased', 'devices']);
+const ADMIN_COLUMNS = new Set([
+  'license_status',
+  'purchased',
+  'devices',
+  'responsible',
+  'location',
+  'comment'
+]);
 const booleanFilter = z.union([
   z.boolean(),
   z.enum(['true', 'false']).transform((value) => value === 'true')
@@ -177,7 +184,26 @@ export async function fetchDataTable(
   });
   if (response.status !== 200 || !dataTableSchema.safeParse(response.data).success)
     throw await readApiError(response.data, response.status);
-  return response.data;
+  const table = projectDataTable(
+    dataset,
+    role,
+    response.data,
+    typeof params.group_by === 'string' ? params.group_by : undefined
+  );
+  if (
+    dataset === 'findings' &&
+    role === 'ADMIN' &&
+    !params.group_by &&
+    table.rows.length &&
+    !table.columns.includes('finding_id')
+  )
+    throw new ApiError('Сервер не вернул ID нарушений. Обработка недоступна.');
+  if (role === 'USER' && typeof filters.serial_number === 'string' && !params.group_by) {
+    const serialIndex = table.columns.indexOf('serial_number');
+    if (table.rows.some((row) => serialIndex < 0 || row[serialIndex] !== filters.serial_number))
+      throw new ApiError('Сервер вернул записи другого устройства.');
+  }
+  return table;
 }
 
 export async function exportDataTable(

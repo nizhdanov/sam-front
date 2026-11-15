@@ -10,6 +10,7 @@ import type { DataFilters } from '@/utils/api/data';
 import { useDemoAuth } from '@/app/auth/context';
 import { DataTable } from '@/components/shared/data-table';
 import { ErrorState, LoadingState } from '@/components/shared/states';
+import { FINDING_SEVERITIES, FINDING_STATUSES, FINDING_TYPES } from '@/features/compliance/model';
 import { COST_MODELS, LICENSE_TYPES, PRODUCT_STATUSES } from '@/features/software/model';
 import { formatDataValue } from '@/utils/api/data';
 
@@ -36,17 +37,12 @@ export function renderInventoryCell(value: unknown, column: string) {
     status: {
       ...DEVICE_STATUSES,
       ...PRODUCT_STATUSES,
-      OPEN: 'Открыто',
-      ACKNOWLEDGED: 'Обработано, не устранено',
-      RESOLVED: 'Устранено'
+      ...FINDING_STATUSES
     },
     license_type: LICENSE_TYPES,
     cost_model: COST_MODELS,
-    finding_type: {
-      FORBIDDEN_SOFTWARE: 'Запрещённое ПО',
-      OUTDATED_SOFTWARE: 'Устаревшее ПО',
-      LICENSE_DEFICIT: 'Дефицит лицензий'
-    }
+    finding_type: FINDING_TYPES,
+    severity: FINDING_SEVERITIES
   };
   const options = Object.hasOwn(labels, column) ? labels[column] : undefined;
   const label =
@@ -57,7 +53,9 @@ export function renderInventoryCell(value: unknown, column: string) {
     <span
       className={cn({
         'text-brand-gold-foreground': column === 'status' && value === 'NEW',
-        'text-destructive': column === 'status' && value === 'FORBIDDEN'
+        'text-destructive':
+          (column === 'status' && value === 'FORBIDDEN') ||
+          (column === 'severity' && (value === 'HIGH' || value === 'CRITICAL'))
       })}
     >
       {label ?? formatDataValue(value)}
@@ -76,7 +74,11 @@ export function InventoryTable({
   filters: DataFilters;
   caption: string;
   onResetFilters?: () => void;
-  renderCell?: (value: unknown, column: string) => ReactNode;
+  renderCell?: (
+    value: unknown,
+    column: string,
+    row: Readonly<Record<string, unknown>>
+  ) => ReactNode;
 }) {
   const { auth } = useDemoAuth();
   const query = useQuery(inventoryTableOptions(auth, dataset, filters));

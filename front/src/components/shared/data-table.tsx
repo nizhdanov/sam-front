@@ -130,7 +130,11 @@ export function DataTable({
   caption: string;
   filters?: DataFilters;
   onResetFilters?: () => void;
-  renderCell?: (value: unknown, column: string) => ReactNode;
+  renderCell?: (
+    value: unknown,
+    column: string,
+    row: Readonly<Record<string, unknown>>
+  ) => ReactNode;
 }) {
   const { snapshot } = useDemoAuth();
   if (snapshot.status !== 'ready' || !snapshot.role) return null;
@@ -180,19 +184,22 @@ export function DataTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {table.rows.map((row, index) => (
-              // У read-only DataTable нет обязательного row ID, строки не редактируются и не сортируются на клиенте.
-              // eslint-disable-next-line react/no-array-index-key
-              <TableRow key={index}>
-                {table.columns.map((column, columnIndex) => (
-                  <TableCell key={column}>
-                    {renderCell
-                      ? renderCell(row[columnIndex], column)
-                      : formatDataValue(row[columnIndex])}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
+            {table.rows.map((row, index) => {
+              const values = Object.fromEntries(table.columns.map((name, i) => [name, row[i]]));
+              return (
+                // У DataTable нет обязательного row ID; состояние действий хранится по ID вне строк.
+                // eslint-disable-next-line react/no-array-index-key
+                <TableRow key={index}>
+                  {table.columns.map((column, columnIndex) => (
+                    <TableCell key={column}>
+                      {renderCell
+                        ? renderCell(row[columnIndex], column, values)
+                        : formatDataValue(row[columnIndex])}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       )}

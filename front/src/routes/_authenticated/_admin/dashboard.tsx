@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 
-import { SectionPlaceholder } from '@/components/shared/states';
+import { DashboardPage } from '@/features/compliance/dashboard-page';
 
 export const Route = createFileRoute('/_authenticated/_admin/dashboard')({
-  component: () => <SectionPlaceholder title='Обзор' />
+  component: DashboardPage
 });

@@ -7,6 +7,7 @@ import type { PatchApiV1DevicesByIdData } from '@/generated/api/types.gen';
 import type { DataFilters } from '@/utils/api/data';
 
 import { getDeviceById } from '@/generated/api/requests/devices/getDeviceById.gen';
+import { getMeDevice } from '@/generated/api/requests/devices/getMeDevice.gen';
 import { patchDeviceById } from '@/generated/api/requests/devices/patchDeviceById.gen';
 import { fetchDataTable } from '@/utils/api/data';
 import { ApiError } from '@/utils/api/errors';
@@ -34,8 +35,26 @@ export function deviceDetailOptions(auth: DemoAuth, id: string) {
     queryKey: ['devices', session.role, session.epoch, 'detail', id],
     queryFn: async ({ signal }) => {
       auth.requestConfig(session);
+      if (session.role === 'USER') {
+        const own = await getMeDevice({ config: { signal } });
+        const device = readDevice(own.data, session.role);
+        if (device.id !== id) throw new ApiError('Устройство недоступно.', { status: 404 });
+        return device;
+      }
       const response = await getDeviceById({ path: { id }, config: { signal } });
       return readDevice(response.data, session.role, id);
+    }
+  });
+}
+
+export function myDeviceOptions(auth: DemoAuth) {
+  const session = auth.requireReady();
+  return queryOptions({
+    queryKey: ['me', session.role, session.epoch, 'device'],
+    queryFn: async ({ signal }) => {
+      auth.requestConfig(session);
+      const response = await getMeDevice({ config: { signal } });
+      return readDevice(response.data, 'USER');
     }
   });
 }

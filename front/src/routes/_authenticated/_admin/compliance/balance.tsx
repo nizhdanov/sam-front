@@ -1,7 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router';
 
-import { SectionPlaceholder } from '@/components/shared/states';
+import { EmptyState } from '@/components/shared/states';
 
 export const Route = createFileRoute('/_authenticated/_admin/compliance/balance')({
-  component: () => <SectionPlaceholder title='Баланс лицензий' />
+  component: () => (
+    <EmptyState
+      description='Сводные показатели дефицита и свободных мест доступны в обзоре. Детализация по продуктам появится после подключения данных баланса.'
+      title={<h1>Баланс лицензий пока недоступен</h1>}
+    />
+  )
 });

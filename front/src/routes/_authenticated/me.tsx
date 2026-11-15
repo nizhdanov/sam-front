@@ -1,7 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
 
-import { SectionPlaceholder } from '@/components/shared/states';
+import { myDeviceSearchSchema } from '@/features/compliance/model';
+import { MyDevicePage } from '@/features/devices/my-device-page';
 
 export const Route = createFileRoute('/_authenticated/me')({
-  component: () => <SectionPlaceholder title='Мой компьютер' />
+  validateSearch: myDeviceSearchSchema,
+  component: MyDevicePage
 });

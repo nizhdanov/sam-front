@@ -1,7 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
 
-import { SectionPlaceholder } from '@/components/shared/states';
+import { FindingsPage } from '@/features/compliance/findings-page';
+import { findingsSearchSchema } from '@/features/compliance/model';
 
 export const Route = createFileRoute('/_authenticated/_admin/compliance/findings')({
-  component: () => <SectionPlaceholder title='Нарушения' />
+  validateSearch: findingsSearchSchema,
+  component: FindingsPage
 });

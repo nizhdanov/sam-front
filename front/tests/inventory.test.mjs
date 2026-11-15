@@ -275,6 +275,7 @@ test('generated HTTP: CSV/preview/confirm/cancel/retry, ошибки 400/409/413
             total_pages: 1
           }
         });
+      if (entry.path === '/me/device') return json(storedDevice);
       if (entry.path === `/devices/${id}`) {
         if (request.method === 'PATCH') {
           const chunks = [];

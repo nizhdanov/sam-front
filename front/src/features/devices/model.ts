@@ -65,10 +65,10 @@ const adminDeviceSchema = publicDeviceSchema.extend({
 export function readDevice(
   payload: unknown,
   role: DemoRole,
-  id: string
+  id?: string
 ): DeviceCard & { id: string; serial_number: string } {
   const parsed = (role === 'ADMIN' ? adminDeviceSchema : publicDeviceSchema).safeParse(payload);
-  if (!parsed.success || parsed.data.id !== id)
+  if (!parsed.success || (id !== undefined && parsed.data.id !== id))
     throw new ApiError('Сервер вернул некорректную карточку устройства.');
   return parsed.data;
 }
