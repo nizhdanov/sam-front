@@ -8,9 +8,11 @@ export const NAVIGATION = [
   { to: '/devices', label: 'Устройства', admin: true },
   { to: '/installations', label: 'Установки', admin: true },
   { to: '/imports', label: 'Импорт CSV', admin: true },
+  { to: '/matching', label: 'Smart Matching', admin: true },
   { to: '/compliance/balance', label: 'Баланс лицензий', admin: true },
   { to: '/compliance/findings', label: 'Нарушения', admin: true },
   { to: '/me', label: 'Мой компьютер', admin: false },
+  { to: '/assistant', label: 'ИИ-ассистент', admin: false },
   { to: '/audit', label: 'Журнал', admin: true }
 ] as const;
 

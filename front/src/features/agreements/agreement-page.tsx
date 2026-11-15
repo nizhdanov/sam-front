@@ -24,6 +24,7 @@ import { formatDataValue } from '@/utils/api/data';
 import { ApiError } from '@/utils/api/errors';
 
 import { AgreementEditor } from './agreement-editor';
+import { AnalysisPanel } from './analysis-panel';
 import { getAgreementFileError } from './model';
 import { agreementDetailOptions, deleteAgreement, uploadAgreementFile } from './queries';
 
@@ -105,6 +106,7 @@ export function AgreementPage() {
           {formatDataValue(agreement.agreement_text)}
         </p>
       </div>
+      <AnalysisPanel agreementId={agreementId} hasText={!!agreement.agreement_text?.trim()} />
       <form
         aria-label='Загрузка файла соглашения'
         className='flex flex-col items-start gap-4'

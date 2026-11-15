@@ -240,7 +240,7 @@ test('permissions закрыты по умолчанию, меню и landing с
   assert.equal(canAccess('ADMIN', 'admin'), true);
   assert.deepEqual(
     getNavigation('USER').map((item) => item.to),
-    ['/software', '/me']
+    ['/software', '/me', '/assistant']
   );
   assert.ok(getNavigation('ADMIN').some((item) => item.to === '/dashboard'));
   assert.equal(getLanding('ADMIN'), '/dashboard');

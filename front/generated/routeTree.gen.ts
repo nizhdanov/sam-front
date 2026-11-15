@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './../src/routes/index'
 import { Route as AuthenticatedRouteImport } from './../src/routes/_authenticated'
 import { Route as AccessDeniedRouteImport } from './../src/routes/access-denied'
 import { Route as AuthenticatedAdminRouteImport } from './../src/routes/_authenticated/_admin'
+import { Route as AuthenticatedAssistantRouteImport } from './../src/routes/_authenticated/assistant'
 import { Route as AuthenticatedMeRouteImport } from './../src/routes/_authenticated/me'
 import { Route as AuthenticatedSoftwareRouteImport } from './../src/routes/_authenticated/software'
 import { Route as AuthenticatedAdminAgreementsRouteImport } from './../src/routes/_authenticated/_admin/agreements'
@@ -22,6 +23,7 @@ import { Route as AuthenticatedAdminDashboardRouteImport } from './../src/routes
 import { Route as AuthenticatedAdminDevicesRouteImport } from './../src/routes/_authenticated/_admin/devices'
 import { Route as AuthenticatedAdminImportsRouteImport } from './../src/routes/_authenticated/_admin/imports'
 import { Route as AuthenticatedAdminInstallationsRouteImport } from './../src/routes/_authenticated/_admin/installations'
+import { Route as AuthenticatedAdminMatchingRouteImport } from './../src/routes/_authenticated/_admin/matching'
 import { Route as AuthenticatedDevicesDeviceIdRouteImport } from './../src/routes/_authenticated/devices_.$deviceId'
 import { Route as AuthenticatedSoftwareProductIdRouteImport } from './../src/routes/_authenticated/software_.$productId'
 import { Route as AuthenticatedAdminAgreementsAgreementIdRouteImport } from './../src/routes/_authenticated/_admin/agreements_.$agreementId'
@@ -45,6 +47,11 @@ const AccessDeniedRoute = AccessDeniedRouteImport.update({
 } as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/_admin',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedAssistantRoute = AuthenticatedAssistantRouteImport.update({
+  id: '/assistant',
+  path: '/assistant',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedMeRoute = AuthenticatedMeRouteImport.update({
@@ -98,6 +105,12 @@ const AuthenticatedAdminInstallationsRoute =
     path: '/installations',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminMatchingRoute =
+  AuthenticatedAdminMatchingRouteImport.update({
+    id: '/matching',
+    path: '/matching',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedDevicesDeviceIdRoute =
   AuthenticatedDevicesDeviceIdRouteImport.update({
     id: '/devices_/$deviceId',
@@ -138,6 +151,7 @@ const AuthenticatedAdminImportsImportIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/access-denied': typeof AccessDeniedRoute
+  '/assistant': typeof AuthenticatedAssistantRoute
   '/me': typeof AuthenticatedMeRoute
   '/software': typeof AuthenticatedSoftwareRoute
   '/agreements': typeof AuthenticatedAdminAgreementsRoute
@@ -147,6 +161,7 @@ export interface FileRoutesByFullPath {
   '/devices': typeof AuthenticatedAdminDevicesRoute
   '/imports': typeof AuthenticatedAdminImportsRoute
   '/installations': typeof AuthenticatedAdminInstallationsRoute
+  '/matching': typeof AuthenticatedAdminMatchingRoute
   '/devices/$deviceId': typeof AuthenticatedDevicesDeviceIdRoute
   '/software/$productId': typeof AuthenticatedSoftwareProductIdRoute
   '/agreements/$agreementId': typeof AuthenticatedAdminAgreementsAgreementIdRoute
@@ -157,6 +172,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/access-denied': typeof AccessDeniedRoute
+  '/assistant': typeof AuthenticatedAssistantRoute
   '/me': typeof AuthenticatedMeRoute
   '/software': typeof AuthenticatedSoftwareRoute
   '/agreements': typeof AuthenticatedAdminAgreementsRoute
@@ -166,6 +182,7 @@ export interface FileRoutesByTo {
   '/devices': typeof AuthenticatedAdminDevicesRoute
   '/imports': typeof AuthenticatedAdminImportsRoute
   '/installations': typeof AuthenticatedAdminInstallationsRoute
+  '/matching': typeof AuthenticatedAdminMatchingRoute
   '/devices/$deviceId': typeof AuthenticatedDevicesDeviceIdRoute
   '/software/$productId': typeof AuthenticatedSoftwareProductIdRoute
   '/agreements/$agreementId': typeof AuthenticatedAdminAgreementsAgreementIdRoute
@@ -179,6 +196,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/access-denied': typeof AccessDeniedRoute
   '/_authenticated/_admin': typeof AuthenticatedAdminRouteWithChildren
+  '/_authenticated/assistant': typeof AuthenticatedAssistantRoute
   '/_authenticated/me': typeof AuthenticatedMeRoute
   '/_authenticated/software': typeof AuthenticatedSoftwareRoute
   '/_authenticated/_admin/agreements': typeof AuthenticatedAdminAgreementsRoute
@@ -188,6 +206,7 @@ export interface FileRoutesById {
   '/_authenticated/_admin/devices': typeof AuthenticatedAdminDevicesRoute
   '/_authenticated/_admin/imports': typeof AuthenticatedAdminImportsRoute
   '/_authenticated/_admin/installations': typeof AuthenticatedAdminInstallationsRoute
+  '/_authenticated/_admin/matching': typeof AuthenticatedAdminMatchingRoute
   '/_authenticated/devices_/$deviceId': typeof AuthenticatedDevicesDeviceIdRoute
   '/_authenticated/software_/$productId': typeof AuthenticatedSoftwareProductIdRoute
   '/_authenticated/_admin/agreements_/$agreementId': typeof AuthenticatedAdminAgreementsAgreementIdRoute
@@ -200,6 +219,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/access-denied'
+    | '/assistant'
     | '/me'
     | '/software'
     | '/agreements'
@@ -209,6 +229,7 @@ export interface FileRouteTypes {
     | '/devices'
     | '/imports'
     | '/installations'
+    | '/matching'
     | '/devices/$deviceId'
     | '/software/$productId'
     | '/agreements/$agreementId'
@@ -219,6 +240,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/access-denied'
+    | '/assistant'
     | '/me'
     | '/software'
     | '/agreements'
@@ -228,6 +250,7 @@ export interface FileRouteTypes {
     | '/devices'
     | '/imports'
     | '/installations'
+    | '/matching'
     | '/devices/$deviceId'
     | '/software/$productId'
     | '/agreements/$agreementId'
@@ -240,6 +263,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/access-denied'
     | '/_authenticated/_admin'
+    | '/_authenticated/assistant'
     | '/_authenticated/me'
     | '/_authenticated/software'
     | '/_authenticated/_admin/agreements'
@@ -249,6 +273,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_admin/devices'
     | '/_authenticated/_admin/imports'
     | '/_authenticated/_admin/installations'
+    | '/_authenticated/_admin/matching'
     | '/_authenticated/devices_/$deviceId'
     | '/_authenticated/software_/$productId'
     | '/_authenticated/_admin/agreements_/$agreementId'
@@ -291,6 +316,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/assistant': {
+      id: '/_authenticated/assistant'
+      path: '/assistant'
+      fullPath: '/assistant'
+      preLoaderRoute: typeof AuthenticatedAssistantRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/me': {
@@ -356,6 +388,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminInstallationsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/_admin/matching': {
+      id: '/_authenticated/_admin/matching'
+      path: '/matching'
+      fullPath: '/matching'
+      preLoaderRoute: typeof AuthenticatedAdminMatchingRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/devices_/$deviceId': {
       id: '/_authenticated/devices_/$deviceId'
       path: '/devices/$deviceId'
@@ -409,6 +448,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminDevicesRoute: typeof AuthenticatedAdminDevicesRoute
   AuthenticatedAdminImportsRoute: typeof AuthenticatedAdminImportsRoute
   AuthenticatedAdminInstallationsRoute: typeof AuthenticatedAdminInstallationsRoute
+  AuthenticatedAdminMatchingRoute: typeof AuthenticatedAdminMatchingRoute
   AuthenticatedAdminAgreementsAgreementIdRoute: typeof AuthenticatedAdminAgreementsAgreementIdRoute
   AuthenticatedAdminComplianceBalanceRoute: typeof AuthenticatedAdminComplianceBalanceRoute
   AuthenticatedAdminComplianceFindingsRoute: typeof AuthenticatedAdminComplianceFindingsRoute
@@ -423,6 +463,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminDevicesRoute: AuthenticatedAdminDevicesRoute,
   AuthenticatedAdminImportsRoute: AuthenticatedAdminImportsRoute,
   AuthenticatedAdminInstallationsRoute: AuthenticatedAdminInstallationsRoute,
+  AuthenticatedAdminMatchingRoute: AuthenticatedAdminMatchingRoute,
   AuthenticatedAdminAgreementsAgreementIdRoute:
     AuthenticatedAdminAgreementsAgreementIdRoute,
   AuthenticatedAdminComplianceBalanceRoute:
@@ -438,6 +479,7 @@ const AuthenticatedAdminRouteWithChildren =
 
 interface AuthenticatedRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
+  AuthenticatedAssistantRoute: typeof AuthenticatedAssistantRoute
   AuthenticatedMeRoute: typeof AuthenticatedMeRoute
   AuthenticatedSoftwareRoute: typeof AuthenticatedSoftwareRoute
   AuthenticatedDevicesDeviceIdRoute: typeof AuthenticatedDevicesDeviceIdRoute
@@ -446,6 +488,7 @@ interface AuthenticatedRouteChildren {
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
+  AuthenticatedAssistantRoute: AuthenticatedAssistantRoute,
   AuthenticatedMeRoute: AuthenticatedMeRoute,
   AuthenticatedSoftwareRoute: AuthenticatedSoftwareRoute,
   AuthenticatedDevicesDeviceIdRoute: AuthenticatedDevicesDeviceIdRoute,

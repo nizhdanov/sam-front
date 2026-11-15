@@ -1,12 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
 
-import { EmptyState } from '@/components/shared/states';
+import { AuditPage } from '@/features/audit/audit-page';
+import { auditSearchSchema } from '@/features/audit/model';
 
 export const Route = createFileRoute('/_authenticated/_admin/audit')({
-  component: () => (
-    <EmptyState
-      description='История операций появится после подключения серверного журнала.'
-      title={<h1>Журнал изменений пока недоступен</h1>}
-    />
-  )
+  validateSearch: auditSearchSchema,
+  component: AuditPage
 });

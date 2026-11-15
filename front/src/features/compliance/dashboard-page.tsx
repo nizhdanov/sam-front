@@ -81,26 +81,30 @@ export function DashboardPage() {
       value: formatDataValue(data.pending_review),
       description: 'Нераспознанное ПО',
       link: (
-        <Link search={{ recognized: false }} to='/installations'>
-          Установки для проверки
+        <Link search={{ tab: 'queue', status: 'PENDING', page: 1 }} to='/matching'>
+          Очередь Smart Matching
         </Link>
       )
     },
     {
       title: 'Дефицит лицензий',
       value: `${formatDataValue(data.license_deficit?.seats)} мест`,
-      description: `Продуктов: ${formatDataValue(data.license_deficit?.products)}. Детализация баланса пока недоступна.`,
+      description: `Продуктов: ${formatDataValue(data.license_deficit?.products)}`,
       link: (
-        <Link search={{ finding_type: 'LICENSE_DEFICIT' }} to='/compliance/findings'>
-          Нарушения покрытия лицензиями
+        <Link search={{ view: 'commercial', risk: 'deficit' }} to='/compliance/balance'>
+          Продукты с дефицитом
         </Link>
       )
     },
     {
       title: 'Свободные лицензии',
       value: `${formatDataValue(data.idle_licenses?.seats)} мест`,
-      description: `Продуктов: ${formatDataValue(data.idle_licenses?.products)}. Детализация баланса пока недоступна.`,
-      link: undefined
+      description: `Продуктов: ${formatDataValue(data.idle_licenses?.products)}`,
+      link: (
+        <Link search={{ view: 'commercial', risk: 'available' }} to='/compliance/balance'>
+          Простаивающие лицензии
+        </Link>
+      )
     },
     {
       title: 'Запрещённое ПО',
