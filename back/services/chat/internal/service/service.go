@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"strings"
 	"sync"
+	"time"
 	"unicode/utf8"
 
 	"github.com/google/uuid"
@@ -39,6 +40,8 @@ type Config struct {
 	MaxMessageLength   int
 }
 
+const turnWait = 3 * time.Minute
+
 type Service struct {
 	conversations Conversations
 	messages      Messages
@@ -46,8 +49,8 @@ type Service struct {
 	cfg           Config
 	log           *slog.Logger
 
-	mu     sync.Mutex
-	active map[string]struct{}
+	mu    sync.Mutex
+	turns map[uuid.UUID]chan struct{}
 }
 
 func New(conversations Conversations, messages Messages, assistant Assistant, cfg Config, log *slog.Logger) *Service {
@@ -57,7 +60,7 @@ func New(conversations Conversations, messages Messages, assistant Assistant, cf
 		assistant:     assistant,
 		cfg:           cfg,
 		log:           log,
-		active:        make(map[string]struct{}),
+		turns:         make(map[uuid.UUID]chan struct{}),
 	}
 }
 
@@ -133,7 +136,7 @@ func (s *Service) Send(ctx context.Context, id uuid.UUID, content string, stream
 	if err != nil {
 		return domain.Message{}, err
 	}
-	release, err := s.lock(c.UserID)
+	release, err := s.waitTurn(ctx, c.ID)
 	if err != nil {
 		return domain.Message{}, err
 	}
@@ -181,18 +184,25 @@ func (s *Service) Send(ctx context.Context, id uuid.UUID, content string, stream
 	return reply, chatErr
 }
 
-func (s *Service) lock(userID string) (func(), error) {
+func (s *Service) waitTurn(ctx context.Context, conversationID uuid.UUID) (func(), error) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	if _, busy := s.active[userID]; busy {
-		return nil, apperr.RateLimited("previous message is still being answered")
+	turn, ok := s.turns[conversationID]
+	if !ok {
+		turn = make(chan struct{}, 1)
+		s.turns[conversationID] = turn
 	}
-	s.active[userID] = struct{}{}
-	return func() {
-		s.mu.Lock()
-		delete(s.active, userID)
-		s.mu.Unlock()
-	}, nil
+	s.mu.Unlock()
+
+	timer := time.NewTimer(turnWait)
+	defer timer.Stop()
+	select {
+	case turn <- struct{}{}:
+		return func() { <-turn }, nil
+	case <-timer.C:
+		return nil, apperr.RateLimited("previous message in this conversation is still being answered")
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }
 
 func titleFrom(content string) *string {
