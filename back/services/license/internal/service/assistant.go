@@ -13,7 +13,10 @@ import (
 	"sam/services/license/internal/domain"
 )
 
+const assistantRows = 20
+
 type balanceRow struct {
+	ProductID string `json:"product_id"`
 	Product   string `json:"product"`
 	Metric    string `json:"metric"`
 	Purchased *int   `json:"purchased"`
@@ -32,6 +35,9 @@ func (s *Service) RunQuery(ctx context.Context, name string, raw []byte) (any, e
 			if err := json.Unmarshal(raw, &q); err != nil {
 				return nil, apperr.Invalid("malformed query parameters")
 			}
+		}
+		if q.Limit <= 0 {
+			q.Limit = assistantRows
 		}
 		return s.QueryData(ctx, q)
 	case "get_license_balance":
@@ -134,7 +140,7 @@ func (s *Service) assistantBalance(ctx context.Context, product string, onlyDefi
 		}
 		total += b.Deficit
 		out = append(out, balanceRow{
-			Product: b.ProductName, Metric: string(b.Metric), Purchased: b.Purchased, Consumed: b.Consumed,
+			ProductID: b.ProductID.String(), Product: b.ProductName, Metric: string(b.Metric), Purchased: b.Purchased, Consumed: b.Consumed,
 			Available: b.Available, Deficit: b.Deficit, Status: string(b.CalculationStatus), Note: b.Note,
 		})
 	}
