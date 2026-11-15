@@ -2,9 +2,9 @@
 
 import type { AxiosRequestParams, ApicraftAxiosResponse } from "@siberiacancode/apicraft";
 
-import type { GetApiV1ContractsData, GetApiV1ContractsResponse } from "..\\..\\types.gen";
+import type { GetApiV1ContractsData, GetApiV1ContractsResponse } from "../../types.gen";
 
-import { instance } from "..\\..\\..\\..\\src\\utils\\lib\\instance";
+import { instance } from "../../../../src/utils/lib/instance";
 
 export type GetContractsRequestParams = AxiosRequestParams<GetApiV1ContractsData> | void;
 

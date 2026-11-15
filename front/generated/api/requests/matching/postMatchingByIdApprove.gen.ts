@@ -2,9 +2,9 @@
 
 import type { AxiosRequestParams, ApicraftAxiosResponse } from "@siberiacancode/apicraft";
 
-import type { PostApiV1MatchingByIdApproveData } from "..\\..\\types.gen";
+import type { PostApiV1MatchingByIdApproveData } from "../../types.gen";
 
-import { instance } from "..\\..\\..\\..\\src\\utils\\lib\\instance";
+import { instance } from "../../../../src/utils/lib/instance";
 
 export type PostMatchingByIdApproveRequestParams = AxiosRequestParams<PostApiV1MatchingByIdApproveData>;
 

@@ -16,7 +16,7 @@ pnpm build
 pnpm exec eslint src/utils/api src/utils/lib/instance.ts tests vite.config.ts eslint.config.js
 ```
 
-`generate-api` использует установленный apicraft и существующий `apicraft.config.ts`. Перегенерировать API нужно при изменении контракта. Vite и CLI маршрутов читают путь `generated/routeTree.gen.ts` из `tsr.config.json`; generated вручную не редактируется.
+`generate-api` использует установленный apicraft и существующий `apicraft.config.ts`, затем нормализует разделители путей в импортах через `scripts/normalize-api-imports.mjs`. Это сохраняет совместимость с Linux/Docker после генерации на Windows. Для нормализации уже созданного клиента можно отдельно запустить `node scripts/normalize-api-imports.mjs`. Перегенерировать API нужно при изменении контракта. Vite и CLI маршрутов читают путь `generated/routeTree.gen.ts` из `tsr.config.json`; generated вручную не редактируется.
 
 shadcn настроен на `src/routes/styles.css`, Base UI/base-luma и импорт `cn` из установленного пакета. Проверка без записи компонентов: `pnpm exec shadcn add @shadcn/button --dry-run`.
 

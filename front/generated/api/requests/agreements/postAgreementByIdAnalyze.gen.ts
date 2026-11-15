@@ -2,9 +2,9 @@
 
 import type { AxiosRequestParams, ApicraftAxiosResponse } from "@siberiacancode/apicraft";
 
-import type { PostApiV1AgreementsByIdAnalyzeData, PostApiV1AgreementsByIdAnalyzeResponse, PostApiV1AgreementsByIdAnalyzeError } from "..\\..\\types.gen";
+import type { PostApiV1AgreementsByIdAnalyzeData, PostApiV1AgreementsByIdAnalyzeResponse, PostApiV1AgreementsByIdAnalyzeError } from "../../types.gen";
 
-import { instance } from "..\\..\\..\\..\\src\\utils\\lib\\instance";
+import { instance } from "../../../../src/utils/lib/instance";
 
 export type PostAgreementByIdAnalyzeRequestParams = AxiosRequestParams<PostApiV1AgreementsByIdAnalyzeData>;
 

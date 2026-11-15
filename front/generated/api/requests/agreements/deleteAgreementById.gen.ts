@@ -2,9 +2,9 @@
 
 import type { AxiosRequestParams, ApicraftAxiosResponse } from "@siberiacancode/apicraft";
 
-import type { DeleteApiV1AgreementsByIdData, DeleteApiV1AgreementsByIdResponse, DeleteApiV1AgreementsByIdError } from "..\\..\\types.gen";
+import type { DeleteApiV1AgreementsByIdData, DeleteApiV1AgreementsByIdResponse, DeleteApiV1AgreementsByIdError } from "../../types.gen";
 
-import { instance } from "..\\..\\..\\..\\src\\utils\\lib\\instance";
+import { instance } from "../../../../src/utils/lib/instance";
 
 export type DeleteAgreementByIdRequestParams = AxiosRequestParams<DeleteApiV1AgreementsByIdData>;
 

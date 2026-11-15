@@ -2,9 +2,9 @@
 
 import type { AxiosRequestParams, ApicraftAxiosResponse } from "@siberiacancode/apicraft";
 
-import type { GetApiV1MatchingRulesData, GetApiV1MatchingRulesResponse } from "..\\..\\types.gen";
+import type { GetApiV1MatchingRulesData, GetApiV1MatchingRulesResponse } from "../../types.gen";
 
-import { instance } from "..\\..\\..\\..\\src\\utils\\lib\\instance";
+import { instance } from "../../../../src/utils/lib/instance";
 
 export type GetMatchingRulesRequestParams = AxiosRequestParams<GetApiV1MatchingRulesData> | void;
 

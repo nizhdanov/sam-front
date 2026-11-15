@@ -2,9 +2,9 @@
 
 import type { AxiosRequestParams, ApicraftAxiosResponse } from "@siberiacancode/apicraft";
 
-import type { GetApiV1ImportsByIdErrorsData, GetApiV1ImportsByIdErrorsResponse } from "..\\..\\types.gen";
+import type { GetApiV1ImportsByIdErrorsData, GetApiV1ImportsByIdErrorsResponse } from "../../types.gen";
 
-import { instance } from "..\\..\\..\\..\\src\\utils\\lib\\instance";
+import { instance } from "../../../../src/utils/lib/instance";
 
 export type GetImportByIdErrorsRequestParams = AxiosRequestParams<GetApiV1ImportsByIdErrorsData>;
 
