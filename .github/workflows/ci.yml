@@ -4,6 +4,10 @@ on:
   push:
   pull_request:
   workflow_call:
+    inputs:
+      component:
+        type: string
+        default: all
 
 permissions:
   contents: read
@@ -14,6 +18,7 @@ concurrency:
 
 jobs:
   backend:
+    if: ${{ inputs.component != 'frontend' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     defaults:
@@ -34,6 +39,10 @@ jobs:
       - run: go test -race ./...
 
   deployment:
+    strategy:
+      fail-fast: false
+      matrix:
+        component: ${{ fromJSON(inputs.component == 'frontend' && '["frontend"]' || inputs.component == 'backend' && '["backend"]' || '["backend","frontend"]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -49,11 +58,12 @@ jobs:
         run: |
           test -z "$(gofmt -l .)"
           go vet ./...
+          go test -race ./...
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o /tmp/sam-release-tool ./release
       - name: Validate the actual Compose build plan
         run: |
           release_dir="$RUNNER_TEMP/sam-release"
-          /tmp/sam-release-tool prepare \
+          /tmp/sam-release-tool prepare --component "${{ matrix.component }}" \
             --release "${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
             --root /opt/sam-backend --output "$release_dir"
           test -s "$release_dir/bake.json"

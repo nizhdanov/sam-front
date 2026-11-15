@@ -1,4 +1,4 @@
-name: CD
+name: CD Backend
 
 on:
   workflow_dispatch:
@@ -7,12 +7,14 @@ permissions:
   contents: read
 
 concurrency:
-  group: sam-production
+  group: sam-production-backend
   cancel-in-progress: false
 
 jobs:
   checks:
     uses: ./.github/workflows/ci.yml
+    with:
+      component: backend
 
   build:
     needs: checks
@@ -46,7 +48,7 @@ jobs:
         run: |
           release="${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           release_dir="$RUNNER_TEMP/sam-release"
-          /tmp/sam-release-tool prepare --production \
+          /tmp/sam-release-tool prepare --production --component backend \
             --release "$release" --root "$DEPLOY_ROOT" --output "$release_dir"
           cp /tmp/sam-release-tool "$release_dir/release-tool"
           echo "RELEASE_DIR=$release_dir" >> "$GITHUB_ENV"
@@ -68,7 +70,7 @@ jobs:
                 core.exportVariable(name, value);
               }
             }
-      - name: Build all application images (no registry)
+      - name: Build backend images (no registry)
         env:
           BACKEND_CONFIG: ${{ secrets.BACKEND_CONFIG }}
         run: |
@@ -84,7 +86,7 @@ jobs:
         run: /tmp/sam-release-tool pack --output "$RELEASE_DIR"
       - uses: actions/upload-artifact@v4
         with:
-          name: production-release
+          name: production-backend-release
           path: |
             ${{ runner.temp }}/sam-release/release.tar
             ${{ runner.temp }}/sam-release/release-tool
@@ -103,7 +105,7 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
-          name: production-release
+          name: production-backend-release
           path: ${{ runner.temp }}/sam-release
       - name: Deliver, deploy, verify and retain two successful releases
         env:
@@ -117,4 +119,4 @@ jobs:
           RELEASE_ARCHIVE: ${{ runner.temp }}/sam-release/release.tar
         run: |
           chmod 700 "$RUNNER_TEMP/sam-release/release-tool"
-          "$RUNNER_TEMP/sam-release/release-tool" deliver
+          "$RUNNER_TEMP/sam-release/release-tool" deliver --component backend

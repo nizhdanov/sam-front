@@ -55,6 +55,8 @@ type options struct {
 	production                                     bool
 }
 
+var component = "backend"
+
 var releasePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,100}$`)
 var rootPattern = regexp.MustCompile(`^/[A-Za-z0-9_/-]+$`)
 
@@ -72,6 +74,7 @@ func mainError() error {
 	command := os.Args[1]
 	flags := flag.NewFlagSet(command, flag.ContinueOnError)
 	var o options
+	flags.StringVar(&component, "component", "backend", "backend or frontend")
 	flags.StringVar(&o.root, "root", "/opt/sam-backend", "existing backend root")
 	flags.StringVar(&o.release, "release", "", "unique release ID")
 	flags.StringVar(&o.output, "output", "", "release build directory")
@@ -82,6 +85,9 @@ func mainError() error {
 	flags.BoolVar(&o.production, "production", false, "require BACKEND_CONFIG secret")
 	if err := flags.Parse(os.Args[2:]); err != nil {
 		return err
+	}
+	if component != "backend" && component != "frontend" {
+		return errors.New("component must be backend or frontend")
 	}
 	if !rootPattern.MatchString(o.root) || o.root == "/" || filepath.Clean(o.root) != o.root {
 		return errors.New("root must be an absolute clean path without spaces")
@@ -271,12 +277,19 @@ func prepare(o options) error {
 	if err != nil {
 		return err
 	}
-	config, err := composeConfig(filepath.Join(repo, "back/compose.yaml"),
-		filepath.Join(repo, "back/compose.server.yaml"), filepath.Join(repo, ".github/compose.frontend.yaml"))
+	files := []string{filepath.Join(repo, "back/compose.yaml"), filepath.Join(repo, "back/compose.server.yaml")}
+	if component == "frontend" {
+		files = []string{filepath.Join(repo, ".github/compose.frontend.yaml")}
+	}
+	config, err := composeConfig(files...)
 	if err != nil {
 		return err
 	}
-	secrets, revision, err := loadBuildConfig(o.production)
+	var secrets buildConfig
+	var revision string
+	if component == "backend" {
+		secrets, revision, err = loadBuildConfig(o.production)
+	}
 	if err != nil {
 		return err
 	}
@@ -284,7 +297,7 @@ func prepare(o options) error {
 	if err := os.MkdirAll(payload, 0o700); err != nil {
 		return err
 	}
-	serverRelease := filepath.Join(o.root, ".cd/releases", o.release)
+	serverRelease := filepath.Join(cdRoot(o.root), "releases", o.release)
 	targets, assets := object{}, map[string]bool{}
 	var names, images []string
 	for name, value := range mapAt(config, "services") {
@@ -297,7 +310,7 @@ func prepare(o options) error {
 			tag := "sam/" + name + ":" + o.release
 			target := object{"context": build["context"], "dockerfile": build["dockerfile"],
 				"tags": []string{tag}, "platforms": []string{"linux/amd64"},
-				"labels": object{"io.sam.cd": "true", "io.sam.release": o.release}}
+				"labels": object{"io.sam.cd": "true", "io.sam.release": o.release, "io.sam.component": component}}
 			if textAt(target, "dockerfile") == "" {
 				target["dockerfile"] = "Dockerfile"
 			}
@@ -380,7 +393,7 @@ func prepare(o options) error {
 			return err
 		}
 	}
-	if revision != "" {
+	if revision != "" || component == "frontend" {
 		if err := writeInfra(filepath.Join(payload, "infrastructure.env"), secrets.Infrastructure); err != nil {
 			return err
 		}
@@ -556,19 +569,52 @@ func space(root string, required uint64) error {
 	return nil
 }
 
+func cdRoot(root string) string {
+	if component == "frontend" {
+		return filepath.Join(root, ".cd-frontend")
+	}
+	return filepath.Join(root, ".cd")
+}
+
+func ownsService(name string) bool {
+	return (name == "frontend") == (component == "frontend")
+}
+
+func componentConfig(config object) object {
+	for name := range mapAt(config, "services") {
+		if !ownsService(name) {
+			delete(mapAt(config, "services"), name)
+		}
+	}
+	return config
+}
+
+func ownsImage(ref string) bool {
+	return strings.HasPrefix(ref, "sam/") && ownsService(strings.SplitN(strings.TrimPrefix(ref, "sam/"), ":", 2)[0])
+}
+
 func compose(root, release string, capture bool, args ...string) (string, error) {
+	var config object
+	if err := readJSON(filepath.Join(release, "compose.json"), &config); err != nil {
+		return "", err
+	}
+	// Old combined releases remain usable for backend rollback without touching frontend.
+	scoped := filepath.Join(release, "compose."+component+".json")
+	if err := writeJSON(scoped, componentConfig(config)); err != nil {
+		return "", err
+	}
 	env := filepath.Join(release, "infrastructure.env")
 	if !exists(env) {
 		env = filepath.Join(root, ".env")
 	}
 	base := []string{"compose", "--parallel", "2", "-p", "sam", "--env-file", env,
-		"--project-directory", root, "-f", filepath.Join(release, "compose.json")}
+		"--project-directory", root, "-f", scoped}
 	return command(capture, "docker", append(base, args...)...)
 }
 
 func activate(root, release string) error {
 	_, err := compose(root, release, false, "up", "-d", "--no-build", "--pull", "never",
-		"--remove-orphans", "--wait", "--wait-timeout", "180")
+		"--wait", "--wait-timeout", "180")
 	return err
 }
 
@@ -580,11 +626,8 @@ func verify(root, release string) error {
 	if err := readJSON(filepath.Join(release, "compose.json"), &config); err != nil {
 		return err
 	}
-	if _, ok := mapAt(config, "services")["frontend"]; !ok {
-		return nil
-	}
-	if err := checkURL("http://127.0.0.1:5173/"); err != nil {
-		return err
+	if component == "frontend" {
+		return checkURL("http://127.0.0.1:5173/")
 	}
 	data, err := compose(root, release, true, "config", "--format", "json")
 	if err != nil {
@@ -595,7 +638,7 @@ func verify(root, release string) error {
 	}
 	domain := textAt(mapAt(mapAt(mapAt(config, "services"), "nginx"), "environment"), "DOMAIN")
 	if domain != "" {
-		for _, path := range []string{"/", "/api/v1/docs"} {
+		for _, path := range []string{"/api/v1/docs"} {
 			if err := checkURL("https://" + domain + path); err != nil {
 				return err
 			}
@@ -623,7 +666,7 @@ func checkURL(url string) error {
 }
 
 func lock(root string, action func(string) error) error {
-	cd := filepath.Join(root, ".cd")
+	cd := cdRoot(root)
 	if err := os.MkdirAll(cd, 0o700); err != nil {
 		return err
 	}
@@ -643,10 +686,21 @@ func lock(root string, action func(string) error) error {
 }
 
 func bootstrap(root, releases string) (string, error) {
-	config, err := composeConfig(filepath.Join(root, "compose.yaml"), filepath.Join(root, "compose.server.yaml"))
-	if err != nil {
-		return "", err
+	var config object
+	var err error
+	if component == "frontend" {
+		// Keep the existing Compose identity and port during the first independent release.
+		config = object{"name": "sam", "networks": object{"default": object{"external": true, "name": "sam_default"}}, "services": object{"frontend": object{
+			"ports":   []any{object{"target": 80, "published": "5173", "host_ip": "127.0.0.1", "protocol": "tcp"}},
+			"restart": "unless-stopped",
+		}}}
+	} else {
+		config, err = composeConfig(filepath.Join(root, "compose.yaml"), filepath.Join(root, "compose.server.yaml"))
+		if err != nil {
+			return "", err
+		}
 	}
+	componentConfig(config)
 	ids, err := command(true, "docker", "ps", "-aq", "--filter", "label=com.docker.compose.project=sam")
 	if err != nil || len(strings.Fields(ids)) == 0 {
 		return "", errors.New("expected an existing running Compose project sam")
@@ -664,7 +718,10 @@ func bootstrap(root, releases string) (string, error) {
 	}
 	images := map[string]string{}
 	for _, container := range containers {
-		images[container.Config.Labels["com.docker.compose.service"]] = container.Image
+		name := container.Config.Labels["com.docker.compose.service"]
+		if ownsService(name) {
+			images[name] = container.Image
+		}
 	}
 	for name, value := range mapAt(config, "services") {
 		service := value.(map[string]any)
@@ -685,7 +742,12 @@ func bootstrap(root, releases string) (string, error) {
 	if err := writeJSON(filepath.Join(path, "manifest.json"), manifest{Release: name, Images: []string{}, ImageIDs: images, Bootstrap: true}); err != nil {
 		return "", err
 	}
-	if err := copyPath(filepath.Join(root, ".env"), filepath.Join(path, "infrastructure.env")); err != nil {
+	if component == "frontend" {
+		err = os.WriteFile(filepath.Join(path, "infrastructure.env"), nil, 0o600)
+	} else {
+		err = copyPath(filepath.Join(root, ".env"), filepath.Join(path, "infrastructure.env"))
+	}
+	if err != nil {
 		return "", err
 	}
 	if err := os.Chmod(filepath.Join(path, "infrastructure.env"), 0o600); err != nil {
@@ -711,7 +773,7 @@ func recoverPending(root, cd string, s state) error {
 }
 
 func cleanup(root string, s state) error {
-	releases := filepath.Join(root, ".cd/releases")
+	releases := filepath.Join(cdRoot(root), "releases")
 	keep, protectedIDs := map[string]bool{}, map[string]bool{}
 	for _, name := range []string{s.Current, s.Previous} {
 		if name == "" {
@@ -731,9 +793,7 @@ func cleanup(root string, s state) error {
 			protectedIDs[id] = true
 		}
 	}
-	if _, err := command(false, "docker", "container", "prune", "--force", "--filter", "label=com.docker.compose.project=sam"); err != nil {
-		return err
-	}
+	// Do not prune containers belonging to the other deployment.
 	entries, err := os.ReadDir(releases)
 	if err != nil {
 		return err
@@ -746,7 +806,7 @@ func cleanup(root string, s state) error {
 		var m manifest
 		if readJSON(filepath.Join(path, "manifest.json"), &m) == nil {
 			for _, ref := range m.Images {
-				if strings.HasPrefix(ref, "sam/") && !keep[ref] {
+				if ownsImage(ref) && !keep[ref] {
 					command(true, "docker", "image", "rm", ref) // no force: referenced images stay
 				}
 			}
@@ -760,11 +820,11 @@ func cleanup(root string, s state) error {
 		return err
 	}
 	for _, ref := range strings.Fields(refs) {
-		if strings.HasPrefix(ref, "sam/") && !keep[ref] {
+		if ownsImage(ref) && !keep[ref] {
 			command(true, "docker", "image", "rm", ref)
 		}
 	}
-	ids, err := command(true, "docker", "image", "ls", "--quiet", "--no-trunc", "--filter", "dangling=true", "--filter", "label=io.sam.cd=true")
+	ids, err := command(true, "docker", "image", "ls", "--quiet", "--no-trunc", "--filter", "dangling=true", "--filter", "label=io.sam.cd=true", "--filter", "label=io.sam.component="+component)
 	if err != nil {
 		return err
 	}
@@ -792,7 +852,7 @@ func preflight(o options) error {
 			if err := cleanup(o.root, s); err != nil {
 				return err
 			}
-		} else if !exists(filepath.Join(o.root, ".env")) {
+		} else if component == "backend" && !exists(filepath.Join(o.root, ".env")) {
 			return errors.New("first deployment requires the existing server .env for rollback")
 		}
 		incoming := filepath.Join(cd, "incoming")
@@ -1003,7 +1063,7 @@ func deliver() error {
 		_, err := command(false, "scp", append(slices.Clone(base), "-P", strconv.Itoa(port), source, target+":"+destination)...)
 		return err
 	}
-	incoming := filepath.Join(root, ".cd/incoming", id)
+	incoming := filepath.Join(cdRoot(root), "incoming", id)
 	if err := remote("mkdir", "-p", "-m", "700", incoming); err != nil {
 		return err
 	}
@@ -1028,12 +1088,12 @@ func deliver() error {
 	if err != nil {
 		return err
 	}
-	if err := remote(remoteTool, "preflight", "--root", root, "--archive-bytes", strconv.FormatInt(info.Size(), 10)); err != nil {
+	if err := remote(remoteTool, "preflight", "--component", component, "--root", root, "--archive-bytes", strconv.FormatInt(info.Size(), 10)); err != nil {
 		return err
 	}
 	remoteArchive := filepath.Join(incoming, "release.tar")
 	if err := upload(archive, remoteArchive); err != nil {
 		return err
 	}
-	return remote(remoteTool, "deploy", "--root", root, "--release", id, "--archive", remoteArchive, "--sha256", checksum)
+	return remote(remoteTool, "deploy", "--component", component, "--root", root, "--release", id, "--archive", remoteArchive, "--sha256", checksum)
 }
