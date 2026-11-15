@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { getRouteApi, Link, Navigate } from '@tanstack/react-router';
+import { ChevronLeftIcon } from 'lucide-react';
 
 import { useDemoAuth } from '@/app/auth/context';
 import { AccessDenied, NotFoundState } from '@/components/shared/route-states';
@@ -53,7 +54,7 @@ export function DevicePage() {
           render={<Link search={{}} to='/devices' />}
           variant='outline'
         >
-          Все устройства
+          <ChevronLeftIcon className='mr-2 size-4' /> Вернуться к списку устройств
         </Button>
       )}
       <h1 className='text-2xl font-semibold wrap-break-word'>Устройство {device.serial_number}</h1>

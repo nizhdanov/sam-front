@@ -3,7 +3,7 @@ import type { DemoRole } from './demo-accounts';
 export const NAVIGATION = [
   { to: '/dashboard', label: 'Обзор', admin: true },
   { to: '/software', label: 'Каталог ПО', admin: false },
-  { to: '/agreements', label: 'Соглашения', admin: true },
+  // { to: '/agreements', label: 'Соглашения', admin: true },
   { to: '/contracts', label: 'Договоры', admin: true },
   { to: '/devices', label: 'Устройства', admin: true },
   { to: '/installations', label: 'Установки', admin: true },
@@ -11,7 +11,7 @@ export const NAVIGATION = [
   { to: '/matching', label: 'Smart Matching', admin: true },
   { to: '/compliance/balance', label: 'Баланс лицензий', admin: true },
   { to: '/compliance/findings', label: 'Нарушения', admin: true },
-  { to: '/me', label: 'Мой компьютер', admin: false },
+  // { to: '/me', label: 'Мой компьютер', admin: false },
   { to: '/assistant', label: 'ИИ-ассистент', admin: false },
   { to: '/audit', label: 'Журнал', admin: true }
 ] as const;

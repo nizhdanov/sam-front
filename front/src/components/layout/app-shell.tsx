@@ -9,7 +9,7 @@ import { DEMO_ACCOUNTS } from '@/app/auth/demo-accounts';
 import { getNavigation } from '@/app/auth/permissions';
 import { ErrorState, LoadingState } from '@/components/shared/states';
 import { Button } from '@/components/ui/button';
-import { Field, FieldLabel } from '@/components/ui/field';
+import { Field } from '@/components/ui/field';
 import {
   Select,
   SelectContent,
@@ -95,7 +95,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           </span>
         </div>
         <Field className='w-auto gap-1'>
-          <FieldLabel htmlFor='demo-role'>Роль</FieldLabel>
           <Select
             disabled={snapshot.status === 'switching'}
             items={ROLE_ITEMS}

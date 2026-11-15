@@ -152,10 +152,10 @@ export function DashboardPage() {
           </Card>
         ))}
       </div>
-      <p className='text-sm text-muted-foreground'>
+      {/* <p className='text-sm text-muted-foreground'>
         Свободные места не подтверждают фактический простой ПО. Денежные потери не рассчитываются.
         Отсутствующие показатели обозначены как «Не указано».
-      </p>
+      </p> */}
     </section>
   );
 }
