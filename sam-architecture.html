@@ -41,11 +41,12 @@
   th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
   th{background:#f8fafc;font-weight:650;font-size:12.8px}
   tbody tr:nth-child(even){background:#fbfcfd}
-  figure{margin:16px 0 6px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 8px 4px;overflow-x:auto}
+  figure{margin:20px 0 8px;background:linear-gradient(180deg,#f8fafc,#fff 160px);border:1px solid var(--line);border-radius:16px;padding:20px 14px 8px;overflow-x:auto}
   figcaption{font-size:12.5px;color:var(--muted);padding:6px 10px 8px}
-  svg{display:block;width:100%;height:auto;min-width:760px}
+  figure svg{display:block;width:100%;height:auto;min-width:1000px}
+  svg[aria-hidden="true"]{width:0;height:0;min-width:0;overflow:hidden}
   svg text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
-  .box{fill:#fff;stroke:#cbd5e1;stroke-width:1.4}
+  .box{fill:#fff;stroke:#cbd5e1;stroke-width:1.4;filter:drop-shadow(0 2px 3px rgb(15 23 42 / .05))}
   .svc{fill:var(--blue-bg);stroke:var(--blue)}
   .data{fill:var(--teal-bg);stroke:var(--teal)}
   .ai{fill:var(--amber-bg);stroke:var(--amber)}
@@ -216,76 +217,50 @@
 
     <!-- actors -->
     <rect class="box" x="60" y="50" width="280" height="70" rx="10"/>
-    <text class="t" x="76" y="76">Браузер — SPA</text>
-    <text class="s" x="76" y="95">React 19 · Vite · TanStack Router/Query</text>
-    <text class="s" x="76" y="111">axios + SSE-клиент ассистента</text>
+    <text data-panel-width="280" text-anchor="middle" class="t" x="200" y="71.5">Браузер — SPA</text>
+    <text data-panel-width="280" text-anchor="middle" class="s" x="200" y="90.5">React 19 · Vite · TanStack Router/Query</text>
+    <text data-panel-width="280" text-anchor="middle" class="s" x="200" y="106.5">axios + SSE-клиент ассистента</text>
 
     <rect class="box" x="380" y="50" width="230" height="70" rx="10"/>
-    <text class="t" x="396" y="76">Агент / CSV-выгрузка</text>
-    <text class="s" x="396" y="95">inventory.csv ≤ 50 МБ</text>
-    <text class="s" x="396" y="111">serial_number + список ПО</text>
+    <text data-panel-width="230" text-anchor="middle" class="t" x="495" y="71.5">Агент / CSV-выгрузка</text>
+    <text data-panel-width="230" text-anchor="middle" class="s" x="495" y="90.5">inventory.csv ≤ 50 МБ</text>
+    <text data-panel-width="230" text-anchor="middle" class="s" x="495" y="106.5">serial_number + список ПО</text>
 
     <rect class="box ext" x="830" y="50" width="280" height="70" rx="10"/>
-    <text class="t" x="846" y="76">Внешний IdP</text>
-    <text class="s" x="846" y="95">iss = sam-auth · aud = sam-backend</text>
-    <text class="s" x="846" y="111">в репозитории только проверка токена</text>
+    <text data-panel-width="280" text-anchor="middle" class="t" x="970" y="71.5">Внешний IdP</text>
+    <text data-panel-width="280" text-anchor="middle" class="s" x="970" y="90.5">iss = sam-auth · aud = sam-backend</text>
+    <text data-panel-width="280" text-anchor="middle" class="s" x="970" y="106.5">в репозитории только проверка токена</text>
 
     <!-- gateway -->
     <rect class="box infra" x="60" y="170" width="1050" height="100" rx="12"/>
-    <text class="t" x="80" y="196">nginx — API Gateway · единственная точка входа</text>
-    <text class="s" x="80" y="217">маршрутизация по префиксам · CORS · X-Request-Id · JSON access-log · rate limit: api 20 r/s (burst 40), chat 30 r/min</text>
-    <text class="s" x="80" y="235">лимиты тела: 1 МБ по умолчанию · 50 МБ /imports · 12 МБ /agreements/{id}/file · proxy_buffering off для SSE · Swagger UI /api/v1/docs</text>
-    <text class="s" x="80" y="253">локально :8080 (HTTP) · на сервере 127.0.0.1:8443 (TLS) за хостовым nginx · upstream resolve через Docker DNS + keepalive</text>
+    <text data-panel-width="1050" text-anchor="middle" class="t" x="585" y="224">nginx — API Gateway · единственная точка входа</text>
 
     <!-- row 1 -->
     <rect class="box svc" x="60" y="320" width="250" height="100" rx="11"/>
-    <text class="t" x="76" y="346">processor · :8081</text>
-    <text class="s" x="76" y="366">приём CSV, парсинг, группировка</text>
-    <text class="s" x="76" y="383">по ПК, публикация событий</text>
-    <text class="s2" x="76" y="404">владелец inventory_db · ~1 900 строк</text>
+    <text data-panel-width="250" text-anchor="middle" class="t" x="185" y="374">processor · :8081</text>
 
     <rect class="box svc" x="400" y="320" width="230" height="100" rx="11"/>
-    <text class="t" x="416" y="346">chat · :8084</text>
-    <text class="s" x="416" y="366">диалоги, история, SSE-ответ</text>
-    <text class="s" x="416" y="383">1 активный запрос на пользователя</text>
-    <text class="s2" x="416" y="404">владелец chat_db · ~900 строк</text>
+    <text data-panel-width="230" text-anchor="middle" class="t" x="515" y="374">chat · :8084</text>
 
     <text class="s" x="700" y="345">остальные /api/v1/* — 42 пути / 59 операций:</text>
-    <text class="s" x="700" y="363">каталог, версии, устройства, установки, договоры,</text>
-    <text class="s" x="700" y="381">соглашения и EULA-анализ, комплаенс, matching,</text>
-    <text class="s" x="700" y="399">data/export, дашборд, баланс, журнал аудита</text>
 
     <!-- row 2 -->
     <rect class="box data" x="60" y="470" width="250" height="80" rx="11"/>
-    <text class="t" x="76" y="496">NATS JetStream</text>
-    <text class="s" x="76" y="515">поток INVENTORY · WorkQueue · file</text>
-    <text class="s2" x="76" y="533">subject inventory.snapshot.created.v1</text>
+    <text data-panel-width="250" text-anchor="middle" class="t" x="185" y="514">NATS JetStream</text>
 
     <rect class="box ai" x="400" y="470" width="230" height="120" rx="11"/>
-    <text class="t" x="416" y="496">llm · :8085 / gRPC :9095</text>
-    <text class="s" x="416" y="516">AI-оркестратор без своей БД</text>
-    <text class="s" x="416" y="533">промпты по ролям (embed, v1)</text>
-    <text class="s" x="416" y="550">allowlist инструментов роли</text>
-    <text class="s2" x="416" y="571">GigaChat / OpenAI-compatible / mock</text>
+    <text data-panel-width="230" text-anchor="middle" class="t" x="515" y="524">llm · :8085 / gRPC :9095</text>
+    <text data-panel-width="230" text-anchor="middle" class="s" x="515" y="544">AI-оркестратор без своей БД</text>
 
     <rect class="box svc" x="760" y="460" width="350" height="140" rx="11"/>
-    <text class="t" x="776" y="486">license · :8083 / gRPC :9093</text>
-    <text class="s" x="776" y="506">каталог ПО · версии · alias · устройства · установки</text>
-    <text class="s" x="776" y="523">соглашения (EULA) · договоры · лицензии · настройки</text>
-    <text class="s" x="776" y="540">Compliance Engine · аналитика · журнал аудита</text>
-    <text class="s" x="776" y="557">data explorer: SQL только по белым спискам</text>
-    <text class="s2" x="776" y="580">владелец license_db · ~7 200 строк · ядро домена</text>
+    <text data-panel-width="350" text-anchor="middle" class="t" x="935" y="534">license · :8083 / gRPC :9093</text>
 
     <!-- worker -->
     <rect class="box svc" x="60" y="620" width="250" height="100" rx="11"/>
-    <text class="t" x="76" y="646">worker · :8082 (health)</text>
-    <text class="s" x="76" y="666">обработка снимков, Smart Matching,</text>
-    <text class="s" x="76" y="683">синхронизация установок и комплаенса</text>
-    <text class="s2" x="76" y="704">статусы в inventory_db · ~1 100 строк</text>
+    <text data-panel-width="250" text-anchor="middle" class="t" x="185" y="674">worker · :8082 (health)</text>
 
     <rect class="box ext" x="400" y="620" width="230" height="60" rx="10"/>
-    <text class="t-sm" x="416" y="644">GigaChat / OpenAI-compatible</text>
-    <text class="s" x="416" y="663">внешний HTTPS · OAuth · CA Минцифры</text>
+    <text data-panel-width="230" text-anchor="middle" class="t-sm" x="515" y="654">GigaChat</text>
 
     <!-- edges -->
     <path class="e-b" d="M 200 120 V 166" marker-end="url(#ar-b)"/>
@@ -321,19 +296,13 @@
 
     <!-- postgres band -->
     <rect class="box data" x="60" y="780" width="1050" height="100" rx="12"/>
-    <text class="t" x="80" y="804">PostgreSQL 17 — один инстанс, три базы, три пользователя</text>
+    <text data-panel-width="1050" text-anchor="middle" class="t" x="585" y="804">PostgreSQL 17 — один инстанс, три базы, три пользователя</text>
     <rect class="box" x="80" y="814" width="310" height="52" rx="8"/>
-    <text class="t-sm" x="94" y="833">inventory_db</text>
-    <text class="s2" x="94" y="848">владелец processor, пишет worker</text>
-    <text class="s2" x="94" y="861">imports · inventory_snapshots · import_errors</text>
+    <text data-panel-width="310" text-anchor="middle" class="t-sm" x="235" y="844">inventory_db</text>
     <rect class="box" x="410" y="814" width="250" height="52" rx="8"/>
-    <text class="t-sm" x="424" y="833">chat_db</text>
-    <text class="s2" x="424" y="848">владелец chat</text>
-    <text class="s2" x="424" y="861">conversations · messages</text>
+    <text data-panel-width="250" text-anchor="middle" class="t-sm" x="535" y="844">chat_db</text>
     <rect class="box" x="680" y="814" width="410" height="52" rx="8"/>
-    <text class="t-sm" x="694" y="833">license_db</text>
-    <text class="s2" x="694" y="848">владелец license · devices · software_products / versions / aliases</text>
-    <text class="s2" x="694" y="861">installations · agreements · entitlements · findings · analyses · audit_log</text>
+    <text data-panel-width="410" text-anchor="middle" class="t-sm" x="885" y="844">license_db</text>
   </svg>
   <figcaption>Схема 1. Контейнеры и протоколы. Каждый сервис подключается только к своей БД своим пользователем
   и применяет свои миграции goose при старте (embed + advisory-лок). Сервис llm состояния не имеет.</figcaption>
@@ -453,12 +422,12 @@
   <svg viewBox="0 0 1160 900" role="img" aria-label="Диаграмма последовательности импорта CSV">
     <!-- lifelines -->
     <g>
-      <rect class="box svc" x="20" y="30" width="160" height="44" rx="9"/><text class="t-sm" x="100" y="57" text-anchor="middle">Клиент / агент</text>
-      <rect class="box svc" x="220" y="30" width="160" height="44" rx="9"/><text class="t-sm" x="300" y="57" text-anchor="middle">processor</text>
-      <rect class="box data" x="420" y="30" width="160" height="44" rx="9"/><text class="t-sm" x="500" y="57" text-anchor="middle">inventory_db</text>
-      <rect class="box data" x="600" y="30" width="160" height="44" rx="9"/><text class="t-sm" x="680" y="57" text-anchor="middle">NATS JetStream</text>
-      <rect class="box svc" x="780" y="30" width="160" height="44" rx="9"/><text class="t-sm" x="860" y="57" text-anchor="middle">worker</text>
-      <rect class="box svc" x="980" y="30" width="160" height="44" rx="9"/><text class="t-sm" x="1060" y="57" text-anchor="middle">license (+ llm)</text>
+      <rect class="box svc" x="20" y="30" width="160" height="44" rx="9"/><text data-panel-width="160" text-anchor="middle" class="t-sm" x="100" y="56">Клиент / агент</text>
+      <rect class="box svc" x="220" y="30" width="160" height="44" rx="9"/><text data-panel-width="160" text-anchor="middle" class="t-sm" x="300" y="56">processor</text>
+      <rect class="box data" x="420" y="30" width="160" height="44" rx="9"/><text data-panel-width="160" text-anchor="middle" class="t-sm" x="500" y="56">inventory_db</text>
+      <rect class="box data" x="600" y="30" width="160" height="44" rx="9"/><text data-panel-width="160" text-anchor="middle" class="t-sm" x="680" y="56">NATS JetStream</text>
+      <rect class="box svc" x="780" y="30" width="160" height="44" rx="9"/><text data-panel-width="160" text-anchor="middle" class="t-sm" x="860" y="56">worker</text>
+      <rect class="box svc" x="980" y="30" width="160" height="44" rx="9"/><text data-panel-width="160" text-anchor="middle" class="t-sm" x="1060" y="56">license (+ llm)</text>
       <line class="life" x1="100" y1="74" x2="100" y2="872"/>
       <line class="life" x1="300" y1="74" x2="300" y2="872"/>
       <line class="life" x1="500" y1="74" x2="500" y2="872"/>
@@ -501,8 +470,8 @@
     <text class="lbl" x="700" y="589">11. MATCHED / AMBIGUOUS / UNKNOWN / PENDING_REVIEW (+ кандидаты pg_trgm)</text>
 
     <rect class="box note" x="640" y="618" width="500" height="52" rx="9"/>
-    <text class="s" x="656" y="639">12. AMBIGUOUS → llm.MatchSoftware (схема 3). Проверка: id ∈ кандидатов,</text>
-    <text class="s" x="656" y="657">confidence ≥ 0.85 ⇒ alias; иначе / при ошибке LLM ⇒ REQUIRES_REVIEW</text>
+    <text data-panel-width="500" text-anchor="middle" class="s" x="890" y="639">12. AMBIGUOUS → llm.MatchSoftware (схема 3). Проверка: id ∈ кандидатов,</text>
+    <text data-panel-width="500" text-anchor="middle" class="s" x="890" y="657">confidence ≥ 0.85 ⇒ alias; иначе / при ошибке LLM ⇒ REQUIRES_REVIEW</text>
 
     <path class="e-v" d="M 860 704 H 1056" marker-end="url(#ar-v)"/>
     <text class="lbl-v" x="640" y="684">13. SyncInventory — одна транзакция: processed_snapshots, отсев по collected_at,</text>
@@ -559,93 +528,71 @@
   <figure>
   <svg viewBox="0 0 1120 880" role="img" aria-label="Каскад сопоставления ПО">
     <rect class="box" x="270" y="20" width="460" height="56" rx="10"/>
-    <text class="t" x="310" y="45">Сырая строка из ОС</text>
-    <text class="s" x="310" y="64">display_name · publisher · version (например «studio_visual_2022.exe»)</text>
+    <text data-panel-width="460" text-anchor="middle" class="t" x="500" y="52">Сырая строка из ОС</text>
     <path class="e" d="M 500 76 V 100" marker-end="url(#ar)"/>
 
     <rect class="box svc" x="270" y="104" width="460" height="70" rx="10"/>
-    <text class="t" x="310" y="128">swkey: Normalize + SourceKey</text>
-    <text class="s" x="310" y="147">NFKC, нижний регистр, ™/®/©, разделители, шум издателя (inc, llc, gmbh…)</text>
-    <text class="s" x="310" y="164">source_key = sha256 от полей с префиксами длины — без коллизий конкатенации</text>
+    <text data-panel-width="460" text-anchor="middle" class="t" x="500" y="143">swkey: Normalize + SourceKey</text>
     <path class="e" d="M 500 174 V 198" marker-end="url(#ar)"/>
 
     <rect class="box svc" x="270" y="202" width="460" height="56" rx="10"/>
-    <text class="t" x="310" y="226">LRU-кэш worker (10 000 записей, TTL 600 с)</text>
-    <text class="s" x="310" y="245">singleflight склеивает одинаковые запросы; повторы не идут в БД</text>
+    <text data-panel-width="460" text-anchor="middle" class="t" x="500" y="234">LRU-кэш worker (10 000 записей, TTL 600 с)</text>
     <path class="e-t" d="M 730 230 H 790" marker-end="url(#ar-t)"/>
     <text class="lbl-t" x="736" y="222">попадание</text>
     <rect class="box data" x="794" y="202" width="300" height="56" rx="10"/>
-    <text class="t-sm" x="812" y="226">готовый MATCHED</text>
-    <text class="s2" x="812" y="245">дешёвый путь: большинство строк парка</text>
+    <text data-panel-width="300" text-anchor="middle" class="t-sm" x="944" y="234">готовый MATCHED</text>
     <path class="e" d="M 500 258 V 282" marker-end="url(#ar)"/>
     <text class="lbl" x="510" y="276">промах</text>
 
     <rect class="box svc" x="270" y="286" width="460" height="86" rx="10"/>
-    <text class="t" x="310" y="310">license.ResolveSoftwareBatch (батч до 500)</text>
-    <text class="s" x="310" y="329">1) alias по source_key (подтверждённые человеком или LLM соответствия)</text>
-    <text class="s" x="310" y="346">2) точное совпадение нормализованного имени</text>
-    <text class="s" x="310" y="363">3) pg_trgm GIN-индекс: кандидаты с similarity ≥ 0.65, top-5</text>
+    <text data-panel-width="460" text-anchor="middle" class="t" x="500" y="333">license.ResolveSoftwareBatch (батч до 500)</text>
     <path class="e" d="M 500 372 V 396" marker-end="url(#ar)"/>
 
     <polygon class="box" points="330,442 500,400 670,442 500,484"/>
-    <text class="t-sm" x="500" y="438" text-anchor="middle">DecideMatch</text>
-    <text class="s2" x="500" y="456" text-anchor="middle">сколько кандидатов и насколько они различимы</text>
+    <text class="t-sm" x="500" y="446" text-anchor="middle">DecideMatch</text>
 
     <path class="e-t" d="M 670 430 H 790" marker-end="url(#ar-t)"/>
     <text class="lbl-t" x="676" y="422">ровно одно точное</text>
     <rect class="box data" x="794" y="392" width="300" height="46" rx="9"/>
-    <text class="t-sm" x="812" y="412">MATCHED · метод EXACT</text>
-    <text class="s2" x="812" y="429">детерминированно, без модели</text>
+    <text data-panel-width="300" text-anchor="middle" class="t-sm" x="944" y="419">MATCHED · метод EXACT</text>
 
     <path class="e-t" d="M 670 456 H 790" marker-end="url(#ar-t)"/>
     <text class="lbl-t" x="676" y="472">top ≥ 0.95 и gap ≥ 0.10</text>
     <rect class="box data" x="794" y="446" width="300" height="46" rx="9"/>
-    <text class="t-sm" x="812" y="466">MATCHED · метод FUZZY</text>
-    <text class="s2" x="812" y="483">уверенное нечёткое совпадение</text>
+    <text data-panel-width="300" text-anchor="middle" class="t-sm" x="944" y="473">MATCHED · метод FUZZY</text>
 
     <path class="e" d="M 330 442 H 210 V 500" marker-end="url(#ar)"/>
     <text class="lbl" x="120" y="434">нет кандидатов / уже в работе</text>
-    <rect class="box note" x="30" y="504" width="250" height="76" rx="10"/>
-    <text class="t-sm" x="48" y="527">UNKNOWN / PENDING_REVIEW</text>
-    <text class="s2" x="48" y="545">не нарушение, а задача в очереди</text>
-    <text class="s2" x="48" y="561">/matching/pending (US-14):</text>
-    <text class="s2" x="48" y="575">администратор сопоставляет вручную</text>
+    <rect class="box note" x="10" y="504" width="240" height="76" rx="10"/>
+    <text data-panel-width="240" text-anchor="middle" class="t-sm" x="130" y="546">UNKNOWN / PENDING_REVIEW</text>
 
     <path class="e-v" d="M 500 484 V 520" marker-end="url(#ar-v)"/>
     <text class="lbl-v" x="510" y="508">AMBIGUOUS — детерминированно не решить</text>
 
     <rect class="box ai" x="270" y="524" width="460" height="76" rx="10"/>
-    <text class="t" x="310" y="548">llm.MatchSoftware (gRPC)</text>
-    <text class="s" x="310" y="567">модель видит только сырое имя и список кандидатов из БД</text>
-    <text class="s" x="310" y="584">возвращает product_id, confidence, reason; retry при 429 (до 5 попыток)</text>
+    <text data-panel-width="460" text-anchor="middle" class="t" x="500" y="566">llm.MatchSoftware (gRPC)</text>
 
-    <path class="e-g" d="M 270 562 H 210 V 596" marker-end="url(#ar-g)"/>
-    <rect class="box note" x="30" y="600" width="250" height="70" rx="10"/>
-    <text class="t-sm" x="48" y="623">LLM недоступна / mock</text>
-    <text class="s2" x="48" y="641">REQUIRES_REVIEW, снимок не падает;</text>
-    <text class="s2" x="48" y="657">конвейер продолжает работу</text>
+    <path class="e-g" d="M 270 562 H 130 V 616" marker-end="url(#ar-g)"/>
+    <rect class="box note" x="10" y="620" width="240" height="70" rx="10"/>
+    <text data-panel-width="240" text-anchor="middle" class="t-sm" x="130" y="659">LLM недоступна / mock</text>
 
     <path class="e" d="M 500 600 V 626" marker-end="url(#ar)"/>
     <polygon class="box" points="310,672 500,630 690,672 500,714"/>
-    <text class="t-sm" x="500" y="668" text-anchor="middle">AcceptSuggestion</text>
-    <text class="s2" x="500" y="686" text-anchor="middle">id ∈ кандидатов и confidence ≥ 0.85?</text>
+    <text class="t-sm" x="500" y="676" text-anchor="middle">AcceptSuggestion</text>
 
     <path class="e-t" d="M 690 672 H 790" marker-end="url(#ar-t)"/>
     <text class="lbl-t" x="696" y="664">да</text>
     <rect class="box data" x="794" y="638" width="300" height="66" rx="10"/>
-    <text class="t-sm" x="812" y="661">SaveMatchingSuggestion → alias</text>
-    <text class="s2" x="812" y="679">метод LLM, MATCHED; следующая такая же</text>
-    <text class="s2" x="812" y="694">строка решается без модели навсегда</text>
+    <text data-panel-width="300" text-anchor="middle" class="t-sm" x="944" y="675">SaveMatchingSuggestion → alias</text>
 
     <path class="e" d="M 500 714 V 742" marker-end="url(#ar)"/>
     <text class="lbl" x="510" y="736">нет</text>
     <rect class="box note" x="270" y="746" width="460" height="56" rx="10"/>
-    <text class="t-sm" x="310" y="770">REQUIRES_REVIEW — задача администратору</text>
-    <text class="s2" x="310" y="789">ручное подтверждение создаёт alias и «обучает» каскад</text>
+    <text data-panel-width="460" text-anchor="middle" class="t-sm" x="500" y="778">REQUIRES_REVIEW — задача администратору</text>
 
     <rect class="box band" x="270" y="820" width="824" height="46" rx="9"/>
-    <text class="s" x="308" y="840">Результат пишется в installations.match_status (MATCHED / UNKNOWN / REQUIRES_REVIEW) и matching_candidates;</text>
-    <text class="s" x="308" y="857">пороги auto_apply_confidence и fuzzy_auto_threshold меняются администратором через /matching/settings и пишутся в аудит.</text>
+    <text data-panel-width="824" text-anchor="middle" class="s" x="682" y="838.5">Результат пишется в installations.match_status (MATCHED / UNKNOWN / REQUIRES_REVIEW) и matching_candidates;</text>
+    <text data-panel-width="824" text-anchor="middle" class="s" x="682" y="855.5">пороги auto_apply_confidence и fuzzy_auto_threshold меняются администратором через /matching/settings и пишутся в аудит.</text>
   </svg>
   <figcaption>Схема 3. Воронка сопоставления: LLM — четвёртый шаг, а не первый, и всегда с ограниченным выбором.</figcaption>
   </figure>
@@ -674,14 +621,14 @@
   <svg viewBox="0 0 1160 840" role="img" aria-label="Цепочка вызовов AI-ассистента">
     <!-- trust boundary -->
     <rect class="band" x="380" y="96" width="380" height="700" rx="14"/>
-    <text class="s" x="392" y="118" fill="#b45309">недоверенная зона: модель не видит БД и не определяет права</text>
+    <text data-panel-width="380" text-anchor="middle" class="s" x="570" y="450" fill="#b45309" style="font-size:10.4px">недоверенная зона: модель не видит БД и не определяет права</text>
 
-    <rect class="box svc" x="20" y="30" width="150" height="44" rx="9"/><text class="t-sm" x="95" y="57" text-anchor="middle">Браузер</text>
-    <rect class="box svc" x="210" y="30" width="150" height="44" rx="9"/><text class="t-sm" x="285" y="57" text-anchor="middle">chat</text>
-    <rect class="box ai" x="400" y="30" width="150" height="44" rx="9"/><text class="t-sm" x="475" y="57" text-anchor="middle">llm</text>
-    <rect class="box ext" x="590" y="30" width="150" height="44" rx="9"/><text class="t-sm" x="665" y="57" text-anchor="middle">GigaChat</text>
-    <rect class="box svc" x="790" y="30" width="150" height="44" rx="9"/><text class="t-sm" x="865" y="57" text-anchor="middle">license</text>
-    <rect class="box data" x="980" y="30" width="150" height="44" rx="9"/><text class="t-sm" x="1055" y="57" text-anchor="middle">license_db</text>
+    <rect class="box svc" x="20" y="30" width="150" height="44" rx="9"/><text data-panel-width="150" text-anchor="middle" class="t-sm" x="95" y="56">Браузер</text>
+    <rect class="box svc" x="210" y="30" width="150" height="44" rx="9"/><text data-panel-width="150" text-anchor="middle" class="t-sm" x="285" y="56">chat</text>
+    <rect class="box ai" x="400" y="30" width="150" height="44" rx="9"/><text data-panel-width="150" text-anchor="middle" class="t-sm" x="475" y="56">llm</text>
+    <rect class="box ext" x="590" y="30" width="150" height="44" rx="9"/><text data-panel-width="150" text-anchor="middle" class="t-sm" x="665" y="56">GigaChat</text>
+    <rect class="box svc" x="790" y="30" width="150" height="44" rx="9"/><text data-panel-width="150" text-anchor="middle" class="t-sm" x="865" y="56">license</text>
+    <rect class="box data" x="980" y="30" width="150" height="44" rx="9"/><text data-panel-width="150" text-anchor="middle" class="t-sm" x="1055" y="56">license_db</text>
     <line class="life" x1="95" y1="74" x2="95" y2="812"/>
     <line class="life" x1="285" y1="74" x2="285" y2="812"/>
     <line class="life" x1="475" y1="74" x2="475" y2="812"/>
@@ -798,40 +745,40 @@
   <figure>
   <svg viewBox="0 0 1160 380" role="img" aria-label="Поток анализа EULA">
     <rect class="box" x="20" y="50" width="170" height="90" rx="10"/>
-    <text class="t-sm" x="36" y="76">ADMIN загружает файл</text>
-    <text class="s2" x="36" y="95">.txt / .pdf / .docx</text>
-    <text class="s2" x="36" y="111">лимит тела 12 МБ</text>
-    <text class="s2" x="36" y="127">POST /agreements/{id}/file</text>
+    <text data-panel-width="170" text-anchor="middle" class="t-sm" x="105" y="73.5" style="font-size:10.6px">ADMIN загружает файл</text>
+    <text data-panel-width="170" text-anchor="middle" class="s2" x="105" y="92.5">.txt / .pdf / .docx</text>
+    <text data-panel-width="170" text-anchor="middle" class="s2" x="105" y="108.5">лимит тела 12 МБ</text>
+    <text data-panel-width="170" text-anchor="middle" class="s2" x="105" y="124.5">POST /agreements/{id}/file</text>
 
     <rect class="box svc" x="215" y="50" width="170" height="90" rx="10"/>
-    <text class="t-sm" x="231" y="76">license: doctext</text>
-    <text class="s2" x="231" y="95">PDF — ledongthuc/pdf</text>
-    <text class="s2" x="231" y="111">DOCX — zip + XML</text>
-    <text class="s2" x="231" y="127">без внешних бинарников</text>
+    <text data-panel-width="170" text-anchor="middle" class="t-sm" x="300" y="73.5">license: doctext</text>
+    <text data-panel-width="170" text-anchor="middle" class="s2" x="300" y="92.5">PDF — ledongthuc/pdf</text>
+    <text data-panel-width="170" text-anchor="middle" class="s2" x="300" y="108.5">DOCX — zip + XML</text>
+    <text data-panel-width="170" text-anchor="middle" class="s2" x="300" y="124.5">без внешних бинарников</text>
 
     <rect class="box data" x="410" y="50" width="170" height="90" rx="10"/>
-    <text class="t-sm" x="426" y="76">agreement_text</text>
-    <text class="s2" x="426" y="95">хранится в license_db</text>
-    <text class="s2" x="426" y="111">абзацы нумеруются</text>
-    <text class="s2" x="426" y="127">для ссылок на пункты</text>
+    <text data-panel-width="170" text-anchor="middle" class="t-sm" x="495" y="73.5">agreement_text</text>
+    <text data-panel-width="170" text-anchor="middle" class="s2" x="495" y="92.5">хранится в license_db</text>
+    <text data-panel-width="170" text-anchor="middle" class="s2" x="495" y="108.5">абзацы нумеруются</text>
+    <text data-panel-width="170" text-anchor="middle" class="s2" x="495" y="124.5">для ссылок на пункты</text>
 
     <rect class="box svc" x="605" y="50" width="170" height="90" rx="10"/>
-    <text class="t-sm" x="621" y="76">POST /analyze</text>
-    <text class="s2" x="621" y="95">sha256(text) + версия</text>
-    <text class="s2" x="621" y="111">промпта = ключ кэша</text>
-    <text class="s2" x="621" y="127">force = пересчитать</text>
+    <text data-panel-width="170" text-anchor="middle" class="t-sm" x="690" y="73.5">POST /analyze</text>
+    <text data-panel-width="170" text-anchor="middle" class="s2" x="690" y="92.5">sha256(text) + версия</text>
+    <text data-panel-width="170" text-anchor="middle" class="s2" x="690" y="108.5">промпта = ключ кэша</text>
+    <text data-panel-width="170" text-anchor="middle" class="s2" x="690" y="124.5">force = пересчитать</text>
 
     <rect class="box ai" x="800" y="50" width="170" height="90" rx="10"/>
-    <text class="t-sm" x="816" y="76">llm.AnalyzeAgreement</text>
-    <text class="s2" x="816" y="95">промпт eula-v1 (embed)</text>
-    <text class="s2" x="816" y="111">модель LLM_EULA_MODEL</text>
-    <text class="s2" x="816" y="127">gRPC от license</text>
+    <text data-panel-width="170" text-anchor="middle" class="t-sm" x="885" y="73.5" style="font-size:11.4px">llm.AnalyzeAgreement</text>
+    <text data-panel-width="170" text-anchor="middle" class="s2" x="885" y="92.5">промпт eula-v1 (embed)</text>
+    <text data-panel-width="170" text-anchor="middle" class="s2" x="885" y="108.5">модель LLM_EULA_MODEL</text>
+    <text data-panel-width="170" text-anchor="middle" class="s2" x="885" y="124.5">gRPC от license</text>
 
     <rect class="box data" x="985" y="50" width="155" height="90" rx="10"/>
-    <text class="t-sm" x="1001" y="76">agreement_analyses</text>
-    <text class="s2" x="1001" y="95">analysis_json</text>
-    <text class="s2" x="1001" y="111">model</text>
-    <text class="s2" x="1001" y="127">prompt_version</text>
+    <text data-panel-width="155" text-anchor="middle" class="t-sm" x="1062.5" y="73.5" style="font-size:11.3px">agreement_analyses</text>
+    <text data-panel-width="155" text-anchor="middle" class="s2" x="1062.5" y="92.5">analysis_json</text>
+    <text data-panel-width="155" text-anchor="middle" class="s2" x="1062.5" y="108.5">model</text>
+    <text data-panel-width="155" text-anchor="middle" class="s2" x="1062.5" y="124.5">prompt_version</text>
 
     <path class="e" d="M 190 95 H 211" marker-end="url(#ar)"/>
     <path class="e" d="M 385 95 H 406" marker-end="url(#ar)"/>
@@ -840,32 +787,32 @@
     <path class="e-v" d="M 970 95 H 981" marker-end="url(#ar-v)"/>
 
     <rect class="box note" x="605" y="180" width="365" height="60" rx="10"/>
-    <text class="s" x="621" y="203">Кэш: тот же хэш текста и та же версия промпта —</text>
-    <text class="s" x="621" y="221">повторный вызов модели не нужен (экономия токенов)</text>
+    <text data-panel-width="365" text-anchor="middle" class="s" x="787.5" y="205">Кэш: тот же хэш текста и та же версия промпта —</text>
+    <text data-panel-width="365" text-anchor="middle" class="s" x="787.5" y="223">повторный вызов модели не нужен (экономия токенов)</text>
     <path class="e-g" d="M 690 140 V 176" marker-end="url(#ar-g)"/>
 
     <rect class="box svc" x="605" y="270" width="170" height="70" rx="10"/>
-    <text class="t-sm" x="621" y="294">ADMIN: approve</text>
-    <text class="s2" x="621" y="313">POST /analysis/approve</text>
-    <text class="s2" x="621" y="329">явное решение человека</text>
+    <text data-panel-width="170" text-anchor="middle" class="t-sm" x="690" y="291.5">ADMIN: approve</text>
+    <text data-panel-width="170" text-anchor="middle" class="s2" x="690" y="310.5">POST /analysis/approve</text>
+    <text data-panel-width="170" text-anchor="middle" class="s2" x="690" y="326.5">явное решение человека</text>
 
     <rect class="box data" x="800" y="270" width="340" height="70" rx="10"/>
-    <text class="t-sm" x="816" y="294">Поля соглашения обновлены + audit_log</text>
-    <text class="s2" x="816" y="313">тип лицензии, модель оплаты, условия использования</text>
-    <text class="s2" x="816" y="329">кто и когда подтвердил — фиксируется в журнале</text>
+    <text data-panel-width="340" text-anchor="middle" class="t-sm" x="970" y="291.5">Поля соглашения обновлены + audit_log</text>
+    <text data-panel-width="340" text-anchor="middle" class="s2" x="970" y="310.5">тип лицензии, модель оплаты, условия использования</text>
+    <text data-panel-width="340" text-anchor="middle" class="s2" x="970" y="326.5">кто и когда подтвердил — фиксируется в журнале</text>
 
     <path class="e" d="M 1067 140 V 255 H 860 V 266" marker-end="url(#ar)"/>
     <text class="lbl" x="760" y="248">GET /analysis → карточка с рисками и цитатами пунктов</text>
     <path class="e" d="M 775 305 H 796" marker-end="url(#ar)"/>
 
     <rect class="box band" x="20" y="180" width="540" height="160" rx="12"/>
-    <text class="t-sm" x="40" y="206">Почему так, а не «модель сама меняет лицензию»</text>
-    <text class="s" x="40" y="228">1. Требование ТЗ: решения о лицензировании принимает человек.</text>
-    <text class="s" x="40" y="248">2. Юридическая цена ошибки: тип лицензии влияет на комплаенс и баланс.</text>
-    <text class="s" x="40" y="268">3. Версионирование промпта + хэш текста дают воспроизводимость:</text>
-    <text class="s" x="40" y="286">   видно, какая модель и какая версия промпта дали заключение.</text>
-    <text class="s" x="40" y="306">4. Похожие соглашения (/similar) ищутся pg_trgm по тексту —</text>
-    <text class="s" x="40" y="324">   можно опереться на уже проверенное соглашение.</text>
+    <text data-panel-width="540" text-anchor="middle" class="t-sm" x="290" y="205">Почему так, а не «модель сама меняет лицензию»</text>
+    <text data-panel-width="540" text-anchor="middle" class="s" x="290" y="227">1. Требование ТЗ: решения о лицензировании принимает человек.</text>
+    <text data-panel-width="540" text-anchor="middle" class="s" x="290" y="247">2. Юридическая цена ошибки: тип лицензии влияет на комплаенс и баланс.</text>
+    <text data-panel-width="540" text-anchor="middle" class="s" x="290" y="267">3. Версионирование промпта + хэш текста дают воспроизводимость:</text>
+    <text data-panel-width="540" text-anchor="middle" class="s" x="290" y="285">   видно, какая модель и какая версия промпта дали заключение.</text>
+    <text data-panel-width="540" text-anchor="middle" class="s" x="290" y="305">4. Похожие соглашения (/similar) ищутся pg_trgm по тексту —</text>
+    <text data-panel-width="540" text-anchor="middle" class="s" x="290" y="323">   можно опереться на уже проверенное соглашение.</text>
   </svg>
   <figcaption>Схема 5. EULA-конвейер: извлечение текста → анализ → кэш → подтверждение администратором → аудит.</figcaption>
   </figure>
@@ -902,77 +849,77 @@
   <svg viewBox="0 0 1160 780" role="img" aria-label="CI/CD и топология развёртывания">
     <!-- CI panel -->
     <rect class="box infra" x="20" y="20" width="540" height="380" rx="12"/>
-    <text class="t" x="40" y="46">GitHub Actions</text>
+    <text data-panel-width="540" text-anchor="middle" class="t" x="290" y="46">GitHub Actions</text>
 
     <rect class="box" x="40" y="60" width="500" height="76" rx="9"/>
-    <text class="t-sm" x="56" y="82">CI · on push / pull_request</text>
-    <text class="s2" x="56" y="100">gofmt · go vet · go build · go test -race (бэкенд)</text>
-    <text class="s2" x="56" y="116">сборка и тесты release-инструмента · валидация реального Compose-плана</text>
-    <text class="s2" x="56" y="131">docker buildx bake --print — проверяется, что релиз вообще собирается</text>
+    <text data-panel-width="500" text-anchor="middle" class="t-sm" x="290" y="78">CI · on push / pull_request</text>
+    <text data-panel-width="500" text-anchor="middle" class="s2" x="290" y="95.6327">gofmt · go vet · go build · go test -race (бэкенд)</text>
+    <text data-panel-width="500" text-anchor="middle" class="s2" x="290" y="111.306">сборка и тесты release-инструмента · валидация реального Compose-плана</text>
+    <text data-panel-width="500" text-anchor="middle" class="s2" x="290" y="126">docker buildx bake --print — проверяется, что релиз вообще собирается</text>
 
     <rect class="box" x="40" y="150" width="500" height="106" rx="9"/>
-    <text class="t-sm" x="56" y="172">CD · workflow_dispatch · environment production</text>
-    <text class="s2" x="56" y="190">раздельные пайплайны backend и frontend, concurrency-группа без отмены</text>
-    <text class="s2" x="56" y="206">release prepare → buildx bake (GHA-кэш, max-parallelism 2) → pack</text>
-    <text class="s2" x="56" y="222">в образ на сборке «запечатывается» прод-конфиг (секрет BACKEND_CONFIG)</text>
-    <text class="s2" x="56" y="238">артефакт release.tar = образы + compose + manifest + release-tool (3 дня)</text>
+    <text data-panel-width="500" text-anchor="middle" class="t-sm" x="290" y="174">CD · workflow_dispatch · environment production</text>
+    <text data-panel-width="500" text-anchor="middle" class="s2" x="290" y="192">раздельные пайплайны backend и frontend, concurrency-группа без отмены</text>
+    <text data-panel-width="500" text-anchor="middle" class="s2" x="290" y="208">release prepare → buildx bake (GHA-кэш, max-parallelism 2) → pack</text>
+    <text data-panel-width="500" text-anchor="middle" class="s2" x="290" y="224">в образ на сборке «запечатывается» прод-конфиг (секрет BACKEND_CONFIG)</text>
+    <text data-panel-width="500" text-anchor="middle" class="s2" x="290" y="240">артефакт release.tar = образы + compose + manifest + release-tool (3 дня)</text>
 
     <rect class="box" x="40" y="270" width="500" height="110" rx="9"/>
-    <text class="t-sm" x="56" y="292">deliver · SSH на сервер</text>
-    <text class="s2" x="56" y="310">ключ и known_hosts из secrets · проверка checksum архива</text>
-    <text class="s2" x="56" y="326">preflight: свободное место (2× архив + образы), валидация compose</text>
-    <text class="s2" x="56" y="342">никакого registry: образы грузятся прямо в docker на хосте</text>
-    <text class="s2" x="56" y="362">релиз = sha + run_id + attempt → идемпотентная повторная попытка</text>
+    <text data-panel-width="500" text-anchor="middle" class="t-sm" x="290" y="294">deliver · SSH на сервер</text>
+    <text data-panel-width="500" text-anchor="middle" class="s2" x="290" y="312">ключ и known_hosts из secrets · проверка checksum архива</text>
+    <text data-panel-width="500" text-anchor="middle" class="s2" x="290" y="328">preflight: свободное место (2× архив + образы), валидация compose</text>
+    <text data-panel-width="500" text-anchor="middle" class="s2" x="290" y="344">никакого registry: образы грузятся прямо в docker на хосте</text>
+    <text data-panel-width="500" text-anchor="middle" class="s2" x="290" y="364">релиз = sha + run_id + attempt → идемпотентная повторная попытка</text>
 
     <!-- Server panel -->
     <rect class="box svc" x="600" y="20" width="540" height="380" rx="12"/>
-    <text class="t" x="620" y="46">Сервер · /opt/sam-backend</text>
+    <text data-panel-width="540" text-anchor="middle" class="t" x="870" y="46">Сервер · /opt/sam-backend</text>
 
     <rect class="box" x="620" y="60" width="500" height="94" rx="9"/>
-    <text class="t-sm" x="636" y="82">Состояние развёртывания</text>
-    <text class="s2" x="636" y="100">releases/&lt;id&gt; · current · state.json · pending.json · файловый lock</text>
-    <text class="s2" x="636" y="116">recoverPending: незавершённый деплой восстанавливается при следующем запуске</text>
-    <text class="s2" x="636" y="132">docker image load → сверка отпечатков образов с манифестом</text>
-    <text class="s2" x="636" y="148">инфраструктурные образы (postgres, nats, nginx) должны быть на хосте заранее</text>
+    <text data-panel-width="500" text-anchor="middle" class="t-sm" x="870" y="78">Состояние развёртывания</text>
+    <text data-panel-width="500" text-anchor="middle" class="s2" x="870" y="96">releases/&lt;id&gt; · current · state.json · pending.json · файловый lock</text>
+    <text data-panel-width="500" text-anchor="middle" class="s2" x="870" y="112">recoverPending: незавершённый деплой восстанавливается при следующем запуске</text>
+    <text data-panel-width="500" text-anchor="middle" class="s2" x="870" y="128">docker image load → сверка отпечатков образов с манифестом</text>
+    <text data-panel-width="500" text-anchor="middle" class="s2" x="870" y="144">инфраструктурные образы (postgres, nats, nginx) должны быть на хосте заранее</text>
 
     <rect class="box" x="620" y="168" width="500" height="94" rx="9"/>
-    <text class="t-sm" x="636" y="190">Активация и проверка</text>
-    <text class="s2" x="636" y="208">compose up -d --no-build --pull never --wait --wait-timeout 180</text>
-    <text class="s2" x="636" y="224">verify: HTTPS https://sam.v1sdev.ru/api/v1/docs (6 попыток по 2 с)</text>
-    <text class="s2" x="636" y="240">для фронтенда — http://127.0.0.1:5173/</text>
-    <text class="s2" x="636" y="256">успех ⇒ маркер success и запись в state.json</text>
+    <text data-panel-width="500" text-anchor="middle" class="t-sm" x="870" y="186">Активация и проверка</text>
+    <text data-panel-width="500" text-anchor="middle" class="s2" x="870" y="204">compose up -d --no-build --pull never --wait --wait-timeout 180</text>
+    <text data-panel-width="500" text-anchor="middle" class="s2" x="870" y="220">verify: HTTPS https://sam.v1sdev.ru/api/v1/docs (6 попыток по 2 с)</text>
+    <text data-panel-width="500" text-anchor="middle" class="s2" x="870" y="236">для фронтенда — http://127.0.0.1:5173/</text>
+    <text data-panel-width="500" text-anchor="middle" class="s2" x="870" y="252">успех ⇒ маркер success и запись в state.json</text>
 
     <rect class="box note" x="620" y="276" width="500" height="104" rx="9"/>
-    <text class="t-sm" x="636" y="298">Откат</text>
-    <text class="s2" x="636" y="316">любая ошибка ⇒ activate(previous) + повторная проверка</text>
-    <text class="s2" x="636" y="332">хранятся два успешных релиза, старые образы собираются сборщиком мусора</text>
-    <text class="s2" x="636" y="348">важно: SQL-миграции не откатываются — DDL должен быть обратно совместимым</text>
-    <text class="s2" x="636" y="366">первый деплой требует существующий .env сервера как точку возврата</text>
+    <text data-panel-width="500" text-anchor="middle" class="t-sm" x="870" y="298">Откат</text>
+    <text data-panel-width="500" text-anchor="middle" class="s2" x="870" y="316">любая ошибка ⇒ activate(previous) + повторная проверка</text>
+    <text data-panel-width="500" text-anchor="middle" class="s2" x="870" y="332">хранятся два успешных релиза, старые образы собираются сборщиком мусора</text>
+    <text data-panel-width="500" text-anchor="middle" class="s2" x="870" y="348">важно: SQL-миграции не откатываются — DDL должен быть обратно совместимым</text>
+    <text data-panel-width="500" text-anchor="middle" class="s2" x="870" y="366">первый деплой требует существующий .env сервера как точку возврата</text>
 
     <path class="e-v" d="M 560 210 H 596" marker-end="url(#ar-v)"/>
     <text class="lbl-v" x="578" y="200" text-anchor="middle">SSH</text>
 
     <!-- network topology -->
     <rect class="box band" x="20" y="420" width="1120" height="340" rx="12"/>
-    <text class="t" x="40" y="446">Сетевая топология на сервере (вариант compose.server.yaml — за уже существующим nginx)</text>
+    <text data-panel-width="1120" text-anchor="middle" class="t" x="580" y="446">Сетевая топология на сервере (вариант compose.server.yaml — за уже существующим nginx)</text>
 
     <rect class="box infra" x="50" y="466" width="290" height="86" rx="10"/>
-    <text class="t-sm" x="66" y="490">Хостовый nginx :80 / :443</text>
-    <text class="s2" x="66" y="508">TLS Let's Encrypt, HTTP/2, security-заголовки</text>
-    <text class="s2" x="66" y="524">сертификаты перечитываются deploy-hook certbot</text>
-    <text class="s2" x="66" y="540">порты 80/443 контейнеры не занимают</text>
+    <text data-panel-width="290" text-anchor="middle" class="t-sm" x="195" y="488">Хостовый nginx :80 / :443</text>
+    <text data-panel-width="290" text-anchor="middle" class="s2" x="195" y="506">TLS Let's Encrypt, HTTP/2, security-заголовки</text>
+    <text data-panel-width="290" text-anchor="middle" class="s2" x="195" y="522" style="font-size:9.9px">сертификаты перечитываются deploy-hook certbot</text>
+    <text data-panel-width="290" text-anchor="middle" class="s2" x="195" y="538">порты 80/443 контейнеры не занимают</text>
 
     <rect class="box" x="400" y="466" width="300" height="86" rx="10"/>
-    <text class="t-sm" x="416" y="490">frontend container · 127.0.0.1:5173</text>
-    <text class="s2" x="416" y="508">nginx:stable-alpine + статика SPA</text>
-    <text class="s2" x="416" y="524">try_files → index.html (SPA fallback)</text>
-    <text class="s2" x="416" y="540">свой compose и свой CD-пайплайн</text>
+    <text data-panel-width="300" text-anchor="middle" class="t-sm" x="550" y="488">frontend container · 127.0.0.1:5173</text>
+    <text data-panel-width="300" text-anchor="middle" class="s2" x="550" y="506">nginx:stable-alpine + статика SPA</text>
+    <text data-panel-width="300" text-anchor="middle" class="s2" x="550" y="522">try_files → index.html (SPA fallback)</text>
+    <text data-panel-width="300" text-anchor="middle" class="s2" x="550" y="538">свой compose и свой CD-пайплайн</text>
 
     <rect class="box infra" x="760" y="466" width="350" height="86" rx="10"/>
-    <text class="t-sm" x="776" y="490">backend gateway · 127.0.0.1:8443 (TLS)</text>
-    <text class="s2" x="776" y="508">location ^~ /api/ → proxy_pass https://127.0.0.1:8443</text>
-    <text class="s2" x="776" y="524">proxy_ssl_verify on, SNI, buffering off, таймауты 600 с</text>
-    <text class="s2" x="776" y="540">внутри — маршрутизация processor / chat / license</text>
+    <text data-panel-width="350" text-anchor="middle" class="t-sm" x="935" y="488">backend gateway · 127.0.0.1:8443 (TLS)</text>
+    <text data-panel-width="350" text-anchor="middle" class="s2" x="935" y="506">location ^~ /api/ → proxy_pass https://127.0.0.1:8443</text>
+    <text data-panel-width="350" text-anchor="middle" class="s2" x="935" y="522">proxy_ssl_verify on, SNI, buffering off, таймауты 600 с</text>
+    <text data-panel-width="350" text-anchor="middle" class="s2" x="935" y="538">внутри — маршрутизация processor / chat / license</text>
 
     <path class="e" d="M 340 500 H 396" marker-end="url(#ar)"/>
     <text class="lbl" x="346" y="492">location /</text>
@@ -980,18 +927,18 @@
     <text class="lbl" x="470" y="524">location ^~ /api/</text>
 
     <rect class="box svc" x="50" y="590" width="1060" height="110" rx="10"/>
-    <text class="t-sm" x="66" y="614">Изолированная docker-сеть (подсеть задаётся DOCKER_SUBNET)</text>
+    <text data-panel-width="1060" text-anchor="middle" class="t-sm" x="580" y="614">Изолированная docker-сеть (подсеть задаётся DOCKER_SUBNET)</text>
     <g>
-      <rect class="box" x="66" y="626" width="130" height="30" rx="7"/><text class="s" x="131" y="646" text-anchor="middle">processor :8081</text>
-      <rect class="box" x="206" y="626" width="130" height="30" rx="7"/><text class="s" x="271" y="646" text-anchor="middle">worker :8082</text>
-      <rect class="box" x="346" y="626" width="150" height="30" rx="7"/><text class="s" x="421" y="646" text-anchor="middle">license :8083 / :9093</text>
-      <rect class="box" x="506" y="626" width="120" height="30" rx="7"/><text class="s" x="566" y="646" text-anchor="middle">chat :8084</text>
-      <rect class="box" x="636" y="626" width="150" height="30" rx="7"/><text class="s" x="711" y="646" text-anchor="middle">llm :8085 / :9095</text>
-      <rect class="box data" x="796" y="626" width="140" height="30" rx="7"/><text class="s" x="866" y="646" text-anchor="middle">postgres :5432</text>
-      <rect class="box data" x="946" y="626" width="148" height="30" rx="7"/><text class="s" x="1020" y="646" text-anchor="middle">nats :4222 / :8222</text>
+      <rect class="box" x="66" y="626" width="130" height="30" rx="7"/><text data-panel-width="130" text-anchor="middle" class="s" x="131" y="645">processor :8081</text>
+      <rect class="box" x="206" y="626" width="130" height="30" rx="7"/><text data-panel-width="130" text-anchor="middle" class="s" x="271" y="645">worker :8082</text>
+      <rect class="box" x="346" y="626" width="150" height="30" rx="7"/><text data-panel-width="150" text-anchor="middle" class="s" x="421" y="645">license :8083 / :9093</text>
+      <rect class="box" x="506" y="626" width="120" height="30" rx="7"/><text data-panel-width="120" text-anchor="middle" class="s" x="566" y="645">chat :8084</text>
+      <rect class="box" x="636" y="626" width="150" height="30" rx="7"/><text data-panel-width="150" text-anchor="middle" class="s" x="711" y="645">llm :8085 / :9095</text>
+      <rect class="box data" x="796" y="626" width="140" height="30" rx="7"/><text data-panel-width="140" text-anchor="middle" class="s" x="866" y="645">postgres :5432</text>
+      <rect class="box data" x="946" y="626" width="148" height="30" rx="7"/><text data-panel-width="148" text-anchor="middle" class="s" x="1020" y="645">nats :4222 / :8222</text>
     </g>
-    <text class="s2" x="66" y="676">наружу не публикуется ничего, кроме gateway на loopback · образы сервисов distroless nonroot · HEALTHCHECK — подкоманда того же бинарника</text>
-    <text class="s2" x="66" y="692">тома: postgres_data · nats_data · inventory_uploads · секреты и конфигурация запечатаны в бинарник, .env на сервере не нужен</text>
+    <text data-panel-width="1060" text-anchor="middle" class="s2" x="580" y="676">наружу не публикуется ничего, кроме gateway на loopback · образы сервисов distroless nonroot · HEALTHCHECK — подкоманда того же бинарника</text>
+    <text data-panel-width="1060" text-anchor="middle" class="s2" x="580" y="692">тома: postgres_data · nats_data · inventory_uploads · секреты и конфигурация запечатаны в бинарник, .env на сервере не нужен</text>
 
     <path class="e" d="M 935 552 V 586" marker-end="url(#ar)"/>
     <path class="e-g" d="M 550 552 V 570 H 420 V 586" marker-end="url(#ar-g)"/>
@@ -1262,57 +1209,57 @@
   <figure>
   <svg viewBox="0 0 1160 430" role="img" aria-label="Структура фронтенда">
     <rect class="box svc" x="20" y="30" width="250" height="120" rx="11"/>
-    <text class="t" x="36" y="56">src/routes — файловый роутинг</text>
-    <text class="s" x="36" y="76">TanStack Router, авто-кодсплит</text>
-    <text class="s" x="36" y="93">__root → _authenticated → _admin</text>
-    <text class="s" x="36" y="110">guards выполняются до loaders</text>
-    <text class="s2" x="36" y="132">21 маршрут: каталог, устройства, импорты,</text>
-    <text class="s2" x="36" y="146">соглашения, договоры, баланс, аудит</text>
+    <text data-panel-width="250" text-anchor="middle" class="t" x="145" y="49" style="font-size:12.3px">src/routes — файловый роутинг</text>
+    <text data-panel-width="250" text-anchor="middle" class="s" x="145" y="69">TanStack Router, авто-кодсплит</text>
+    <text data-panel-width="250" text-anchor="middle" class="s" x="145" y="86">__root → _authenticated → _admin</text>
+    <text data-panel-width="250" text-anchor="middle" class="s" x="145" y="103">guards выполняются до loaders</text>
+    <text data-panel-width="250" text-anchor="middle" class="s2" x="145" y="125" style="font-size:9.6px">21 маршрут: каталог, устройства, импорты,</text>
+    <text data-panel-width="250" text-anchor="middle" class="s2" x="145" y="139">соглашения, договоры, баланс, аудит</text>
 
     <rect class="box svc" x="300" y="30" width="250" height="120" rx="11"/>
-    <text class="t" x="316" y="56">src/features — модули</text>
-    <text class="s" x="316" y="76">software · devices · imports</text>
-    <text class="s" x="316" y="93">agreements · contracts · installations</text>
-    <text class="s" x="316" y="110">model.ts (типы) + queries.ts (хуки)</text>
-    <text class="s2" x="316" y="132">ключ кэша = роль + эпоха + фильтры,</text>
-    <text class="s2" x="316" y="146">смена роли не отдаёт данные прошлой роли</text>
+    <text data-panel-width="250" text-anchor="middle" class="t" x="425" y="49">src/features — модули</text>
+    <text data-panel-width="250" text-anchor="middle" class="s" x="425" y="69">software · devices · imports</text>
+    <text data-panel-width="250" text-anchor="middle" class="s" x="425" y="86">agreements · contracts · installations</text>
+    <text data-panel-width="250" text-anchor="middle" class="s" x="425" y="103">model.ts (типы) + queries.ts (хуки)</text>
+    <text data-panel-width="250" text-anchor="middle" class="s2" x="425" y="125">ключ кэша = роль + эпоха + фильтры,</text>
+    <text data-panel-width="250" text-anchor="middle" class="s2" x="425" y="139" style="font-size:9.4px">смена роли не отдаёт данные прошлой роли</text>
 
     <rect class="box" x="580" y="30" width="250" height="120" rx="11"/>
-    <text class="t" x="596" y="56">src/components</text>
-    <text class="s" x="596" y="76">ui — shadcn / Base UI (доступность)</text>
-    <text class="s" x="596" y="93">shared — DataTable, states, guards</text>
-    <text class="s" x="596" y="110">layout — app-shell с ролевым меню</text>
-    <text class="s2" x="596" y="132">DataTable берёт ответ data explorer:</text>
-    <text class="s2" x="596" y="146">columns / rows / total / shown</text>
+    <text data-panel-width="250" text-anchor="middle" class="t" x="705" y="49">src/components</text>
+    <text data-panel-width="250" text-anchor="middle" class="s" x="705" y="69">ui — shadcn / Base UI (доступность)</text>
+    <text data-panel-width="250" text-anchor="middle" class="s" x="705" y="86">shared — DataTable, states, guards</text>
+    <text data-panel-width="250" text-anchor="middle" class="s" x="705" y="103">layout — app-shell с ролевым меню</text>
+    <text data-panel-width="250" text-anchor="middle" class="s2" x="705" y="125">DataTable берёт ответ data explorer:</text>
+    <text data-panel-width="250" text-anchor="middle" class="s2" x="705" y="139">columns / rows / total / shown</text>
 
     <rect class="box ai" x="860" y="30" width="280" height="120" rx="11"/>
-    <text class="t" x="876" y="56">generated/api — кодген apicraft</text>
-    <text class="s" x="876" y="76">источник: /api/v1/docs/openapi.yaml стенда</text>
-    <text class="s" x="876" y="93">группировка по тегам, имя по пути</text>
-    <text class="s" x="876" y="110">59 типизированных функций + types.gen.ts</text>
-    <text class="s2" x="876" y="132">не правится руками; normalize-api-imports.mjs</text>
-    <text class="s2" x="876" y="146">чинит пути после генерации на Windows</text>
+    <text data-panel-width="280" text-anchor="middle" class="t" x="1000" y="49">generated/api — кодген apicraft</text>
+    <text data-panel-width="280" text-anchor="middle" class="s" x="1000" y="69" style="font-size:11.2px">источник: /api/v1/docs/openapi.yaml стенда</text>
+    <text data-panel-width="280" text-anchor="middle" class="s" x="1000" y="86">группировка по тегам, имя по пути</text>
+    <text data-panel-width="280" text-anchor="middle" class="s" x="1000" y="103" style="font-size:11px">59 типизированных функций + types.gen.ts</text>
+    <text data-panel-width="280" text-anchor="middle" class="s2" x="1000" y="125">не правится руками; normalize-api-imports.mjs</text>
+    <text data-panel-width="280" text-anchor="middle" class="s2" x="1000" y="139">чинит пути после генерации на Windows</text>
 
     <rect class="box infra" x="300" y="200" width="530" height="110" rx="11"/>
-    <text class="t" x="316" y="226">src/utils/lib/instance.ts — единственный Axios-инстанс</text>
-    <text class="s" x="316" y="246">baseURL /api/v1 · токен из localStorage перед каждым запросом</text>
-    <text class="s" x="316" y="263">AbortSignal эпохи сессии · отмена «поздних» ответов прошлой роли</text>
-    <text class="s" x="316" y="280">нормализация ошибок в ApiError {status, code, message, requestId}</text>
-    <text class="s2" x="316" y="299">401 очищает защищённые данные; GET повторяется ≤ 2 раз на сеть/5xx, мутации не повторяются</text>
+    <text data-panel-width="530" text-anchor="middle" class="t" x="565" y="222.5">src/utils/lib/instance.ts — единственный Axios-инстанс</text>
+    <text data-panel-width="530" text-anchor="middle" class="s" x="565" y="242.5">baseURL /api/v1 · токен из localStorage перед каждым запросом</text>
+    <text data-panel-width="530" text-anchor="middle" class="s" x="565" y="259.5">AbortSignal эпохи сессии · отмена «поздних» ответов прошлой роли</text>
+    <text data-panel-width="530" text-anchor="middle" class="s" x="565" y="276.5">нормализация ошибок в ApiError {status, code, message, requestId}</text>
+    <text data-panel-width="530" text-anchor="middle" class="s2" x="565" y="295.5" style="font-size:9.6px">401 очищает защищённые данные; GET повторяется ≤ 2 раз на сеть/5xx, мутации не повторяются</text>
 
     <rect class="box" x="20" y="200" width="250" height="110" rx="11"/>
-    <text class="t" x="36" y="226">src/app/auth — демо-сессия</text>
-    <text class="s" x="36" y="246">переключатель USER / ADMIN</text>
-    <text class="s" x="36" y="263">смена роли: abort → clear → токен</text>
-    <text class="s" x="36" y="280">синхронизация вкладок через storage</text>
-    <text class="s2" x="36" y="299">демо-JWT: src/utils/constants/tokens.ts</text>
+    <text data-panel-width="250" text-anchor="middle" class="t" x="145" y="222.5">src/app/auth — демо-сессия</text>
+    <text data-panel-width="250" text-anchor="middle" class="s" x="145" y="242.5">переключатель USER / ADMIN</text>
+    <text data-panel-width="250" text-anchor="middle" class="s" x="145" y="259.5">смена роли: abort → clear → токен</text>
+    <text data-panel-width="250" text-anchor="middle" class="s" x="145" y="276.5" style="font-size:11.2px">синхронизация вкладок через storage</text>
+    <text data-panel-width="250" text-anchor="middle" class="s2" x="145" y="295.5">демо-JWT: src/utils/constants/tokens.ts</text>
 
     <rect class="box data" x="860" y="200" width="280" height="110" rx="11"/>
-    <text class="t" x="876" y="226">Доставка</text>
-    <text class="s" x="876" y="246">Vite build → статика</text>
-    <text class="s" x="876" y="263">nginx:stable-alpine, SPA fallback</text>
-    <text class="s" x="876" y="280">/api/v1 → reverse proxy на бэкенд</text>
-    <text class="s2" x="876" y="299">тот же прокси в vite dev — CORS не нужен вообще</text>
+    <text data-panel-width="280" text-anchor="middle" class="t" x="1000" y="222.5">Доставка</text>
+    <text data-panel-width="280" text-anchor="middle" class="s" x="1000" y="242.5">Vite build → статика</text>
+    <text data-panel-width="280" text-anchor="middle" class="s" x="1000" y="259.5">nginx:stable-alpine, SPA fallback</text>
+    <text data-panel-width="280" text-anchor="middle" class="s" x="1000" y="276.5">/api/v1 → reverse proxy на бэкенд</text>
+    <text data-panel-width="280" text-anchor="middle" class="s2" x="1000" y="295.5" style="font-size:9.4px">тот же прокси в vite dev — CORS не нужен вообще</text>
 
     <path class="e" d="M 270 90 H 296" marker-end="url(#ar)"/>
     <path class="e" d="M 550 90 H 576" marker-end="url(#ar)"/>
@@ -1322,8 +1269,8 @@
     <path class="e-b" d="M 565 310 V 340 H 1000 V 314" marker-end="url(#ar-b)"/>
 
     <rect class="box band" x="20" y="350" width="1120" height="60" rx="10"/>
-    <text class="s" x="40" y="374">Проверки: pnpm typecheck · node --test (6 наборов тестов без тест-фреймворка) · eslint/prettier · сборка в CI.</text>
-    <text class="s" x="40" y="394">Контракт меняется → pnpm generate-api; маршруты → pnpm generate-routes. Сгенерированное не правится руками.</text>
+    <text data-panel-width="1120" text-anchor="middle" class="s" x="580" y="374">Проверки: pnpm typecheck · node --test (6 наборов тестов без тест-фреймворка) · eslint/prettier · сборка в CI.</text>
+    <text data-panel-width="1120" text-anchor="middle" class="s" x="580" y="394">Контракт меняется → pnpm generate-api; маршруты → pnpm generate-routes. Сгенерированное не правится руками.</text>
   </svg>
   <figcaption>Схема 7. Слои фронтенда: маршруты → предметные модули → генерируемый клиент → единый транспорт.</figcaption>
   </figure>
