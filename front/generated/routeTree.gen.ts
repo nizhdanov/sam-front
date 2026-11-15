@@ -22,6 +22,7 @@ import { Route as AuthenticatedAdminDashboardRouteImport } from './../src/routes
 import { Route as AuthenticatedAdminDevicesRouteImport } from './../src/routes/_authenticated/_admin/devices'
 import { Route as AuthenticatedAdminImportsRouteImport } from './../src/routes/_authenticated/_admin/imports'
 import { Route as AuthenticatedAdminInstallationsRouteImport } from './../src/routes/_authenticated/_admin/installations'
+import { Route as AuthenticatedSoftwareProductIdRouteImport } from './../src/routes/_authenticated/software_.$productId'
 import { Route as AuthenticatedAdminComplianceBalanceRouteImport } from './../src/routes/_authenticated/_admin/compliance/balance'
 import { Route as AuthenticatedAdminComplianceFindingsRouteImport } from './../src/routes/_authenticated/_admin/compliance/findings'
 
@@ -94,6 +95,12 @@ const AuthenticatedAdminInstallationsRoute =
     path: '/installations',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedSoftwareProductIdRoute =
+  AuthenticatedSoftwareProductIdRouteImport.update({
+    id: '/software_/$productId',
+    path: '/software/$productId',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminComplianceBalanceRoute =
   AuthenticatedAdminComplianceBalanceRouteImport.update({
     id: '/compliance/balance',
@@ -119,6 +126,7 @@ export interface FileRoutesByFullPath {
   '/devices': typeof AuthenticatedAdminDevicesRoute
   '/imports': typeof AuthenticatedAdminImportsRoute
   '/installations': typeof AuthenticatedAdminInstallationsRoute
+  '/software/$productId': typeof AuthenticatedSoftwareProductIdRoute
   '/compliance/balance': typeof AuthenticatedAdminComplianceBalanceRoute
   '/compliance/findings': typeof AuthenticatedAdminComplianceFindingsRoute
 }
@@ -134,6 +142,7 @@ export interface FileRoutesByTo {
   '/devices': typeof AuthenticatedAdminDevicesRoute
   '/imports': typeof AuthenticatedAdminImportsRoute
   '/installations': typeof AuthenticatedAdminInstallationsRoute
+  '/software/$productId': typeof AuthenticatedSoftwareProductIdRoute
   '/compliance/balance': typeof AuthenticatedAdminComplianceBalanceRoute
   '/compliance/findings': typeof AuthenticatedAdminComplianceFindingsRoute
 }
@@ -152,6 +161,7 @@ export interface FileRoutesById {
   '/_authenticated/_admin/devices': typeof AuthenticatedAdminDevicesRoute
   '/_authenticated/_admin/imports': typeof AuthenticatedAdminImportsRoute
   '/_authenticated/_admin/installations': typeof AuthenticatedAdminInstallationsRoute
+  '/_authenticated/software_/$productId': typeof AuthenticatedSoftwareProductIdRoute
   '/_authenticated/_admin/compliance/balance': typeof AuthenticatedAdminComplianceBalanceRoute
   '/_authenticated/_admin/compliance/findings': typeof AuthenticatedAdminComplianceFindingsRoute
 }
@@ -169,6 +179,7 @@ export interface FileRouteTypes {
     | '/devices'
     | '/imports'
     | '/installations'
+    | '/software/$productId'
     | '/compliance/balance'
     | '/compliance/findings'
   fileRoutesByTo: FileRoutesByTo
@@ -184,6 +195,7 @@ export interface FileRouteTypes {
     | '/devices'
     | '/imports'
     | '/installations'
+    | '/software/$productId'
     | '/compliance/balance'
     | '/compliance/findings'
   id:
@@ -201,6 +213,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_admin/devices'
     | '/_authenticated/_admin/imports'
     | '/_authenticated/_admin/installations'
+    | '/_authenticated/software_/$productId'
     | '/_authenticated/_admin/compliance/balance'
     | '/_authenticated/_admin/compliance/findings'
   fileRoutesById: FileRoutesById
@@ -304,6 +317,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminInstallationsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/software_/$productId': {
+      id: '/_authenticated/software_/$productId'
+      path: '/software/$productId'
+      fullPath: '/software/$productId'
+      preLoaderRoute: typeof AuthenticatedSoftwareProductIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/_admin/compliance/balance': {
       id: '/_authenticated/_admin/compliance/balance'
       path: '/compliance/balance'
@@ -354,12 +374,14 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   AuthenticatedMeRoute: typeof AuthenticatedMeRoute
   AuthenticatedSoftwareRoute: typeof AuthenticatedSoftwareRoute
+  AuthenticatedSoftwareProductIdRoute: typeof AuthenticatedSoftwareProductIdRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
   AuthenticatedMeRoute: AuthenticatedMeRoute,
   AuthenticatedSoftwareRoute: AuthenticatedSoftwareRoute,
+  AuthenticatedSoftwareProductIdRoute: AuthenticatedSoftwareProductIdRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

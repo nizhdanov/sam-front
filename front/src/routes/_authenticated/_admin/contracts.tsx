@@ -1,7 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
 
-import { SectionPlaceholder } from '@/components/shared/states';
+import { ContractsPage } from '@/features/contracts/contracts-page';
+import { contractsSearchSchema } from '@/features/contracts/model';
 
 export const Route = createFileRoute('/_authenticated/_admin/contracts')({
-  component: () => <SectionPlaceholder title='Договоры' />
+  validateSearch: contractsSearchSchema,
+  component: ContractsPage
 });

@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import { isCancel } from 'axios';
 import { useState } from 'react';
 
@@ -120,13 +122,15 @@ export function DataTable({
   data,
   caption,
   filters = {},
-  onResetFilters
+  onResetFilters,
+  renderCell
 }: {
   dataset: Dataset;
   data: unknown;
   caption: string;
   filters?: DataFilters;
   onResetFilters?: () => void;
+  renderCell?: (value: unknown, column: string) => ReactNode;
 }) {
   const { snapshot } = useDemoAuth();
   if (snapshot.status !== 'ready' || !snapshot.role) return null;
@@ -181,7 +185,11 @@ export function DataTable({
               // eslint-disable-next-line react/no-array-index-key
               <TableRow key={index}>
                 {table.columns.map((column, columnIndex) => (
-                  <TableCell key={column}>{formatDataValue(row[columnIndex])}</TableCell>
+                  <TableCell key={column}>
+                    {renderCell
+                      ? renderCell(row[columnIndex], column)
+                      : formatDataValue(row[columnIndex])}
+                  </TableCell>
                 ))}
               </TableRow>
             ))}

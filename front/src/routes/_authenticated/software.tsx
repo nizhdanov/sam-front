@@ -1,7 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
 
-import { SectionPlaceholder } from '@/components/shared/states';
+import { CatalogPage } from '@/features/software/catalog-page';
+import { softwareSearchSchema } from '@/features/software/model';
 
 export const Route = createFileRoute('/_authenticated/software')({
-  component: () => <SectionPlaceholder title='Каталог ПО' />
+  validateSearch: softwareSearchSchema,
+  component: CatalogPage
 });
