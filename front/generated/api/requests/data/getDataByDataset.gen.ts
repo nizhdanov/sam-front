@@ -2,9 +2,9 @@
 
 import type { AxiosRequestParams, ApicraftAxiosResponse } from "@siberiacancode/apicraft";
 
-import type { GetApiV1DataByDatasetData, GetApiV1DataByDatasetResponse, GetApiV1DataByDatasetError } from "..\\..\\types.gen";
+import type { GetApiV1DataByDatasetData, GetApiV1DataByDatasetResponse, GetApiV1DataByDatasetError } from "../../types.gen";
 
-import { instance } from "..\\..\\..\\..\\src\\utils\\lib\\instance";
+import { instance } from "../../../../src/utils/lib/instance";
 
 export type GetDataByDatasetRequestParams = AxiosRequestParams<GetApiV1DataByDatasetData>;
 

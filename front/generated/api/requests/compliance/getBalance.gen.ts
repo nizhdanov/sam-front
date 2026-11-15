@@ -2,9 +2,9 @@
 
 import type { AxiosRequestParams, ApicraftAxiosResponse } from "@siberiacancode/apicraft";
 
-import type { GetApiV1BalanceData } from "..\\..\\types.gen";
+import type { GetApiV1BalanceData } from "../../types.gen";
 
-import { instance } from "..\\..\\..\\..\\src\\utils\\lib\\instance";
+import { instance } from "../../../../src/utils/lib/instance";
 
 export type GetBalanceRequestParams = AxiosRequestParams<GetApiV1BalanceData> | void;
 
