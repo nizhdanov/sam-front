@@ -24,7 +24,7 @@ function label(map: Record<string, string>, value: string | null | undefined) {
 function installationsLink(productId: string, text: string) {
   return (
     <Link
-      className='font-medium underline-offset-4 hover:underline'
+      className='font-medium text-primary underline underline-offset-4'
       search={{ product_id: productId }}
       to='/installations'
     >

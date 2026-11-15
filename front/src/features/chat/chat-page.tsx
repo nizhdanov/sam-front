@@ -63,7 +63,7 @@ function Conversations({ active, disabled }: { active?: string; disabled: boolea
       {query.isPending && <Spinner />}
       {query.isError && <ErrorState error={query.error} onRetry={() => void query.refetch()} />}
       {error !== undefined && <ErrorState error={error} />}
-      <ul className='flex max-h-48 flex-col gap-1 overflow-y-auto lg:max-h-none'>
+      <ul className='flex max-h-48 flex-col gap-1 overflow-y-auto lg:max-h-[70svh]'>
         {query.data?.map((item) => (
           <li key={item.id} className='group flex items-center gap-1'>
             <button
@@ -240,7 +240,7 @@ export function ChatPage() {
                   {conversationId && history.isError && (
                     <ErrorState error={history.error} onRetry={() => void history.refetch()} />
                   )}
-                  {empty && !history.isPending && (
+                  {empty && !(conversationId && history.isPending) && (
                     <div className='m-auto flex max-w-xl flex-col items-center gap-3 text-center'>
                       <p className='text-muted-foreground'>Задайте вопрос или выберите пример:</p>
                       <div className='flex flex-wrap justify-center gap-2'>
