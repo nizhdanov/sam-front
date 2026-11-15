@@ -1,7 +1,10 @@
 # pnpm
 /devtools-vite-plugin
+/getting-started
+/migrate-from-react-router
+/migrate-v8-to-v9
 /react-router
 /router-plugin
 /router-query
+/table-state
 # pnpm end
-pnpm-*
