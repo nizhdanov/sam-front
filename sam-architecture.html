@@ -93,7 +93,16 @@
   .toc{columns:2;column-gap:28px;font-size:13.6px}
   .toc a{color:#1d4ed8;text-decoration:none}
   .toc a:hover{text-decoration:underline}
-  @media (max-width:760px){.toc{columns:1}}
+  @media (max-width:760px){
+    .wrap{padding:16px 12px 40px}
+    section{padding:20px 16px;min-width:0;overflow-wrap:anywhere}
+    table{display:block;overflow-x:auto;max-width:100%;overflow-wrap:normal}
+    header.hero{padding:24px 20px}
+    header.hero h1{font-size:24px}
+    figure{margin-inline:-4px;padding:14px 10px 8px;scrollbar-width:thin;scrollbar-color:#94a3b8 #f1f5f9}
+    figcaption{position:sticky;left:0;max-width:calc(100vw - 80px)}
+    .toc{columns:1}
+  }
 </style>
 </head>
 <body>
@@ -289,7 +298,7 @@
 
     <path class="e-v" d="M 634 530 H 756" marker-end="url(#ar-v)" marker-start="url(#ar-v)"/>
     <text class="lbl-v" x="695" y="512" text-anchor="middle">RunQuery →</text>
-    <text class="lbl-v" x="695" y="556" text-anchor="middle">← AnalyzeAgreement</text>
+    <text class="lbl-v" x="695" y="556" text-anchor="middle" style="font-size:9.5px">← AnalyzeAgreement</text>
 
     <path class="e-v" d="M 310 700 H 340 V 740 H 900 V 604" marker-end="url(#ar-v)"/>
     <text class="lbl-v" x="360" y="733">gRPC: ResolveSoftwareBatch · SaveMatchingSuggestion · SyncInventory</text>
@@ -464,18 +473,18 @@
     <text class="lbl" x="510" y="497">9. Claim: UPDATE … RETURNING attempt_token (lease 120 s) — защита от параллельной попытки</text>
 
     <path class="e-v" d="M 860 550 H 1056" marker-end="url(#ar-v)"/>
-    <text class="lbl-v" x="700" y="543">10. ResolveSoftwareBatch — батчи по 500, известные строки берёт LRU-кэш</text>
+    <text class="lbl-v" x="640" y="543">10. ResolveSoftwareBatch — батчи по 500, известные строки берёт LRU-кэш</text>
 
     <path class="e-g" d="M 1060 596 H 864" marker-end="url(#ar-g)"/>
-    <text class="lbl" x="700" y="589">11. MATCHED / AMBIGUOUS / UNKNOWN / PENDING_REVIEW (+ кандидаты pg_trgm)</text>
+    <text class="lbl" x="640" y="589">11. MATCHED / AMBIGUOUS / UNKNOWN / PENDING_REVIEW (+ кандидаты pg_trgm)</text>
 
     <rect class="box note" x="640" y="618" width="500" height="52" rx="9"/>
     <text data-panel-width="500" text-anchor="middle" class="s" x="890" y="639">12. AMBIGUOUS → llm.MatchSoftware (схема 3). Проверка: id ∈ кандидатов,</text>
     <text data-panel-width="500" text-anchor="middle" class="s" x="890" y="657">confidence ≥ 0.85 ⇒ alias; иначе / при ошибке LLM ⇒ REQUIRES_REVIEW</text>
 
     <path class="e-v" d="M 860 704 H 1056" marker-end="url(#ar-v)"/>
-    <text class="lbl-v" x="640" y="684">13. SyncInventory — одна транзакция: processed_snapshots, отсев по collected_at,</text>
-    <text class="lbl-v" x="640" y="697">upsert установок, деактивация отсутствующих, advisory-локи, комплаенс</text>
+    <text class="lbl-v" x="610" y="677">13. SyncInventory — одна транзакция: processed_snapshots, отсев по collected_at,</text>
+    <text class="lbl-v" x="610" y="695">upsert установок, деактивация отсутствующих, advisory-локи, комплаенс</text>
 
     <path class="e" d="M 860 750 H 504" marker-end="url(#ar)"/>
     <text class="lbl" x="510" y="743">14. Finish(attempt_token) · во время работы — InProgress и Extend lease каждые ~40 с</text>
@@ -526,7 +535,7 @@
   нужно связать с официальным каталогом. Решение — не «отправить всё в модель», а воронка.</p>
 
   <figure>
-  <svg viewBox="0 0 1120 880" role="img" aria-label="Каскад сопоставления ПО">
+  <svg viewBox="0 0 1180 880" role="img" aria-label="Каскад сопоставления ПО">
     <rect class="box" x="270" y="20" width="460" height="56" rx="10"/>
     <text data-panel-width="460" text-anchor="middle" class="t" x="500" y="52">Сырая строка из ОС</text>
     <path class="e" d="M 500 76 V 100" marker-end="url(#ar)"/>
@@ -537,10 +546,10 @@
 
     <rect class="box svc" x="270" y="202" width="460" height="56" rx="10"/>
     <text data-panel-width="460" text-anchor="middle" class="t" x="500" y="234">LRU-кэш worker (10 000 записей, TTL 600 с)</text>
-    <path class="e-t" d="M 730 230 H 790" marker-end="url(#ar-t)"/>
-    <text class="lbl-t" x="736" y="222">попадание</text>
-    <rect class="box data" x="794" y="202" width="300" height="56" rx="10"/>
-    <text data-panel-width="300" text-anchor="middle" class="t-sm" x="944" y="234">готовый MATCHED</text>
+    <path class="e-t" d="M 730 230 H 846" marker-end="url(#ar-t)"/>
+    <text class="lbl-t" x="762" y="218" text-anchor="middle">попадание</text>
+    <rect class="box data" x="850" y="202" width="300" height="56" rx="10"/>
+    <text data-panel-width="300" text-anchor="middle" class="t-sm" x="1000" y="234">готовый MATCHED</text>
     <path class="e" d="M 500 258 V 282" marker-end="url(#ar)"/>
     <text class="lbl" x="510" y="276">промах</text>
 
@@ -551,15 +560,15 @@
     <polygon class="box" points="330,442 500,400 670,442 500,484"/>
     <text class="t-sm" x="500" y="446" text-anchor="middle">DecideMatch</text>
 
-    <path class="e-t" d="M 670 430 H 790" marker-end="url(#ar-t)"/>
+    <path class="e-t" d="M 670 430 H 846" marker-end="url(#ar-t)"/>
     <text class="lbl-t" x="676" y="422">ровно одно точное</text>
-    <rect class="box data" x="794" y="392" width="300" height="46" rx="9"/>
-    <text data-panel-width="300" text-anchor="middle" class="t-sm" x="944" y="419">MATCHED · метод EXACT</text>
+    <rect class="box data" x="850" y="392" width="300" height="46" rx="9"/>
+    <text data-panel-width="300" text-anchor="middle" class="t-sm" x="1000" y="419">MATCHED · метод EXACT</text>
 
-    <path class="e-t" d="M 670 456 H 790" marker-end="url(#ar-t)"/>
+    <path class="e-t" d="M 670 456 H 846" marker-end="url(#ar-t)"/>
     <text class="lbl-t" x="676" y="472">top ≥ 0.95 и gap ≥ 0.10</text>
-    <rect class="box data" x="794" y="446" width="300" height="46" rx="9"/>
-    <text data-panel-width="300" text-anchor="middle" class="t-sm" x="944" y="473">MATCHED · метод FUZZY</text>
+    <rect class="box data" x="850" y="446" width="300" height="46" rx="9"/>
+    <text data-panel-width="300" text-anchor="middle" class="t-sm" x="1000" y="473">MATCHED · метод FUZZY</text>
 
     <path class="e" d="M 330 442 H 210 V 500" marker-end="url(#ar)"/>
     <text class="lbl" x="120" y="434">нет кандидатов / уже в работе</text>
@@ -572,7 +581,7 @@
     <rect class="box ai" x="270" y="524" width="460" height="76" rx="10"/>
     <text data-panel-width="460" text-anchor="middle" class="t" x="500" y="566">llm.MatchSoftware (gRPC)</text>
 
-    <path class="e-g" d="M 270 562 H 130 V 616" marker-end="url(#ar-g)"/>
+    <path class="e-g" d="M 270 562 H 260 V 604 H 130 V 616" marker-end="url(#ar-g)"/>
     <rect class="box note" x="10" y="620" width="240" height="70" rx="10"/>
     <text data-panel-width="240" text-anchor="middle" class="t-sm" x="130" y="659">LLM недоступна / mock</text>
 
@@ -580,19 +589,19 @@
     <polygon class="box" points="310,672 500,630 690,672 500,714"/>
     <text class="t-sm" x="500" y="676" text-anchor="middle">AcceptSuggestion</text>
 
-    <path class="e-t" d="M 690 672 H 790" marker-end="url(#ar-t)"/>
+    <path class="e-t" d="M 690 672 H 846" marker-end="url(#ar-t)"/>
     <text class="lbl-t" x="696" y="664">да</text>
-    <rect class="box data" x="794" y="638" width="300" height="66" rx="10"/>
-    <text data-panel-width="300" text-anchor="middle" class="t-sm" x="944" y="675">SaveMatchingSuggestion → alias</text>
+    <rect class="box data" x="850" y="638" width="300" height="66" rx="10"/>
+    <text data-panel-width="300" text-anchor="middle" class="t-sm" x="1000" y="675">SaveMatchingSuggestion → alias</text>
 
     <path class="e" d="M 500 714 V 742" marker-end="url(#ar)"/>
     <text class="lbl" x="510" y="736">нет</text>
     <rect class="box note" x="270" y="746" width="460" height="56" rx="10"/>
     <text data-panel-width="460" text-anchor="middle" class="t-sm" x="500" y="778">REQUIRES_REVIEW — задача администратору</text>
 
-    <rect class="box band" x="270" y="820" width="824" height="46" rx="9"/>
-    <text data-panel-width="824" text-anchor="middle" class="s" x="682" y="838.5">Результат пишется в installations.match_status (MATCHED / UNKNOWN / REQUIRES_REVIEW) и matching_candidates;</text>
-    <text data-panel-width="824" text-anchor="middle" class="s" x="682" y="855.5">пороги auto_apply_confidence и fuzzy_auto_threshold меняются администратором через /matching/settings и пишутся в аудит.</text>
+    <rect class="box band" x="270" y="820" width="880" height="46" rx="9"/>
+    <text data-panel-width="880" text-anchor="middle" class="s" x="710" y="838.5">Результат пишется в installations.match_status (MATCHED / UNKNOWN / REQUIRES_REVIEW) и matching_candidates;</text>
+    <text data-panel-width="880" text-anchor="middle" class="s" x="710" y="855.5">пороги auto_apply_confidence и fuzzy_auto_threshold меняются администратором через /matching/settings и пишутся в аудит.</text>
   </svg>
   <figcaption>Схема 3. Воронка сопоставления: LLM — четвёртый шаг, а не первый, и всегда с ограниченным выбором.</figcaption>
   </figure>
@@ -621,7 +630,7 @@
   <svg viewBox="0 0 1160 840" role="img" aria-label="Цепочка вызовов AI-ассистента">
     <!-- trust boundary -->
     <rect class="band" x="380" y="96" width="380" height="700" rx="14"/>
-    <text data-panel-width="380" text-anchor="middle" class="s" x="570" y="450" fill="#b45309" style="font-size:10.4px">недоверенная зона: модель не видит БД и не определяет права</text>
+    <text data-panel-width="380" text-anchor="middle" class="s" x="570" y="116" fill="#b45309" style="font-size:10.4px">недоверенная зона: модель не видит БД и не определяет права</text>
 
     <rect class="box svc" x="20" y="30" width="150" height="44" rx="9"/><text data-panel-width="150" text-anchor="middle" class="t-sm" x="95" y="56">Браузер</text>
     <rect class="box svc" x="210" y="30" width="150" height="44" rx="9"/><text data-panel-width="150" text-anchor="middle" class="t-sm" x="285" y="56">chat</text>
@@ -746,39 +755,21 @@
   <svg viewBox="0 0 1160 380" role="img" aria-label="Поток анализа EULA">
     <rect class="box" x="20" y="50" width="170" height="90" rx="10"/>
     <text data-panel-width="170" text-anchor="middle" class="t-sm" x="105" y="73.5" style="font-size:10.6px">ADMIN загружает файл</text>
-    <text data-panel-width="170" text-anchor="middle" class="s2" x="105" y="92.5">.txt / .pdf / .docx</text>
-    <text data-panel-width="170" text-anchor="middle" class="s2" x="105" y="108.5">лимит тела 12 МБ</text>
-    <text data-panel-width="170" text-anchor="middle" class="s2" x="105" y="124.5">POST /agreements/{id}/file</text>
 
     <rect class="box svc" x="215" y="50" width="170" height="90" rx="10"/>
     <text data-panel-width="170" text-anchor="middle" class="t-sm" x="300" y="73.5">license: doctext</text>
-    <text data-panel-width="170" text-anchor="middle" class="s2" x="300" y="92.5">PDF — ledongthuc/pdf</text>
-    <text data-panel-width="170" text-anchor="middle" class="s2" x="300" y="108.5">DOCX — zip + XML</text>
-    <text data-panel-width="170" text-anchor="middle" class="s2" x="300" y="124.5">без внешних бинарников</text>
 
     <rect class="box data" x="410" y="50" width="170" height="90" rx="10"/>
     <text data-panel-width="170" text-anchor="middle" class="t-sm" x="495" y="73.5">agreement_text</text>
-    <text data-panel-width="170" text-anchor="middle" class="s2" x="495" y="92.5">хранится в license_db</text>
-    <text data-panel-width="170" text-anchor="middle" class="s2" x="495" y="108.5">абзацы нумеруются</text>
-    <text data-panel-width="170" text-anchor="middle" class="s2" x="495" y="124.5">для ссылок на пункты</text>
 
     <rect class="box svc" x="605" y="50" width="170" height="90" rx="10"/>
     <text data-panel-width="170" text-anchor="middle" class="t-sm" x="690" y="73.5">POST /analyze</text>
-    <text data-panel-width="170" text-anchor="middle" class="s2" x="690" y="92.5">sha256(text) + версия</text>
-    <text data-panel-width="170" text-anchor="middle" class="s2" x="690" y="108.5">промпта = ключ кэша</text>
-    <text data-panel-width="170" text-anchor="middle" class="s2" x="690" y="124.5">force = пересчитать</text>
 
     <rect class="box ai" x="800" y="50" width="170" height="90" rx="10"/>
     <text data-panel-width="170" text-anchor="middle" class="t-sm" x="885" y="73.5" style="font-size:11.4px">llm.AnalyzeAgreement</text>
-    <text data-panel-width="170" text-anchor="middle" class="s2" x="885" y="92.5">промпт eula-v1 (embed)</text>
-    <text data-panel-width="170" text-anchor="middle" class="s2" x="885" y="108.5">модель LLM_EULA_MODEL</text>
-    <text data-panel-width="170" text-anchor="middle" class="s2" x="885" y="124.5">gRPC от license</text>
 
     <rect class="box data" x="985" y="50" width="155" height="90" rx="10"/>
     <text data-panel-width="155" text-anchor="middle" class="t-sm" x="1062.5" y="73.5" style="font-size:11.3px">agreement_analyses</text>
-    <text data-panel-width="155" text-anchor="middle" class="s2" x="1062.5" y="92.5">analysis_json</text>
-    <text data-panel-width="155" text-anchor="middle" class="s2" x="1062.5" y="108.5">model</text>
-    <text data-panel-width="155" text-anchor="middle" class="s2" x="1062.5" y="124.5">prompt_version</text>
 
     <path class="e" d="M 190 95 H 211" marker-end="url(#ar)"/>
     <path class="e" d="M 385 95 H 406" marker-end="url(#ar)"/>
@@ -786,21 +777,11 @@
     <path class="e-v" d="M 775 95 H 796" marker-end="url(#ar-v)"/>
     <path class="e-v" d="M 970 95 H 981" marker-end="url(#ar-v)"/>
 
-    <rect class="box note" x="605" y="180" width="365" height="60" rx="10"/>
-    <text data-panel-width="365" text-anchor="middle" class="s" x="787.5" y="205">Кэш: тот же хэш текста и та же версия промпта —</text>
-    <text data-panel-width="365" text-anchor="middle" class="s" x="787.5" y="223">повторный вызов модели не нужен (экономия токенов)</text>
-    <path class="e-g" d="M 690 140 V 176" marker-end="url(#ar-g)"/>
-
     <rect class="box svc" x="605" y="270" width="170" height="70" rx="10"/>
     <text data-panel-width="170" text-anchor="middle" class="t-sm" x="690" y="291.5">ADMIN: approve</text>
-    <text data-panel-width="170" text-anchor="middle" class="s2" x="690" y="310.5">POST /analysis/approve</text>
-    <text data-panel-width="170" text-anchor="middle" class="s2" x="690" y="326.5">явное решение человека</text>
 
     <rect class="box data" x="800" y="270" width="340" height="70" rx="10"/>
     <text data-panel-width="340" text-anchor="middle" class="t-sm" x="970" y="291.5">Поля соглашения обновлены + audit_log</text>
-    <text data-panel-width="340" text-anchor="middle" class="s2" x="970" y="310.5">тип лицензии, модель оплаты, условия использования</text>
-    <text data-panel-width="340" text-anchor="middle" class="s2" x="970" y="326.5">кто и когда подтвердил — фиксируется в журнале</text>
-
     <path class="e" d="M 1067 140 V 255 H 860 V 266" marker-end="url(#ar)"/>
     <text class="lbl" x="760" y="248">GET /analysis → карточка с рисками и цитатами пунктов</text>
     <path class="e" d="M 775 305 H 796" marker-end="url(#ar)"/>
@@ -911,9 +892,6 @@
 
     <rect class="box" x="400" y="466" width="300" height="86" rx="10"/>
     <text data-panel-width="300" text-anchor="middle" class="t-sm" x="550" y="488">frontend container · 127.0.0.1:5173</text>
-    <text data-panel-width="300" text-anchor="middle" class="s2" x="550" y="506">nginx:stable-alpine + статика SPA</text>
-    <text data-panel-width="300" text-anchor="middle" class="s2" x="550" y="522">try_files → index.html (SPA fallback)</text>
-    <text data-panel-width="300" text-anchor="middle" class="s2" x="550" y="538">свой compose и свой CD-пайплайн</text>
 
     <rect class="box infra" x="760" y="466" width="350" height="86" rx="10"/>
     <text data-panel-width="350" text-anchor="middle" class="t-sm" x="935" y="488">backend gateway · 127.0.0.1:8443 (TLS)</text>
@@ -922,9 +900,9 @@
     <text data-panel-width="350" text-anchor="middle" class="s2" x="935" y="538">внутри — маршрутизация processor / chat / license</text>
 
     <path class="e" d="M 340 500 H 396" marker-end="url(#ar)"/>
-    <text class="lbl" x="346" y="492">location /</text>
-    <path class="e" d="M 340 530 H 700 V 530 H 756" marker-end="url(#ar)"/>
-    <text class="lbl" x="470" y="524">location ^~ /api/</text>
+    <text class="lbl" x="370" y="488" text-anchor="middle" style="font-size:9.5px">location /</text>
+    <path class="e" d="M 340 530 H 370 V 576 H 730 V 530 H 756" marker-end="url(#ar)"/>
+    <text class="lbl" x="570" y="571">location ^~ /api/</text>
 
     <rect class="box svc" x="50" y="590" width="1060" height="110" rx="10"/>
     <text data-panel-width="1060" text-anchor="middle" class="t-sm" x="580" y="614">Изолированная docker-сеть (подсеть задаётся DOCKER_SUBNET)</text>
@@ -937,12 +915,10 @@
       <rect class="box data" x="796" y="626" width="140" height="30" rx="7"/><text data-panel-width="140" text-anchor="middle" class="s" x="866" y="645">postgres :5432</text>
       <rect class="box data" x="946" y="626" width="148" height="30" rx="7"/><text data-panel-width="148" text-anchor="middle" class="s" x="1020" y="645">nats :4222 / :8222</text>
     </g>
-    <text data-panel-width="1060" text-anchor="middle" class="s2" x="580" y="676">наружу не публикуется ничего, кроме gateway на loopback · образы сервисов distroless nonroot · HEALTHCHECK — подкоманда того же бинарника</text>
-    <text data-panel-width="1060" text-anchor="middle" class="s2" x="580" y="692">тома: postgres_data · nats_data · inventory_uploads · секреты и конфигурация запечатаны в бинарник, .env на сервере не нужен</text>
 
     <path class="e" d="M 935 552 V 586" marker-end="url(#ar)"/>
-    <path class="e-g" d="M 550 552 V 570 H 420 V 586" marker-end="url(#ar-g)"/>
-    <text class="lbl" x="424" y="566">фронт также проксирует /api/v1 на бэкенд-домен (TLS verify)</text>
+    <path class="e-g" d="M 550 552 V 562 H 420 V 586" marker-end="url(#ar-g)"/>
+    <text class="lbl" x="424" y="726">фронт также проксирует /api/v1 на бэкенд-домен (TLS verify)</text>
   </svg>
   <figcaption>Схема 6. Поставка и топология. Три варианта развёртывания: локальный compose, автономный prod с certbot,
   и «за существующим nginx» — последний используется на стенде sam.v1sdev.ru.</figcaption>
