@@ -7,13 +7,15 @@ import type { AgreementInput } from '@/generated/api/types.gen';
 
 import { deleteAgreementById } from '@/generated/api/requests/agreements/deleteAgreementById.gen';
 import { getAgreementById } from '@/generated/api/requests/agreements/getAgreementById.gen';
+import { getAgreements } from '@/generated/api/requests/agreements/getAgreements.gen';
 import { patchAgreementById } from '@/generated/api/requests/agreements/patchAgreementById.gen';
 import { postAgreementByIdFile } from '@/generated/api/requests/agreements/postAgreementByIdFile.gen';
 import { postAgreements } from '@/generated/api/requests/agreements/postAgreements.gen';
 import { ApiError } from '@/utils/api/errors';
 import { multipartConfig } from '@/utils/api/multipart';
+import { pageSchema, parseResponse } from '@/utils/api/page';
 
-import { getAgreementFileError, readAgreement } from './model';
+import { agreementSchema, getAgreementFileError, readAgreement } from './model';
 
 function requireAdmin(auth: DemoAuth) {
   const session = auth.requireReady();
@@ -100,4 +102,20 @@ export async function deleteAgreement(auth: DemoAuth, queryClient: QueryClient, 
   } finally {
     if (auth.isCurrent(session.epoch)) await refreshAgreements(queryClient);
   }
+}
+
+export function agreementsListOptions(auth: DemoAuth, page: number, limit = 50) {
+  const session = requireAdmin(auth);
+  return queryOptions({
+    queryKey: ['agreements', 'list', session.role, session.epoch, page, limit],
+    queryFn: async ({ signal }) => {
+      auth.requestConfig(session);
+      const response = await getAgreements({ query: { page, limit }, config: { signal } });
+      return parseResponse(
+        pageSchema(agreementSchema),
+        response.data,
+        'Сервер вернул некорректный список соглашений.'
+      );
+    }
+  });
 }

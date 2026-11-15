@@ -3,6 +3,7 @@ import { getRouteApi, Link } from '@tanstack/react-router';
 import { cn } from 'cn';
 
 import { useDemoAuth } from '@/app/auth/context';
+import { PageHeader } from '@/components/shared/page-header';
 import { AccessDenied, NotFoundState } from '@/components/shared/route-states';
 import { ErrorState, LoadingState } from '@/components/shared/states';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,7 @@ import { formatDataValue } from '@/utils/api/data';
 import { ApiError } from '@/utils/api/errors';
 
 import { COST_MODELS, LICENSE_TYPES, PRODUCT_STATUSES } from './model';
+import { ProductActions, ProductContracts, ProductVersions } from './product-admin';
 import { softwareDetailOptions } from './queries';
 
 const route = getRouteApi('/_authenticated/software_/$productId');
@@ -62,7 +64,11 @@ export function ProductPage() {
       >
         Каталог ПО
       </Button>
-      <h1 className='wrap-break-word'>{formatDataValue(product.canonical_name)}</h1>
+      <PageHeader
+        actions={snapshot.role === 'ADMIN' && <ProductActions product={product} />}
+        description={product.archived_at ? 'Продукт в архиве.' : product.publisher}
+        title={formatDataValue(product.canonical_name)}
+      />
       {query.isFetching && <p role='status'>Обновление карточки…</p>}
       <dl className='grid min-w-0 gap-4 sm:grid-cols-2'>
         <div className='min-w-0'>
@@ -84,6 +90,12 @@ export function ProductPage() {
           </div>
         ))}
       </dl>
+      {snapshot.role === 'ADMIN' && (
+        <>
+          <ProductContracts product={product} />
+          <ProductVersions productId={product.id} />
+        </>
+      )}
     </section>
   );
 }

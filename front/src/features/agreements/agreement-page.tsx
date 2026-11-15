@@ -1,10 +1,16 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import type { z } from 'zod';
+
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getRouteApi, Link, useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
 
+import type { Column } from '@/components/shared/simple-table';
+
 import { useDemoAuth } from '@/app/auth/context';
 import { PageHeader } from '@/components/shared/page-header';
+import { Pager } from '@/components/shared/pager';
 import { AccessDenied, NotFoundState } from '@/components/shared/route-states';
+import { SimpleTable } from '@/components/shared/simple-table';
 import { EmptyState, ErrorState, LoadingState, SuccessState } from '@/components/shared/states';
 import { Button } from '@/components/ui/button';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
@@ -24,22 +30,98 @@ import { COST_MODELS, LICENSE_TYPES } from '@/features/software/model';
 import { formatDataValue } from '@/utils/api/data';
 import { ApiError } from '@/utils/api/errors';
 
+import type { agreementSchema } from './model';
+
 import { AgreementEditor } from './agreement-editor';
 import { AnalysisPanel } from './analysis-panel';
 import { getAgreementFileError } from './model';
-import { agreementDetailOptions, deleteAgreement, uploadAgreementFile } from './queries';
+import {
+  agreementDetailOptions,
+  agreementsListOptions,
+  deleteAgreement,
+  uploadAgreementFile
+} from './queries';
 
 const route = getRouteApi('/_authenticated/_admin/agreements_/$agreementId');
 
+const REVIEW_STATUSES: Record<string, string> = {
+  UNREVIEWED: 'Не проверено',
+  ANALYSIS_APPROVED: 'Разбор ИИ сохранён'
+};
+
+const agreementColumns: Column<z.infer<typeof agreementSchema>>[] = [
+  {
+    header: 'Наименование',
+    cell: (row) => (
+      <Link
+        className='font-medium text-primary underline underline-offset-4'
+        params={{ agreementId: row.id }}
+        to='/agreements/$agreementId'
+      >
+        {row.name || 'Без названия'}
+      </Link>
+    )
+  },
+  { header: 'Тип', cell: (row) => (row.license_type ? LICENSE_TYPES[row.license_type] : '—') },
+  { header: 'Оплата', cell: (row) => (row.cost_model ? COST_MODELS[row.cost_model] : '—') },
+  {
+    header: 'Коммерческое использование',
+    cell: (row) =>
+      row.commercial_allowed === true
+        ? 'Разрешено'
+        : row.commercial_allowed === false
+          ? 'Запрещено'
+          : 'Не определено'
+  },
+  { header: 'Продуктов', cell: (row) => row.products_count ?? 0 },
+  {
+    header: 'Проверка',
+    cell: (row) => REVIEW_STATUSES[row.review_status ?? ''] ?? row.review_status ?? '—'
+  }
+];
+
+const listRoute = getRouteApi('/_authenticated/_admin/agreements');
+
 export function AgreementsPage() {
+  const { page } = listRoute.useSearch();
+  const navigate = listRoute.useNavigate();
+  const { auth } = useDemoAuth();
+  const query = useQuery({
+    ...agreementsListOptions(auth, page),
+    placeholderData: keepPreviousData
+  });
   return (
     <section aria-label='Соглашения' className='flex min-w-0 flex-col gap-6'>
-      <PageHeader title='Соглашения' />
-      <AgreementEditor />
-      <EmptyState
-        description='Можно создать соглашение и работать с ним в отдельной карточке.'
-        title='Список соглашений пока недоступен'
+      <PageHeader
+        actions={<AgreementEditor />}
+        description='Справочник лицензий: GNU GPL, MIT, Apache 2.0, EULA Microsoft и другие. В карточке можно получить ИИ-разбор текста.'
+        title='Лицензионные соглашения'
       />
+      {query.isPending ? (
+        <LoadingState />
+      ) : query.isError ? (
+        <ErrorState error={query.error} onRetry={() => void query.refetch()} />
+      ) : query.data.items.length ? (
+        <>
+          <SimpleTable
+            caption='Лицензионные соглашения'
+            columns={agreementColumns}
+            rowKey={(row) => row.id}
+            rows={query.data.items}
+          />
+          <Pager
+            page={query.data.pagination.page}
+            total={query.data.pagination.total}
+            totalPages={query.data.pagination.total_pages}
+            onChange={(next) => void navigate({ search: { page: next } })}
+          />
+        </>
+      ) : (
+        <EmptyState
+          description='Добавьте первое соглашение кнопкой выше.'
+          title='Справочник пуст'
+        />
+      )}
     </section>
   );
 }
@@ -174,9 +256,18 @@ export function AgreementPage() {
           }
         }}
       >
+        {!!agreement.products_count && (
+          <p className='text-sm text-muted-foreground'>
+            Удаление недоступно: соглашение используют продукты ({agreement.products_count}).
+          </p>
+        )}
         <SheetTrigger
           render={
-            <Button className='self-start' disabled={pending !== null} variant='destructive' />
+            <Button
+              className='self-start'
+              disabled={pending !== null || !!agreement.products_count}
+              variant='destructive'
+            />
           }
         >
           Удалить соглашение

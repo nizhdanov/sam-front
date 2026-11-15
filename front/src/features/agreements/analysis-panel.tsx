@@ -285,7 +285,7 @@ export function AnalysisPanel({ agreementId, hasText }: { agreementId: string; h
                 );
               }}
             >
-              {isApproved ? 'Выводы сохранены' : 'Сохранить выводы в соглашение'}
+              {isApproved ? 'Сохранено в лицензию' : 'Сохранить в лицензию'}
             </Button>
           )}
         </div>

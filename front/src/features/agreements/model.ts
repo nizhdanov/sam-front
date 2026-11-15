@@ -7,7 +7,7 @@ import { ApiError } from '@/utils/api/errors';
 const licenseTypeSchema = z.enum(['OPEN_SOURCE', 'COMMERCIAL', 'TRIAL']);
 const costModelSchema = z.enum(['FREE', 'PAID', 'SHAREWARE']);
 
-const agreementSchema = z.object({
+export const agreementSchema = z.object({
   id: z.uuid(),
   name: z.string().optional(),
   license_type: licenseTypeSchema.optional(),

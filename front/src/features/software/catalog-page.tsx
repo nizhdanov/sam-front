@@ -23,6 +23,7 @@ import { formatDataValue } from '@/utils/api/data';
 import type { SoftwareSearch } from './model';
 
 import { COST_MODELS, LICENSE_TYPES, PRODUCT_STATUSES, softwareSearchSchema } from './model';
+import { ProductEditor } from './product-editor';
 import { softwareListOptions } from './queries';
 
 const route = getRouteApi('/_authenticated/software');
@@ -127,7 +128,11 @@ export function CatalogPage() {
   );
   return (
     <section aria-label='Каталог ПО' className='flex min-w-0 flex-col gap-6'>
-      <PageHeader title='Каталог ПО' />
+      <PageHeader
+        actions={snapshot.role === 'ADMIN' && <ProductEditor />}
+        description='Эталонный перечень программ, с которым сопоставляются установки.'
+        title='Каталог ПО'
+      />
       <CatalogFilters key={JSON.stringify(search)} search={search} />
       {query.isPending ? (
         <LoadingState />

@@ -3,7 +3,7 @@ import type { DemoRole } from './demo-accounts';
 export const NAVIGATION = [
   { to: '/dashboard', group: '', label: 'Обзор', admin: true },
   { to: '/software', group: 'Учёт', label: 'Каталог ПО', admin: false },
-  // { to: '/agreements', group: 'Учёт', label: 'Соглашения', admin: true },
+  { to: '/agreements', group: 'Учёт', label: 'Соглашения', admin: true },
   { to: '/contracts', group: 'Учёт', label: 'Договоры', admin: true },
   { to: '/devices', group: 'Учёт', label: 'Устройства', admin: true },
   { to: '/installations', group: 'Учёт', label: 'Установки', admin: true },
