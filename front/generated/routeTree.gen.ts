@@ -22,10 +22,12 @@ import { Route as AuthenticatedAdminDashboardRouteImport } from './../src/routes
 import { Route as AuthenticatedAdminDevicesRouteImport } from './../src/routes/_authenticated/_admin/devices'
 import { Route as AuthenticatedAdminImportsRouteImport } from './../src/routes/_authenticated/_admin/imports'
 import { Route as AuthenticatedAdminInstallationsRouteImport } from './../src/routes/_authenticated/_admin/installations'
+import { Route as AuthenticatedDevicesDeviceIdRouteImport } from './../src/routes/_authenticated/devices_.$deviceId'
 import { Route as AuthenticatedSoftwareProductIdRouteImport } from './../src/routes/_authenticated/software_.$productId'
 import { Route as AuthenticatedAdminAgreementsAgreementIdRouteImport } from './../src/routes/_authenticated/_admin/agreements_.$agreementId'
 import { Route as AuthenticatedAdminComplianceBalanceRouteImport } from './../src/routes/_authenticated/_admin/compliance/balance'
 import { Route as AuthenticatedAdminComplianceFindingsRouteImport } from './../src/routes/_authenticated/_admin/compliance/findings'
+import { Route as AuthenticatedAdminImportsImportIdRouteImport } from './../src/routes/_authenticated/_admin/imports_.$importId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -96,6 +98,12 @@ const AuthenticatedAdminInstallationsRoute =
     path: '/installations',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedDevicesDeviceIdRoute =
+  AuthenticatedDevicesDeviceIdRouteImport.update({
+    id: '/devices_/$deviceId',
+    path: '/devices/$deviceId',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedSoftwareProductIdRoute =
   AuthenticatedSoftwareProductIdRouteImport.update({
     id: '/software_/$productId',
@@ -120,6 +128,12 @@ const AuthenticatedAdminComplianceFindingsRoute =
     path: '/compliance/findings',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminImportsImportIdRoute =
+  AuthenticatedAdminImportsImportIdRouteImport.update({
+    id: '/imports_/$importId',
+    path: '/imports/$importId',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -133,10 +147,12 @@ export interface FileRoutesByFullPath {
   '/devices': typeof AuthenticatedAdminDevicesRoute
   '/imports': typeof AuthenticatedAdminImportsRoute
   '/installations': typeof AuthenticatedAdminInstallationsRoute
+  '/devices/$deviceId': typeof AuthenticatedDevicesDeviceIdRoute
   '/software/$productId': typeof AuthenticatedSoftwareProductIdRoute
   '/agreements/$agreementId': typeof AuthenticatedAdminAgreementsAgreementIdRoute
   '/compliance/balance': typeof AuthenticatedAdminComplianceBalanceRoute
   '/compliance/findings': typeof AuthenticatedAdminComplianceFindingsRoute
+  '/imports/$importId': typeof AuthenticatedAdminImportsImportIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -150,10 +166,12 @@ export interface FileRoutesByTo {
   '/devices': typeof AuthenticatedAdminDevicesRoute
   '/imports': typeof AuthenticatedAdminImportsRoute
   '/installations': typeof AuthenticatedAdminInstallationsRoute
+  '/devices/$deviceId': typeof AuthenticatedDevicesDeviceIdRoute
   '/software/$productId': typeof AuthenticatedSoftwareProductIdRoute
   '/agreements/$agreementId': typeof AuthenticatedAdminAgreementsAgreementIdRoute
   '/compliance/balance': typeof AuthenticatedAdminComplianceBalanceRoute
   '/compliance/findings': typeof AuthenticatedAdminComplianceFindingsRoute
+  '/imports/$importId': typeof AuthenticatedAdminImportsImportIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -170,10 +188,12 @@ export interface FileRoutesById {
   '/_authenticated/_admin/devices': typeof AuthenticatedAdminDevicesRoute
   '/_authenticated/_admin/imports': typeof AuthenticatedAdminImportsRoute
   '/_authenticated/_admin/installations': typeof AuthenticatedAdminInstallationsRoute
+  '/_authenticated/devices_/$deviceId': typeof AuthenticatedDevicesDeviceIdRoute
   '/_authenticated/software_/$productId': typeof AuthenticatedSoftwareProductIdRoute
   '/_authenticated/_admin/agreements_/$agreementId': typeof AuthenticatedAdminAgreementsAgreementIdRoute
   '/_authenticated/_admin/compliance/balance': typeof AuthenticatedAdminComplianceBalanceRoute
   '/_authenticated/_admin/compliance/findings': typeof AuthenticatedAdminComplianceFindingsRoute
+  '/_authenticated/_admin/imports_/$importId': typeof AuthenticatedAdminImportsImportIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -189,10 +209,12 @@ export interface FileRouteTypes {
     | '/devices'
     | '/imports'
     | '/installations'
+    | '/devices/$deviceId'
     | '/software/$productId'
     | '/agreements/$agreementId'
     | '/compliance/balance'
     | '/compliance/findings'
+    | '/imports/$importId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -206,10 +228,12 @@ export interface FileRouteTypes {
     | '/devices'
     | '/imports'
     | '/installations'
+    | '/devices/$deviceId'
     | '/software/$productId'
     | '/agreements/$agreementId'
     | '/compliance/balance'
     | '/compliance/findings'
+    | '/imports/$importId'
   id:
     | '__root__'
     | '/'
@@ -225,10 +249,12 @@ export interface FileRouteTypes {
     | '/_authenticated/_admin/devices'
     | '/_authenticated/_admin/imports'
     | '/_authenticated/_admin/installations'
+    | '/_authenticated/devices_/$deviceId'
     | '/_authenticated/software_/$productId'
     | '/_authenticated/_admin/agreements_/$agreementId'
     | '/_authenticated/_admin/compliance/balance'
     | '/_authenticated/_admin/compliance/findings'
+    | '/_authenticated/_admin/imports_/$importId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -330,6 +356,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminInstallationsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/devices_/$deviceId': {
+      id: '/_authenticated/devices_/$deviceId'
+      path: '/devices/$deviceId'
+      fullPath: '/devices/$deviceId'
+      preLoaderRoute: typeof AuthenticatedDevicesDeviceIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/software_/$productId': {
       id: '/_authenticated/software_/$productId'
       path: '/software/$productId'
@@ -358,6 +391,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminComplianceFindingsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/_admin/imports_/$importId': {
+      id: '/_authenticated/_admin/imports_/$importId'
+      path: '/imports/$importId'
+      fullPath: '/imports/$importId'
+      preLoaderRoute: typeof AuthenticatedAdminImportsImportIdRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
   }
 }
 
@@ -372,6 +412,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminAgreementsAgreementIdRoute: typeof AuthenticatedAdminAgreementsAgreementIdRoute
   AuthenticatedAdminComplianceBalanceRoute: typeof AuthenticatedAdminComplianceBalanceRoute
   AuthenticatedAdminComplianceFindingsRoute: typeof AuthenticatedAdminComplianceFindingsRoute
+  AuthenticatedAdminImportsImportIdRoute: typeof AuthenticatedAdminImportsImportIdRoute
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
@@ -388,6 +429,8 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
     AuthenticatedAdminComplianceBalanceRoute,
   AuthenticatedAdminComplianceFindingsRoute:
     AuthenticatedAdminComplianceFindingsRoute,
+  AuthenticatedAdminImportsImportIdRoute:
+    AuthenticatedAdminImportsImportIdRoute,
 }
 
 const AuthenticatedAdminRouteWithChildren =
@@ -397,6 +440,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   AuthenticatedMeRoute: typeof AuthenticatedMeRoute
   AuthenticatedSoftwareRoute: typeof AuthenticatedSoftwareRoute
+  AuthenticatedDevicesDeviceIdRoute: typeof AuthenticatedDevicesDeviceIdRoute
   AuthenticatedSoftwareProductIdRoute: typeof AuthenticatedSoftwareProductIdRoute
 }
 
@@ -404,6 +448,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
   AuthenticatedMeRoute: AuthenticatedMeRoute,
   AuthenticatedSoftwareRoute: AuthenticatedSoftwareRoute,
+  AuthenticatedDevicesDeviceIdRoute: AuthenticatedDevicesDeviceIdRoute,
   AuthenticatedSoftwareProductIdRoute: AuthenticatedSoftwareProductIdRoute,
 }
 

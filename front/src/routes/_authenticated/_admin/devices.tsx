@@ -1,7 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
 
-import { SectionPlaceholder } from '@/components/shared/states';
+import { DevicesPage } from '@/features/devices/devices-page';
+import { devicesSearchSchema } from '@/features/devices/model';
 
 export const Route = createFileRoute('/_authenticated/_admin/devices')({
-  component: () => <SectionPlaceholder title='Устройства' />
+  validateSearch: devicesSearchSchema,
+  component: DevicesPage
 });

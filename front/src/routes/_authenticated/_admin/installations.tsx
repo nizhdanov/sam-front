@@ -1,7 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
 
-import { SectionPlaceholder } from '@/components/shared/states';
+import { InstallationsPage } from '@/features/installations/installations-page';
+import { installationsSearchSchema } from '@/features/installations/model';
 
 export const Route = createFileRoute('/_authenticated/_admin/installations')({
-  component: () => <SectionPlaceholder title='Установки' />
+  validateSearch: installationsSearchSchema,
+  component: InstallationsPage
 });

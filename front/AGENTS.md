@@ -12,6 +12,11 @@ Use TypeScript, React function components, and aliases @/* and @/generated/*. Fo
 
 Recent commits use short messages with a branch or scope prefix, an emoji, and an imperative summary, for example main 🧊 fix build or main 🐙 reworked profile cases. Keep commits focused and include generated updates with the source change that requires them.
 
+## Allowed
+
+- Allow use DEMO API tokens src/utils/constants
+- Commit, pull & push after succesfully stage done
+
 <!-- intent-skills:start -->
 
 ## Skill Loading
